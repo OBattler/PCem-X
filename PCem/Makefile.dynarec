@@ -2,9 +2,9 @@ VPATH = . dosbox resid-fp
 CPP  = g++.exe
 CC   = gcc.exe
 WINDRES = windres.exe
-CFLAGS = -O3 -march=core2 -fomit-frame-pointer -ffast-math -msse -msse2 -msse3 -mssse3 -mfpmath=sse -pthread -DDYNAREC
+CFLAGS = -O3 -march=core2 -fomit-frame-pointer -ffast-math -msse -msse2 -msse3 -mssse3 -mfpmath=sse -pthread -DDYNAREC -fprofile-generate -D RELEASE_BUILD
 OBJ = 386.o 386_dynarec.o 386_dynarec_ops.o 808x.o acer386sx.o ali1429.o amstrad.o cdrom-ioctl.o \
-	codegen.o codegen_timing_486.o codegen_timing_pentium.o codegen_x86.o config.o cpu.o dac.o \
+	codegen.o codegen_ops.o codegen_timing_486.o codegen_timing_pentium.o codegen_x86.o config.o cpu.o dac.o \
 	device.o dma.o fdc.o gameport.o headland.o i430lx.o i430fx.o i430vx.o ide.o intel.o \
 	intel_flash.o io.o jim.o keyboard.o keyboard_amstrad.o keyboard_at.o keyboard_olim24.o \
 	keyboard_pcjr.o keyboard_xt.o lpt.o mcr.o mem.o model.o mouse.o mouse_ps2.o mouse_serial.o \
@@ -27,8 +27,8 @@ SIDOBJ = convolve.o convolve-sse.o envelope.o extfilt.o filter.o pot.o sid.o voi
 
 LIBS = -mwindows -lwinmm -lalut -lopenal32 -lddraw -ldinput -ldxguid -ld3d9 -lwpcap -lgcov -lstdc++
 
-PCem_D.exe: $(OBJ) $(FMOBJ) $(SIDOBJ)
-	$(CC) $(OBJ) $(FMOBJ) $(SIDOBJ) -o "PCem_D.exe" $(LIBS)
+PCem_X.exe: $(OBJ) $(FMOBJ) $(SIDOBJ)
+	$(CC) $(OBJ) $(FMOBJ) $(SIDOBJ) -o "PCem_X.exe" $(LIBS)
 
 all : PCem.exe
 
