@@ -351,7 +351,14 @@ static void ioctl_readsector(uint8_t *b, int sector)
         LARGE_INTEGER pos;
         long size;
         if (!cdrom_drive) return;
-        ioctl_cd_state = CD_STOPPED;        
+	if (ioctl_cd_state == CD_PLAYING)
+	{
+		return;
+	}
+	else
+	{
+		ioctl_cd_state = CD_STOPPED;
+	}
         pos.QuadPart=sector*2048;
         ioctl_open(0);
         SetFilePointer(hIOCTL,pos.LowPart,&pos.HighPart,FILE_BEGIN);

@@ -68,25 +68,25 @@ static inline void fetch_ea_32_long(uint32_t rmdat)
         if (rm == 4)
         {
                 uint8_t sib = rmdat >> 8;
-
+                
                 switch (mod)
                 {
-                        case 0:
-                        eaaddr = regs[sib & 7].l;
-                        pc++;
+                        case 0: 
+                        eaaddr = regs[sib & 7].l; 
+                        pc++; 
                         break;
-                        case 1:
+                        case 1: 
                         pc++;
-                        eaaddr = ((uint32_t)(int8_t)getbyte()) + regs[sib & 7].l;
-//                        pc++;
+                        eaaddr = ((uint32_t)(int8_t)getbyte()) + regs[sib & 7].l; 
+//                        pc++; 
                         break;
-                        case 2:
-                        eaaddr = (fastreadl(cs + pc + 1)) + regs[sib & 7].l;
-                        pc += 5;
+                        case 2: 
+                        eaaddr = (fastreadl(cs + pc + 1)) + regs[sib & 7].l; 
+                        pc += 5; 
                         break;
                 }
                 /*SIB byte present*/
-                if ((sib & 7) == 5 && !mod)
+                if ((sib & 7) == 5 && !mod) 
                         eaaddr = getlong();
                 else if ((sib & 6) == 4 && !ssegs)
                 {
@@ -94,13 +94,13 @@ static inline void fetch_ea_32_long(uint32_t rmdat)
                         ea_rseg = SS;
                         ea_seg = &_ss;
                 }
-                if (((sib >> 3) & 7) != 4)
+                if (((sib >> 3) & 7) != 4) 
                         eaaddr += regs[(sib >> 3) & 7].l << (sib >> 6);
         }
         else
         {
                 eaaddr = regs[rm].l;
-                if (mod)
+                if (mod) 
                 {
                         if (rm == 5 && !ssegs)
                         {
@@ -108,27 +108,28 @@ static inline void fetch_ea_32_long(uint32_t rmdat)
                                 ea_rseg = SS;
                                 ea_seg = &_ss;
                         }
-                        if (mod == 1)
-                        {
-                                eaaddr += ((uint32_t)(int8_t)(rmdat >> 8));
-                                pc++;
+                        if (mod == 1) 
+                        { 
+                                eaaddr += ((uint32_t)(int8_t)(rmdat >> 8)); 
+                                pc++; 
                         }
-                        else
+                        else          
                         {
-                                eaaddr += getlong();
+                                eaaddr += getlong(); 
                         }
                 }
-                else if (rm == 5)
+                else if (rm == 5) 
                 {
                         eaaddr = getlong();
                 }
         }
         if (easeg != 0xFFFFFFFF && ((easeg + eaaddr) & 0xFFF) <= 0xFFC)
         {
-                if ( readlookup2[(easeg + eaaddr) >> 12] != -1)
-                   eal_r = (uint32_t *)(readlookup2[(easeg + eaaddr) >> 12] + easeg + eaaddr);
-                if (writelookup2[(easeg + eaaddr) >> 12] != -1)
-                   eal_w = (uint32_t *)(writelookup2[(easeg + eaaddr) >> 12] + easeg + eaaddr);
+		uint32_t addr = easeg + eaaddr;
+                if ( readlookup2[addr >> 12] != -1)
+                	eal_r = (uint32_t *)(readlookup2[addr >> 12] + addr);
+                if (writelookup2[addr >> 12] != -1)
+                	eal_w = (uint32_t *)(writelookup2[addr >> 12] + addr);
         }
 }
 
@@ -137,8 +138,8 @@ static inline void fetch_ea_16_long(uint32_t rmdat)
         eal_r = eal_w = NULL;
         easeg = ea_seg->base;
         ea_rseg = ea_seg->seg;
-        if (!mod && rm == 6)
-        {
+        if (!mod && rm == 6) 
+        { 
                 eaaddr = getword();
         }
         else
@@ -166,14 +167,15 @@ static inline void fetch_ea_16_long(uint32_t rmdat)
         }
         if (easeg != 0xFFFFFFFF && ((easeg + eaaddr) & 0xFFF) <= 0xFFC)
         {
-                if ( readlookup2[(easeg + eaaddr) >> 12] != -1)
-                   eal_r = (uint32_t *)(readlookup2[(easeg + eaaddr) >> 12] + easeg + eaaddr);
-                if (writelookup2[(easeg + eaaddr) >> 12] != -1)
-                   eal_w = (uint32_t *)(writelookup2[(easeg + eaaddr) >> 12] + easeg + eaaddr);
+		uint32_t addr = easeg + eaaddr;
+                if ( readlookup2[addr >> 12] != -1)
+                	eal_r = (uint32_t *)(readlookup2[addr >> 12] + addr);
+                if (writelookup2[addr >> 12] != -1)
+                	eal_w = (uint32_t *)(writelookup2[addr >> 12] + addr);
         }
 }
 
-#define fetch_ea_16(rmdat)              pc++; mod=(rmdat >> 6) & 3; reg=(rmdat >> 3) & 7; rm = rmdat & 7; if (mod != 3) { fetch_ea_16_long(rmdat); if (abrt) return 0; }
+#define fetch_ea_16(rmdat)              pc++; mod=(rmdat >> 6) & 3; reg=(rmdat >> 3) & 7; rm = rmdat & 7; if (mod != 3) { fetch_ea_16_long(rmdat); if (abrt) return 0; } 
 #define fetch_ea_32(rmdat)              pc++; mod=(rmdat >> 6) & 3; reg=(rmdat >> 3) & 7; rm = rmdat & 7; if (mod != 3) { fetch_ea_32_long(rmdat); } if (abrt) return 0
 
 #include "x86_flags.h"
@@ -279,7 +281,7 @@ int rep386(int fv)
         uint32_t templ,templ2;
         int tempz;
         int tempi;
-
+        
         flags_rebuild();
         of = flags;
 //        if (output) pclog("REP32 %04X %04X  ",use32,rep32);
@@ -873,7 +875,7 @@ int rep386(int fv)
                         temp2=readmemb(es,DI);
                         if (abrt) { flags=of; break; }
                         setsub8(AL,temp2);
-                        tempz = (ZF_SET()) ? 1 : 0;
+                        tempz = (ZF_SET()) ? 1 : 0;                        
                         if (flags&D_FLAG) DI--;
                         else              DI++;
                         c--;
@@ -1011,11 +1013,12 @@ int xout=0;
 
 #define divexcp() { \
                 pclog("Divide exception at %04X(%06X):%04X\n",CS,cs,pc); \
+                x86_int(0); \
 }
 
 int divl(uint32_t val)
 {
-        if (val==0)
+        if (val==0) 
         {
                 divexcp();
                 return 1;
@@ -1024,7 +1027,7 @@ int divl(uint32_t val)
         uint64_t quo=num/val;
         uint32_t rem=num%val;
         uint32_t quo32=(uint32_t)(quo&0xFFFFFFFF);
-        if (quo!=(uint64_t)quo32)
+        if (quo!=(uint64_t)quo32) 
         {
                 divexcp();
                 return 1;
@@ -1035,8 +1038,8 @@ int divl(uint32_t val)
 }
 int idivl(int32_t val)
 {
-        if (val==0)
-        {
+        if (val==0) 
+        {       
                 divexcp();
                 return 1;
         }
@@ -1044,7 +1047,7 @@ int idivl(int32_t val)
         int64_t quo=num/val;
         int32_t rem=num%val;
         int32_t quo32=(int32_t)(quo&0xFFFFFFFF);
-        if (quo!=(int64_t)quo32)
+        if (quo!=(int64_t)quo32) 
         {
                 divexcp();
                 return 1;
@@ -1118,18 +1121,17 @@ opcode_realstart:
                 oldpc=pc;
                 oldcpl=CPL;
                 op32=use32;
-
+                
 dontprint=0;
 
                 ea_seg = &_ds;
                 ssegs = 0;
-
+                
 opcodestart:
                 fetchdat = fastreadl(cs + pc);
 
                 if (!abrt)
-                {
-                        tempc = CF_SET();
+                {               
                         trap = flags & T_FLAG;
                         opcode = fetchdat & 0xFF;
                         fetchdat >>= 8;
@@ -1250,9 +1252,9 @@ opcodestart:
                                 fatal("Life expired\n");
                 }
                 }
-
+                
                 tsc += cycdiff;
-
+                
                 timer_end_period(cycles);
         }
 }

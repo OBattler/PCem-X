@@ -480,6 +480,7 @@ endblit();
 
 void cga_init(cga_t *cga)
 {
+	loadfont("mda.rom", 0);
 }
 
 void *cga_standalone_init()
@@ -488,6 +489,8 @@ void *cga_standalone_init()
         int cga_tint = -2;
         cga_t *cga = malloc(sizeof(cga_t));
         memset(cga, 0, sizeof(cga_t));
+
+	loadfont("mda.rom", 0);
 
         cga->vram = malloc(0x4000);
                 

@@ -186,6 +186,7 @@ static void ddraw_blit_memtoscreen(int x, int y, int y1, int y2, int w, int h)
                 lpdds_back2->Blt(&r_src, lpdds_back, &r_src, DDBLT_WAIT, NULL);
         }
 
+#ifdef DO_FLASH
         if (readflash)
         {
                 readflash = 0;
@@ -204,6 +205,9 @@ static void ddraw_blit_memtoscreen(int x, int y, int y1, int y2, int w, int h)
                             p[xx] = 0xffffffff;
                 }
         }
+#else
+	readflash = 0;
+#endif
         lpdds_back2->Unlock(NULL);
         
 //        pclog("Blit from %i,%i %i,%i to %i,%i %i,%i\n", r_src.left, r_src.top, r_src.right, r_src.bottom, r_dest.left, r_dest.top, r_dest.right, r_dest.bottom);
@@ -266,6 +270,7 @@ static void ddraw_blit_memtoscreen_8(int x, int y, int w, int h)
                 lpdds_back2->Blt(&r_src, lpdds_back, &r_src, DDBLT_WAIT, NULL);
         }
 
+#ifdef DO_FLASH
         if (readflash)
         {
                 readflash = 0;
@@ -285,6 +290,9 @@ static void ddraw_blit_memtoscreen_8(int x, int y, int w, int h)
                 }
                 lpdds_back2->Unlock(NULL);
         }
+#else
+	readflash = 0;
+#endif
         
         hr = lpdds_pri->Blt(&r_dest, lpdds_back2, &r_src, DDBLT_WAIT, NULL);
         if (hr == DDERR_SURFACELOST)

@@ -30,7 +30,7 @@ typedef struct ega_t
         uint8_t egapal[16];
         uint32_t *pallook;
 
-        int vtotal, dispend, vsyncstart, split;
+        int vtotal, dispend, vsyncstart, split, vblankstart;
         int hdisp,  htotal,  hdisp_time, rowoffset;
         int lowres, interlace;
         int linedbl, rowcount;
@@ -73,3 +73,4 @@ void    ega_write(uint32_t addr, uint8_t val, void *p);
 uint8_t ega_read(uint32_t addr, void *p);
 
 extern device_t ega_device;
+extern device_t sega_device;

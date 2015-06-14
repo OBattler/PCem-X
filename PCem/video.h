@@ -76,3 +76,5 @@ extern int video_speed;
 extern int video_res_x, video_res_y, video_bpp;
 
 extern int vid_resize;
+
+extern int font_index;

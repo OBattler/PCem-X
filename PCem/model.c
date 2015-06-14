@@ -9,6 +9,7 @@
 #include "device.h"
 #include "dma.h"
 #include "fdc.h"
+#include "fdc37c665.h"
 #include "gameport.h"
 #include "headland.h"
 #include "i430fx.h"
@@ -30,6 +31,7 @@
 #include "nmi.h"
 #include "nvr.h"
 #include "olivetti_m24.h"
+#include "pc87306.h"
 #include "pci.h"
 #include "pic.h"
 #include "piix.h"
@@ -56,20 +58,26 @@ void    at_ali1429_init();
 void   at_headland_init();
 void    at_um8881f_init();
 void     at_sis496_init();
+void     at_i430fx_init();
 void     at_i430vx_init();
 void     at_batman_init();
 void   at_endeavor_init();
 
 int model;
 
+int machine_class;
+
+int supports_slave = 0;
+int has_pc87306 = 0;
+
 MODEL models[] =
 {
-        {"IBM PC",              ROM_IBMPC,     { "",      cpus_8088,    "",    NULL,         "",      NULL},         0,      xt_init},
-        {"IBM XT",              ROM_IBMXT,     { "",      cpus_8088,    "",    NULL,         "",      NULL},         0,      xt_init},
+        {"IBM PC",              ROM_IBMPC,     { "Stock", cpus_8088,	"286 card",  cpus_286,   "",  NULL},         0,      xt_init},
+        {"IBM XT",              ROM_IBMXT,     { "Stock", cpus_8088,	"286 card",  cpus_286,   "",  NULL},         0,      xt_init},
         {"IBM PCjr",            ROM_IBMPCJR,   { "",      cpus_pcjr,    "",    NULL,         "",      NULL},         1,    pcjr_init},
-        {"Generic XT clone",    ROM_GENXT,     { "",      cpus_8088,    "",    NULL,         "",      NULL},         0,      xt_init},
-        {"DTK XT clone",        ROM_DTKXT,     { "",      cpus_8088,    "",    NULL,         "",      NULL},         0,      xt_init},        
-        {"Tandy 1000",          ROM_TANDY,     { "",      cpus_8088,    "",    NULL,         "",      NULL},         1, tandy1k_init},
+        {"Generic XT clone",    ROM_GENXT,     { "Stock", cpus_8088,	"286 card",  cpus_286,   "",  NULL},         0,      xt_init},
+        {"DTK XT clone",        ROM_DTKXT,     { "Stock", cpus_8088,	"286 card",  cpus_286,   "",  NULL},         0,      xt_init},        
+        {"Tandy 1000",          ROM_TANDY,     { "Stock", cpus_8088,	"286 card",  cpus_286,   "",  NULL},         1, tandy1k_init},
         {"Amstrad PC1512",      ROM_PC1512,    { "",      cpus_pc1512,  "",    NULL,         "",      NULL},         1,     ams_init},
         {"Sinclair PC200",      ROM_PC200,     { "",      cpus_8086,    "",    NULL,         "",      NULL},         1,     ams_init},
         {"Euro PC",             ROM_EUROPC,    { "",      cpus_8086,    "",    NULL,         "",      NULL},         0,  europc_init},
@@ -83,17 +91,22 @@ MODEL models[] =
         {"DELL System 200",     ROM_DELL200,   { "",      cpus_286,     "",    NULL,         "",      NULL},         0,           at_init},
         {"Acer 386SX25/N",      ROM_ACER386,   { "Intel", cpus_acer,    "",    NULL,         "",      NULL},         1, at_acer386sx_init},
         {"Amstrad MegaPC",      ROM_MEGAPC,    { "Intel", cpus_i386,    "AMD", cpus_Am386,   "Cyrix", cpus_486SDLC}, 1,   at_wd76c10_init},
+        {"Amstrad PC7286",      ROM_MEGAPC,    { "Intel", cpus_286,     "",    NULL,         "",      NULL},         1,   at_wd76c10_init},
         {"AMI 386 clone",       ROM_AMI386,    { "Intel", cpus_i386,    "AMD", cpus_Am386,   "Cyrix", cpus_486SDLC}, 0,  at_headland_init},
+        // {"HP 200LX",            ROM_HP200LX,   { "Intel", cpus_i386,    "AMD", cpus_Am386,   "Cyrix", cpus_486SDLC}, 0,  at_init},
         {"AMI 486 clone",       ROM_AMI486,    { "Intel", cpus_i486,    "AMD", cpus_Am486,   "Cyrix", cpus_Cx486},   0,   at_ali1429_init},
         {"AMI WinBIOS 486",     ROM_WIN486,    { "Intel", cpus_i486,    "AMD", cpus_Am486,   "Cyrix", cpus_Cx486},   0,   at_ali1429_init},
 /*        {"AMI WinBIOS 486 PCI", ROM_PCI486,    { "Intel", cpus_i486,    "AMD", cpus_Am486, "Cyrix", cpus_Cx486},   0,   at_um8881f_init},*/
+        {"Award SiS 471",       ROM_SIS471,    { "Intel", cpus_i486,    "AMD", cpus_Am486,   "Cyrix", cpus_Cx486},   0,    at_sis496_init},
         {"Award SiS 496/497",   ROM_SIS496,    { "Intel", cpus_i486,    "AMD", cpus_Am486,   "Cyrix", cpus_Cx486},   0,    at_sis496_init},
 #ifdef DYNAREC
         {"Intel Premiere/PCI",  ROM_REVENGE,   { "Intel", cpus_Pentium5V, "",  NULL,         "",      NULL},         0,    at_batman_init},
-        {"Intel Advanced/EV",   ROM_ENDEAVOR,  { "Intel", cpus_Pentium, "IDT", cpus_WinChip, "",      NULL},         0,  at_endeavor_init},
+        {"Intel Advanced/EV",   ROM_ENDEAVOR,  { "Intel", cpus_PentiumS5,"IDT", cpus_WinChip, "",      NULL},         0,  at_endeavor_init},
+        {"Award 430FX PCI",     ROM_430FX,     { "Intel", cpus_PentiumS5,"IDT", cpus_WinChip, "",      NULL},         0,    at_i430fx_init},
         {"Award 430VX PCI",     ROM_430VX,     { "Intel", cpus_Pentium, "IDT", cpus_WinChip, "",      NULL},         0,    at_i430vx_init},
 #else
         {"Intel Advanced/EV",   ROM_ENDEAVOR,  { "IDT", cpus_WinChip,   "",    NULL,         "",      NULL},         0,  at_endeavor_init},
+        {"Award 430FX PCI",     ROM_430FX,     { "IDT", cpus_WinChip,   "",    NULL,         "",      NULL},         0,  at_i430fx_init},
         {"Award 430VX PCI",     ROM_430VX,     { "IDT", cpus_WinChip,   "",    NULL,         "",      NULL},         0,    at_i430vx_init},
 #endif
         {"", -1, {"", 0, "", 0, "", 0}, 0}
@@ -138,6 +151,8 @@ void common_init()
         serial1_init(0x3f8, 4);
         serial2_init(0x2f8, 3);
         device_add(&gameport_device);
+	machine_class = MC_PCAT;
+	has_pc87306 = 0;
 }
 
 void xt_init()
@@ -160,6 +175,7 @@ void pcjr_init()
         keyboard_pcjr_init();
         device_add(&sn76489_device);
 	nmi_mask = 0x80;
+	machine_class = MC_PCJR;
 }
 
 void tandy1k_init()
@@ -180,6 +196,7 @@ void ams_init()
         nvr_init();
         xtide_init();
 	nmi_init();
+	machine_class = MC_AMSTRAD;
 }
 
 void europc_init()
@@ -258,11 +275,19 @@ void at_um8881f_init()
         um8881f_init();
 }
 
+void at_sis471_init()
+{
+        at_init();
+	sis85c471_init();
+        mouse_serial_init();
+}
+
 void at_sis496_init()
 {
         at_init();
         mouse_serial_init();
         pci_init(PCI_CONFIG_TYPE_1, 0, 31);
+        um8663b_init();
         device_add(&sis496_device);
 }
 
@@ -272,9 +297,10 @@ void at_batman_init()
         mouse_serial_init();
         pci_init(PCI_CONFIG_TYPE_2, 0xd, 0x10);
         i430lx_init();
-        um8669f_init();
+	fdc37c665_init();
         intel_batman_init();
 }
+
 void at_endeavor_init()
 {
         at_init();
@@ -282,11 +308,23 @@ void at_endeavor_init()
         pci_init(PCI_CONFIG_TYPE_1, 0xd, 0x10);
         i430fx_init();
         piix_init(7);
-        um8669f_init();
+	pc87306_init();
+	has_pc87306 = 1;
         intel_endeavor_init();
         device_add(&intel_flash_device);
 }
 
+void at_i430fx_init()
+{
+        at_init();
+        mouse_serial_init();
+        pci_init(PCI_CONFIG_TYPE_1, 0, 31);
+        i430fx_init();
+        piix_init(7);
+        um8669f_init();
+        serial3_init(0x3e8, 4);
+        serial4_init(0x2e8, 3);
+}
 void at_i430vx_init()
 {
         at_init();
@@ -295,6 +333,8 @@ void at_i430vx_init()
         i430vx_init();
         piix_init(7);
         um8669f_init();
+        serial3_init(0x3e8, 4);
+        serial4_init(0x2e8, 3);
 }
 
 void model_init()

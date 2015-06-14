@@ -32,6 +32,7 @@ typedef struct hercules_t
 } hercules_t;
 
 static int mdacols[256][2][2];
+int herc_font = 0;
 
 void hercules_recalctimings(hercules_t *hercules);
 void hercules_write(uint32_t addr, uint8_t val, void *p);
@@ -304,6 +305,22 @@ void hercules_poll(void *p)
         }
 }
 
+void hercules_load_font()
+{
+	switch(herc_font)
+	{
+		case 0:
+			loadfont("mda.rom", 0);
+			break;
+		case 1:
+			loadfont("kam.bin", 0);
+			break;
+		case 2:
+			loadfont("kamcl16.bin", 0);
+			break;
+	}
+}
+
 void *hercules_init()
 {
         int c;
@@ -311,6 +328,20 @@ void *hercules_init()
         memset(hercules, 0, sizeof(hercules_t));
 
         hercules->vram = malloc(0x10000);
+
+	switch(device_get_config_int("font"))
+	{
+		case 0:
+			loadfont("mda.rom", 0);
+			break;
+		case 1:
+			loadfont("kam.bin", 0);
+			break;
+		case 2:
+			loadfont("kamcl16.bin", 0);
+			break;
+	}
+	herc_font = device_get_config_int("font");
 
         timer_add(hercules_poll, &hercules->vidtime, TIMER_ALWAYS_ENABLED, hercules);
         mem_mapping_add(&hercules->mapping, 0xb0000, 0x08000, hercules_read, NULL, NULL, hercules_write, NULL, NULL,  NULL, 0, hercules);
@@ -353,6 +384,37 @@ void hercules_speed_changed(void *p)
         hercules_recalctimings(hercules);
 }
 
+static device_config_t hercules_config[] =
+{
+        {
+                .name = "font",
+                .description = "Font",
+                .type = CONFIG_SELECTION,
+                .selection =
+                {
+                        {
+                                .description = "US (CP 437)",
+                                .value = 0
+                        },
+                        {
+                                .description = "Czech Kamenicky (CP 895) #1",
+                                .value = 1
+                        },
+                        {
+                                .description = "Czech Kamenicky (CP 895) #2",
+                                .value = 2
+                        },
+                        {
+                                .description = ""
+                        }
+                },
+                .default_int = 0
+        },
+        {
+                .type = -1
+        }
+};
+
 device_t hercules_device =
 {
         "Hercules",
@@ -362,5 +424,6 @@ device_t hercules_device =
         NULL,
         hercules_speed_changed,
         NULL,
-        NULL
+        NULL,
+        hercules_config
 };

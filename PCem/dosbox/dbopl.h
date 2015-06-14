@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2002-2010  The DOSBox Team
+ *  Copyright (C) 2002-2013  The DOSBox Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -16,8 +16,8 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-//#include "adlib.h"
-//#include "dosbox.h"
+// #include "adlib.h"
+// #include "dosbox.h"
 #include <stdint.h>
 typedef signed int Bits;
 typedef unsigned int Bitu;
@@ -260,14 +260,18 @@ struct Chip {
 	Chip();
 };
 
-/*struct Handler : public Adlib::Handler {
+/* struct Handler : public Adlib::Handler {
 	DBOPL::Chip chip;
 	virtual Bit32u WriteAddr( Bit32u port, Bit8u val );
 	virtual void WriteReg( Bit32u addr, Bit8u val );
 	virtual void Generate( MixerChannel* chan, Bitu samples );
 	virtual void Init( Bitu rate );
-};*/
+
+	virtual void SaveState( std::ostream& stream );
+	virtual void LoadState( std::istream& stream );
+}; */
 
 void InitTables( void );
+
 
 };		//Namespace

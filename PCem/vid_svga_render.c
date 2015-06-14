@@ -3,9 +3,7 @@
 #include "video.h"
 #include "vid_svga.h"
 #include "vid_svga_render.h"
-#include "vid_kanji_render.h"
-
-int kanjirom = 0;
+// #include <pthread.h>
 
 void svga_render_blank(svga_t *svga)
 {
@@ -349,6 +347,9 @@ void svga_render_4bpp_highres(svga_t *svga)
         }
 }
 
+/* void *svga_render_8bpp_lowres_th(void *arg)
+{
+	svga_t *svga = (svga_t *) arg; */
 void svga_render_8bpp_lowres(svga_t *svga)
 {
         if (svga->changedvram[svga->ma >> 12] || svga->changedvram[(svga->ma >> 12) + 1] || svga->fullchange)
@@ -375,8 +376,19 @@ void svga_render_8bpp_lowres(svga_t *svga)
                 }
                 svga->ma &= svga->vrammask;
         }
+
+	// return NULL;
 }
 
+/* void svga_render_8bpp_lowres(svga_t *svga)
+{
+	pthread_t pth;
+	pthread_create(&pth,NULL,svga_render_8bpp_lowres_th,(void *) svga);
+}
+
+void *svga_render_8bpp_highres_th(void *arg)
+{
+	svga_t *svga = (svga_t *) arg; */
 void svga_render_8bpp_highres(svga_t *svga)
 {
         if (svga->changedvram[svga->ma >> 12] || svga->changedvram[(svga->ma >> 12) + 1] || svga->fullchange)
@@ -409,7 +421,15 @@ void svga_render_8bpp_highres(svga_t *svga)
                 }
                 svga->ma &= svga->vrammask;
         }
+
+	// return NULL;
 }
+
+/* void svga_render_8bpp_highres(svga_t *svga)
+{
+	pthread_t pth;
+	pthread_create(&pth,NULL,svga_render_8bpp_highres_th,(void *) svga);
+} */
 
 void svga_render_15bpp_lowres(svga_t *svga)
 {

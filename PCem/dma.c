@@ -75,7 +75,6 @@ uint8_t dma_read(uint16_t addr, void *priv)
 void dma_write(uint16_t addr, uint8_t val, void *priv)
 {
 //        printf("Write DMA %04X %02X %04X:%04X\n",addr,val,CS,pc);
-	if (discint == 13)  pclog("Format DMA write: %04X: %02X", addr, val);
         dmaregs[addr & 0xf] = val;
         switch (addr & 0xf)
         {
@@ -153,7 +152,6 @@ uint8_t dma16_read(uint16_t addr, void *priv)
 void dma16_write(uint16_t addr, uint8_t val, void *priv)
 {
 //        printf("Write dma16 %04X %02X %04X:%04X\n",addr,val,CS,pc);
-	if (discint == 13)  pclog("Format DMA 16 write: %04X: %02X", addr, val);
         addr >>= 1;
         dma16regs[addr & 0xf] = val;
         switch (addr & 0xf)
@@ -204,8 +202,6 @@ void dma16_write(uint16_t addr, uint8_t val, void *priv)
 
 void dma_page_write(uint16_t addr, uint8_t val, void *priv)
 {
-	if (discint == 13)  pclog("Format DMA page write: %04X: %04X", addr, val);
-
         dmapages[addr & 0xf] = val;
         switch (addr & 0xf)
         {
@@ -250,6 +246,7 @@ uint8_t _dma_read(uint32_t addr)
 void _dma_write(uint32_t addr, uint8_t val)
 {
         mem_writeb_phys(addr, val);
+        mem_invalidate_range(addr, addr);
 }
 
 int dma_channel_read(int channel)
@@ -327,8 +324,6 @@ int dma_channel_read(int channel)
 
 int dma_channel_write(int channel, uint16_t val)
 {
-	if (discint == 13)  pclog("Format DMA channel write: %02X: %04X", channel, val);
-
 	if (dma.command & 0x04)
 		return DMA_NODATA;
 

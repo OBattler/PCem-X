@@ -7,6 +7,7 @@
 #include "ali1429.h"
 #include "amstrad.h"
 #include "cdrom-ioctl.h"
+#include "mem.h"
 #ifdef DYNAREC
 #include "x86_ops.h"
 #include "codegen.h"
@@ -16,14 +17,15 @@
 #include "cpu.h"
 #include "dma.h"
 #include "fdc.h"
+#include "floppy.h"
 #include "sound_gus.h"
 #include "ide.h"
 #include "keyboard.h"
-#include "mem.h"
 #include "model.h"
 #include "mouse.h"
 #include "nethandler.h"
 #include "nvr.h"
+#include "pc.h"
 #include "pic.h"
 #include "pit.h"
 #include "plat-joystick.h"
@@ -39,6 +41,7 @@
 #include "vid_svga.h"
 #include "vid_svga_render.h"
 #include "vid_voodoo.h"
+#include "win-display.h"
 
 int frame = 0;
 
@@ -64,20 +67,40 @@ int atfullspeed;
 void saveconfig();
 int infocus;
 int mousecapture;
-FILE *pclogf;
 void pclog(const char *format, ...)
 {
 #ifndef RELEASE_BUILD
    char buf[1024];
    //return;
-   if (!pclogf)
-      pclogf=fopen("pclog.txt","wt");
+   /* if (!pclogf)
+      pclogf=fopen("pclog.txt","wt"); */
+   pclogf=fopen("pclog.txt","at");
+   if (pclogf==NULL)  pclogf=fopen("pclog.txt","wt");
+   if (pclogf==NULL)  return;
 //return;
    va_list ap;
    va_start(ap, format);
    vsprintf(buf, format, ap);
    va_end(ap);
    fputs(buf,pclogf);
+   fclose(pclogf);
+
+#ifdef REAL_TIME_LOG
+   if (!rtlog)
+   {
+	/* Allocate 10 MB for in-memory log */
+	rtlog = (uint8_t *) malloc(10485760);
+   }
+   if (strlen(rtlog) + strlen(buf) + 2 >= 10485760)
+   {
+	free(rtlog);
+	/* Allocate 10 MB for in-memory log */
+	rtlog = (uint8_t *) malloc(10485760);
+   }
+   // strcat(rtlog, "\r\n");
+   // strcat(rtlog, buf);
+   // debug_update();
+#endif
 //fflush(pclogf);
 #endif
 }
@@ -86,8 +109,11 @@ void fatal(const char *format, ...)
 {
    char buf[256];
 //   return;
-   if (!pclogf)
-      pclogf=fopen("pclog.txt","wt");
+   /* if (!pclogf)
+      pclogf=fopen("pclog.txt","wt"); */
+   pclogf=fopen("pclog.txt","at");
+   if (pclogf==NULL)  pclogf=fopen("pclog.txt","wt");
+   if (pclogf==NULL)  return;
 //return;
    va_list ap;
    va_start(ap, format);
@@ -95,8 +121,10 @@ void fatal(const char *format, ...)
    va_end(ap);
    fputs(buf,pclogf);
    fflush(pclogf);
+   // free(rtlog);
    dumppic();
    dumpregs();
+   fclose(pclogf);
    exit(-1);
 }
 
@@ -132,12 +160,13 @@ int cpuspeed2;
 
 int clocks[3][12][4]=
 {
+	// 4772728
         {
-                {4772728,13920,59660,5965},  /*4.77MHz*/
-                {8000000,23333,110000,0}, /*8MHz*/
-                {10000000,29166,137500,0}, /*10MHz*/
-                {12000000,35000,165000,0}, /*12MHz*/
-                {16000000,46666,220000,0}, /*16MHz*/
+                {3512199,13920,59660,5965},  /*4.77MHz*/
+                {5887115,23333,110000,0}, /*8MHz*/
+                {7358893,29166,137500,0}, /*10MHz*/
+                {8830672,35000,165000,0}, /*12MHz*/
+                {11774229,46666,220000,0}, /*16MHz*/
         },
         {
                 {8000000,23333,110000,0}, /*8MHz*/
@@ -177,6 +206,7 @@ void pc_reset()
 {
         cpu_set();
         resetx86();
+	mem_updatecache();
         //timer_reset();
         dma_reset();
         fdc_reset();
@@ -192,6 +222,7 @@ void pc_reset()
 
         ali1429_reset();
 //        video_init();
+//	fatal("Floppy properties: %i %i\n", int_from_config(0), int_from_config(1));
 }
 
 void resetpc();
@@ -212,6 +243,7 @@ void initpc()
         mouse_init();
         joystick_init();
 
+	fdd_init();
         loadconfig(NULL);
         pclog("Config loaded\n");
 
@@ -227,15 +259,13 @@ void initpc()
 
         device_init();
 
-        initvideo();
         mem_init();
         loadbios();
         mem_add_bios();
+        initvideo();
 
         loaddisc(0,discfns[0]);
         loaddisc(1,discfns[1]);
-
-	svga_dbcs_fonts_load();
 
         timer_reset();
         sound_reset();
@@ -268,12 +298,10 @@ void initpc()
 
         // pit_reset();
 /*        if (romset==ROM_AMI386 || romset==ROM_AMI486) */fullspeed();
-        mem_updatecache();
         ali1429_reset();
 //        CPUID=(is486 && (cpuspeed==7 || cpuspeed>=9));
 //        pclog("Init - CPUID %i %i\n",CPUID,cpuspeed);
         shadowbios=0;
-        voodoo_init();
 
 #if __unix
 	if (cdrom_drive == -1)
@@ -311,7 +339,7 @@ void resetpchard()
         sound_reset();
         vlan_reset();
         mem_resize();
-        fdc_init();
+        fdc_hard_reset();
         model_init();
         video_init();
         speaker_init();
@@ -326,6 +354,9 @@ void resetpchard()
 	pclog("SSI2001...\n");
         if (SSI2001)
                 device_add(&ssi2001_device);
+	pclog("Voodoo...\n");
+        if (voodoo_enabled)
+                device_add(&voodoo_device);
 
         pc_reset();
 
@@ -395,7 +426,7 @@ void runpc()
                 framecount++;
                 if (framecountx>=100)
                 {
-                        pclog("onesec\n");
+                        // pclog("onesec\n");
                         framecountx=0;
                         mips=(float)insc/1000000.0f;
                         insc=0;
@@ -409,6 +440,7 @@ void runpc()
 #if DYNAREC
                         cpu_recomp_blocks_latched = cpu_recomp_blocks;
                         cpu_recomp_ins_latched = cpu_recomp_ins;
+			cpu_recomp_full_ins_latched = cpu_recomp_full_ins;
                         cpu_new_blocks_latched = cpu_new_blocks;
                         cpu_recomp_flushes_latched = cpu_recomp_flushes;
                         cpu_recomp_evicted_latched = cpu_recomp_evicted;
@@ -419,6 +451,7 @@ void runpc()
 
                         cpu_recomp_blocks = 0;
                         cpu_recomp_ins = 0;
+			cpu_recomp_full_ins = 0;
                         cpu_new_blocks = 0;
                         cpu_recomp_flushes = 0;
                         cpu_recomp_evicted = 0;
@@ -542,6 +575,7 @@ void loadconfig(char *fn)
         GAMEBLASTER = config_get_int(NULL, "gameblaster", 0);
         GUS = config_get_int(NULL, "gus", 0);
         SSI2001 = config_get_int(NULL, "ssi2001", 0);
+	voodoo_enabled = config_get_int(NULL, "voodoo", 0);
 
         model = config_get_int(NULL, "model", 14);
 
@@ -562,9 +596,6 @@ void loadconfig(char *fn)
         sound_card_current = config_get_int(NULL, "sndcard", SB2);
         network_card_current = config_get_int(NULL, "netcard", 0);
 
-	fdc_setmodel(config_get_int(NULL, "fdcmodel", 0));
-	vectorworkaround = config_get_int(NULL, "vectorworkaround", 0);
-
         p = (char *)config_get_string(NULL, "disc_a", "");
         if (p) strcpy(discfns[0], p);
         else   strcpy(discfns[0], "");
@@ -575,7 +606,7 @@ void loadconfig(char *fn)
         else   strcpy(discfns[1], "");
 	configure_from_int(1, config_get_int(NULL, "drivetype_b", 8));
 
-	kanjirom = config_get_int(NULL, "kanjirom", 0);
+	force_43 = config_get_int(NULL, "force_43", 0);
 
         mem_size = config_get_int(NULL, "mem_size", 4);
         cdrom_drive = config_get_int(NULL, "cdrom_drive", 0);
@@ -602,6 +633,18 @@ void loadconfig(char *fn)
         p = (char *)config_get_string(NULL, "hdd_fn", "");
         if (p) strcpy(ide_fn[1], p);
         else   strcpy(ide_fn[1], "");
+        hdc[2].spt = config_get_int(NULL, "hde_sectors", 0);
+        hdc[2].hpc = config_get_int(NULL, "hde_heads", 0);
+        hdc[2].tracks = config_get_int(NULL, "hde_cylinders", 0);
+        p = (char *)config_get_string(NULL, "hde_fn", "");
+        if (p) strcpy(ide_fn[2], p);
+        else   strcpy(ide_fn[2], "");
+        hdc[3].spt = config_get_int(NULL, "hdf_sectors", 0);
+        hdc[3].hpc = config_get_int(NULL, "hdf_heads", 0);
+        hdc[3].tracks = config_get_int(NULL, "hdf_cylinders", 0);
+        p = (char *)config_get_string(NULL, "hdf_fn", "");
+        if (p) strcpy(ide_fn[3], p);
+        else   strcpy(ide_fn[3], "");
 }
 
 void saveconfig()
@@ -609,6 +652,7 @@ void saveconfig()
         config_set_int(NULL, "gameblaster", GAMEBLASTER);
         config_set_int(NULL, "gus", GUS);
         config_set_int(NULL, "ssi2001", SSI2001);
+        config_set_int(NULL, "voodoo", voodoo_enabled);
 
         config_set_int(NULL, "netinterface", ethif);
 
@@ -625,13 +669,11 @@ void saveconfig()
         config_set_int(NULL, "slow_video", slowega);
         config_set_int(NULL, "cache", cache);
         config_set_int(NULL, "cga_composite", cga_comp);
-	config_set_int(NULL, "fdcmodel", fdc_model());
-	config_set_int(NULL, "vectorworkaround", vectorworkaround);
         config_set_string(NULL, "disc_a", discfns[0]);
         config_set_int(NULL, "drivetype_a", int_from_config(0));
         config_set_string(NULL, "disc_b", discfns[1]);
         config_set_int(NULL, "drivetype_b", int_from_config(1));
-        config_set_int(NULL, "kanjirom", kanjirom);
+        config_set_int(NULL, "force_43", force_43);
         config_set_int(NULL, "mem_size", mem_size);
         config_set_int(NULL, "cdrom_drive", cdrom_drive);
         config_set_int(NULL, "cdrom_enabled", cdrom_enabled);
@@ -648,6 +690,14 @@ void saveconfig()
         config_set_int(NULL, "hdd_heads", hdc[1].hpc);
         config_set_int(NULL, "hdd_cylinders", hdc[1].tracks);
         config_set_string(NULL, "hdd_fn", ide_fn[1]);
+        config_set_int(NULL, "hde_sectors", hdc[2].spt);
+        config_set_int(NULL, "hde_heads", hdc[2].hpc);
+        config_set_int(NULL, "hde_cylinders", hdc[2].tracks);
+        config_set_string(NULL, "hde_fn", ide_fn[2]);
+        config_set_int(NULL, "hdf_sectors", hdc[3].spt);
+        config_set_int(NULL, "hdf_heads", hdc[3].hpc);
+        config_set_int(NULL, "hdf_cylinders", hdc[3].tracks);
+        config_set_string(NULL, "hdf_fn", ide_fn[3]);
 
         config_save(config_file_default);
 }

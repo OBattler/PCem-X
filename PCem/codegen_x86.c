@@ -1,5 +1,3 @@
-#define CHECKSUM
-
 #ifdef DYNAREC
 #if defined i386 || defined __i386 || defined __i386__ || defined _X86_ || defined WIN32 || defined _WIN32 || defined _WIN32
 
@@ -10,27 +8,32 @@
 #include "x86_flags.h"
 #include "x86_ops.h"
 #include "x87.h"
+#include "mem.h"
+
+#include "386_common.h"
 
 #include "codegen.h"
 #include "codegen_ops.h"
 #include "codegen_ops_x86.h"
 
-#include "386_common.h"
+#ifdef __linux__
+#include <sys/mman.h>
+#include <unistd.h>
+#endif
 
-#define BLOCK_EXIT_OFFSET 0x1ff0
+int codegen_flags_changed = 0;
+int codegen_fpu_entered = 0;
+int codegen_fpu_loaded_iq[8];
+x86seg *op_ea_seg;
+int op_ssegs;
+uint32_t op_old_pc;
+
+uint32_t recomp_page = -1;
 
 int host_reg_mapping[NR_HOST_REGS];
 codeblock_t *codeblock;
 codeblock_t **codeblock_hash;
 
-typedef struct page_t
-{
-        codeblock_t *block;
-} page_t;
-
-page_t *pages;
-
-uint8_t *codeblock_page_dirty;
 
 int block_current = 0;
 static int block_num;
@@ -45,6 +48,7 @@ static uint32_t codegen_endpc;
 
 int codegen_block_cycles;
 static int codegen_block_ins;
+static int codegen_block_full_ins;
 
 static uint32_t last_op32;
 static x86seg *last_ea_seg;
@@ -53,19 +57,35 @@ static int last_ssegs;
 void codegen_init()
 {
         int c;
+#ifdef __linux__
+	void *start;
+	size_t len;
+	long pagesize = sysconf(_SC_PAGESIZE);
+	long pagemask = ~(pagesize - 1);
+#endif
         
         codeblock = malloc(BLOCK_SIZE * sizeof(codeblock_t));
         codeblock_hash = malloc(HASH_SIZE * sizeof(codeblock_t *));
-        pages = malloc(((256 * 1024 * 1024) >> 12) * sizeof(page_t));
 
-        memset(codeblock, 0, sizeof(BLOCK_SIZE * sizeof(codeblock_t)));
+        memset(codeblock, 0, BLOCK_SIZE * sizeof(codeblock_t));
         memset(codeblock_hash, 0, HASH_SIZE * sizeof(codeblock_t *));
-        memset(pages, 0, ((256 * 1024 * 1024) >> 12) * sizeof(page_t));
-        
-        codeblock_page_dirty = malloc(1 << 20);
-        memset(codeblock_page_dirty, 1, 1 << 20);
-        
-        pclog("Codegen is %p\n", (void *)pages[0xfab12 >> 12].block);
+
+#ifdef __linux__
+	start = (void *)((long)codeblock & pagemask);
+	len = ((BLOCK_SIZE * sizeof(codeblock_t)) + pagesize) & pagemask;
+	if (mprotect(start, len, PROT_READ | PROT_WRITE | PROT_EXEC) != 0)
+	{
+		perror("mprotect");
+		exit(-1);
+	}
+#endif
+//        pclog("Codegen is %p\n", (void *)pages[0xfab12 >> 12].block);
+}
+
+void codegen_reset()
+{
+        memset(codeblock, 0, BLOCK_SIZE * sizeof(codeblock_t));
+        memset(codeblock_hash, 0, HASH_SIZE * sizeof(codeblock_t *));
 }
 
 void dump_block()
@@ -86,173 +106,103 @@ void dump_block()
         pclog("dump_block done\n");
 }
 
-int codegen_check_dirty(uint32_t phys_addr)
+static void delete_block(codeblock_t *block)
 {
-#ifdef CHECKSUM
-        int has_evicted = 0;
-        int dirty = 0;
-        codeblock_t *block = pages[phys_addr >> 12].block;
-//pclog("codegen_check_dirty %08x %08x\n", phys_addr, pages[phys_addr >> 12].block);
-//        if ((phys_addr & ~0xfff) == 0x119000) pclog("dirty start\n");
+//        pclog("delete_block: pc=%08x\n", block->pc);
+        codeblock_hash[HASH(block->phys)] = NULL;
+
+        if (!block->pc)
+                fatal("Deleting deleted block\n");
+        block->pc = 0;
+
+        if (block->prev)
+        {
+                block->prev->next = block->next;
+                if (block->next)
+                        block->next->prev = block->prev;
+        }
+        else
+        {
+                pages[block->phys >> 12].block = block->next;
+                if (block->next)
+                        block->next->prev = NULL;
+                else
+                        mem_flush_write_page(block->phys, 0);
+        }
+        if (!block->page_mask2)
+        {
+                if (block->prev_2 || block->next_2)
+                        fatal("Invalid block_2\n");
+                return;
+        }
+
+        if (block->prev_2)
+        {
+                block->prev_2->next_2 = block->next_2;
+                if (block->next_2)
+                        block->next_2->prev_2 = block->prev_2;
+        }
+        else
+        {
+//                pclog(" pages.block_2=%p 3 %p %p\n", (void *)block->next_2, (void *)block, (void *)pages[block->phys_2 >> 12].block_2);
+                pages[block->phys_2 >> 12].block_2 = block->next_2;
+                if (block->next_2)
+                        block->next_2->prev_2 = NULL;
+                else
+                        mem_flush_write_page(block->phys_2, 0);
+        }
+}
+
+void codegen_check_flush(page_t *page, uint64_t mask, uint32_t phys_addr)
+{
+        struct codeblock_t *block = page->block;
+
         while (block)
         {
-                uint32_t start_pc = (block->pc & 0xffc) | (block->phys & ~0xfff);
-                uint32_t end_pc = (block->endpc & 0xffc) | (block->phys & ~0xfff);
-                uint32_t checksum = 0;
-//                if ((phys_addr & ~0xfff) == 0x119000) pclog("  %08x\n", block->pc);
-                if (!block->pc)
-                        fatal("!PC\n");
-
-//                if ((phys_addr & ~0xfff) == 0x119000) dump_block();
-
-//                if ((phys_addr & ~0xfff) == 0x119000) pclog(" %08x-%08x  %08x-%08x\n", start_pc, end_pc,  block->pc, block->endpc);
-                if (end_pc > start_pc)
+                if (mask & block->page_mask)
                 {
-                        for (; start_pc <= end_pc; start_pc += 4)
-                                checksum += *(uint32_t *)&ram[start_pc];
+                        delete_block(block);
+                        cpu_recomp_evicted++;
                 }
-                else
-                        checksum = ~block->checksum;
-        
-                if (checksum != block->checksum)
-                {
-//                        if ((phys_addr & ~0xfff) == 0x119000) pclog("   evict %08x %08x %p\n", checksum, block->checksum, (void *)block->prev);
-                        if (block->pc == (cs+pc))
-                                dirty = 1;
-
-                        block->pc = 0;//xffffffff;
-
-                        if (block->prev)
-                        {
-                                block->prev->next = block->next;
-                                if (block->next)
-                                        block->next->prev = block->prev;
-                        }
-                        else
-                        {
-                                pages[block->phys >> 12].block = block->next;
-                                if (block->next)
-                                        block->next->prev = NULL;
-                        }
-                        
-                        has_evicted = 1;
-
-                        codeblock_hash[HASH(block->phys)] = NULL;
-                }
-                        
+                if (block == block->next)
+                        fatal("Broken 1\n");
                 block = block->next;
         }
-//        if ((phys_addr & ~0xfff) == 0x8f000) pclog("dirty end\n");
-        if (has_evicted)
+
+        block = page->block_2;
+        
+        while (block)
         {
-                cpu_recomp_evicted++;
-
+                if (mask & block->page_mask2)
+                {
+                        delete_block(block);
+                        cpu_recomp_evicted++;
+                }
+                if (block == block->next_2)
+                        fatal("Broken 2\n");
+                block = block->next_2;
         }
-
-        mem_flush_write_page(phys_addr, cs+pc);
-                        
-        codeblock_page_dirty[phys_addr >> 12] = 0;
-        return dirty;
-#else
-        return 1;
-#endif
 }
 
 void codegen_block_init(uint32_t phys_addr)
 {
         codeblock_t *block;
         int has_evicted = 0;
-//        pclog("block_init %08x:%08x hash=%04x %08x\n", cs, pc, HASH(cs + pc), phys_addr);
-//if (phys_addr > 0x100000)
-//        dump_block();
-        if (codeblock_page_dirty[phys_addr >> 12])
-        {
-                codeblock_t *last_block = NULL;
-                block = pages[phys_addr >> 12].block;
-//                pages[phys_addr >> 12].block = NULL;
-//                if ((phys_addr & ~0xfff) == 0x119000) pclog("Flush %08x\n", phys_addr);
-//pclog("init start\n");
-                while (block)
-                {
-                        codeblock_t *old_block = block;
-                        codeblock_t *next_block = block->next;
-                        
-                        uint32_t start_pc = (block->pc & 0xffc) | (block->phys & ~0xfff);
-                        uint32_t end_pc = (block->endpc & 0xffc) | (block->phys & ~0xfff);
-                        uint32_t checksum = 0;
-
-                        if (!block->pc)
-                                fatal("!PC on init\n");
-
-//if ((phys_addr & ~0xfff) == 0x119000) dump_block();
-                        
-//                        if ((phys_addr & ~0xfff) == 0x119000) pclog(" %p : %08x-%08x  %08x-%08x\n", (void *)block, start_pc, end_pc,  block->pc, block->endpc);
-                        if (end_pc > start_pc)
-                        {
-                                for (; start_pc <= end_pc; start_pc += 4)
-                                        checksum += *(uint32_t *)&ram[start_pc];
-                        }
-                        else
-                                checksum = ~block->checksum;
-                                
-                        if (checksum != block->checksum)
-                        {
-                                if ((phys_addr & ~0xfff) == 0x119000) pclog("  evict %08x  %08x %08x  %p %p\n", block->pc, checksum, block->checksum, (void *)block->prev, (void *)last_block);
-                                block->pc = 0;//xffffffff;
-
-                                if (block->prev)
-                                {
-                                        block->prev->next = block->next;
-                                        if (block->next)
-                                                block->next->prev = block->prev;
-                                }
-                                else
-                                {
-                                        pages[block->phys >> 12].block = block->next;
-                                        if (block->next)
-                                                block->next->prev = NULL;
-                                }
-
-                                codeblock_hash[HASH(block->phys)] = NULL;
-
-                                block->next = NULL;
-                        }
-
-                        block = next_block;
-                        last_block = old_block;
-                }
-//if ((phys_addr & ~0xfff) == 0x119000) pclog("init end\n");
-                codeblock_page_dirty[phys_addr >> 12] = 0;
-                mem_flush_write_page(phys_addr, cs+pc);
-        }
+        page_t *page = &pages[phys_addr >> 12];
         
-/*        if (has_evicted)
-                cpu_recomp_evicted++;*/
-//        pclog("Build %08x\n",cs+pc);
- 
+        if (!page->block)
+                mem_flush_write_page(phys_addr, cs+pc);
+
         block_current = (block_current + 1) & BLOCK_MASK;
         block = &codeblock[block_current];
-        if (block->pc != 0)//xffffffff)
+
+//        if (block->pc == 0xb00b4ff5)
+//                pclog("Init target block\n");
+        if (block->pc != 0)
         {
-//                if ((phys_addr & ~0xfff) == 0x119000) pclog("Block reuse - %04x old_pc=%08x new_pc=%08x\n", block_current, block->pc, cs+pc);
-//                if ((phys_addr & ~0xfff) == 0x119000) dump_block();
-                /*Block currently used - throw out contents*/
-                if (block->prev)
-                {
-                        block->prev->next = block->next;
-                        if (block->next)
-                                block->next->prev = block->prev;
-                }
-                else
-                {
-                        pages[block->phys >> 12].block = block->next;
-                        if (block->next)
-                                block->next->prev = NULL;
-                }
-                codeblock_hash[HASH(block->phys)] = NULL;
+//                pclog("Reuse block : was %08x now %08x\n", block->pc, cs+pc);
+                delete_block(block);
                 cpu_recomp_reuse++;
-//                if ((phys_addr & ~0xfff) == 0x119000) pclog("Block reuse end\n");
-//                if ((phys_addr & ~0xfff) == 0x119000) dump_block();
         }
         block_num = HASH(phys_addr);
         codeblock_hash[block_num] = &codeblock[block_current];
@@ -262,20 +212,35 @@ void codegen_block_init(uint32_t phys_addr)
         block->pnt = block_current;
         block->phys = phys_addr;
         block->use32 = use32;
+        block->stack32 = stack32;
         block->next = block->prev = NULL;
         
-        block_pos = 0;
-        
+        block_pos = BLOCK_GPF_OFFSET;
+        addbyte(0xc7); /*MOV [ESP],0*/
+        addbyte(0x04);
+        addbyte(0x24);
+        addlong(0);
+        addbyte(0xc7); /*MOV [ESP+4],0*/
+        addbyte(0x44);
+        addbyte(0x24);
+        addbyte(0x04);
+        addlong(0);
+        addbyte(0xe8); /*CALL x86gpf*/
+        addlong((uint32_t)x86gpf - (uint32_t)(&codeblock[block_current].data[block_pos + 4]));
         block_pos = BLOCK_EXIT_OFFSET; /*Exit code*/
-        addbyte(0x83); /*ADDL $8,%esp*/
+        addbyte(0x83); /*ADDL $16,%esp*/
         addbyte(0xC4);
-        addbyte(0x08);
+        addbyte(0x10);
+        addbyte(0x5d); /*POP EBP*/
         addbyte(0xC3); /*RET*/
         cpu_block_end = 0;
         block_pos = 0; /*Entry code*/
-        addbyte(0x83); /*SUBL $8,%esp*/
+        addbyte(0x55); /*PUSH EBP*/
+        addbyte(0x83); /*SUBL $16,%esp*/
         addbyte(0xEC);
-        addbyte(0x08);
+        addbyte(0x10);
+        addbyte(0xBD); /*MOVL EBP, &EAX*/
+        addlong((uint32_t)&EAX);
 
 //        pclog("New block %i for %08X   %03x\n", block_current, cs+pc, block_num);
 
@@ -287,16 +252,28 @@ void codegen_block_init(uint32_t phys_addr)
         codegen_timing_block_start();
         
         codegen_block_ins = 0;
+        codegen_block_full_ins = 0;
+
+        recomp_page = phys_addr & ~0xfff;
+        
+        codegen_flags_changed = 0;
+        codegen_fpu_entered = 0;
+
+        codegen_fpu_loaded_iq[0] = codegen_fpu_loaded_iq[1] = codegen_fpu_loaded_iq[2] = codegen_fpu_loaded_iq[3] =
+        codegen_fpu_loaded_iq[4] = codegen_fpu_loaded_iq[5] = codegen_fpu_loaded_iq[6] = codegen_fpu_loaded_iq[7] = 0;
 }
 
 void codegen_block_remove()
 {
         codeblock_t *block = &codeblock[block_current];
 //if ((block->phys & ~0xfff) == 0x119000)  pclog("codegen_block_remove %08x\n", block->pc);
+//        if (block->pc == 0xb00b4ff5)
+//                pclog("Remove target block\n");
         codeblock_hash[block_num] = NULL;
         block->pc = 0;//xffffffff;
         cpu_recomp_removed++;
 //        pclog("Remove block %i\n", block_num);
+        recomp_page = -1;
 }
 
 void codegen_block_end()
@@ -305,12 +282,12 @@ void codegen_block_end()
         codeblock_t *block_prev = pages[block->phys >> 12].block;
         uint32_t start_pc = (block->pc & 0xffc) | (block->phys & ~0xfff);
         uint32_t end_pc = ((codegen_endpc + 3) & 0xffc) | (block->phys & ~0xfff);
-        uint32_t checksum = 0;
 
-        block->endpc = end_pc;
+        block->endpc = codegen_endpc;
 
-//if ((block->phys & ~0xfff) == 0x119000) pclog("codegen_block_end start\n");
-//if ((block->phys & ~0xfff) == 0x119000) dump_block();
+//        if (block->pc == 0xb00b4ff5)
+//                pclog("End target block\n");
+
         if (block_prev)
         {
                 block->next = block_prev;
@@ -323,21 +300,80 @@ void codegen_block_end()
                 pages[block->phys >> 12].block = block;
         }
 
-//if ((block->phys & ~0xfff) == 0x119000) pclog("codegen_block_end end\n");
-//if ((block->phys & ~0xfff) == 0x119000) dump_block();
-
-#ifdef CHECKSUM        
-        if (end_pc > start_pc)
+        if (block->next)
         {
-//                pclog("block_end %08x-%08x  %08x-%08x\n", start_pc, end_pc,  block->pc, block->endpc);
-                for (; start_pc <= end_pc; start_pc += 4)
-                        checksum += *(uint32_t *)&ram[start_pc];
-//                pclog(" %08x\n", checksum);
+//                pclog("  next->pc=%08x\n", block->next->pc);
+                if (!block->next->pc)
+                        fatal("block->next->pc=0 %p %p %x %x\n", (void *)block->next, (void *)codeblock, block_current, block_pos);
         }
-#endif
+
+        block->page_mask = 0;
+        start_pc = block->pc & 0xffc;
+        start_pc &= ~PAGE_MASK_MASK;
+        end_pc = ((block->endpc & 0xffc) + PAGE_MASK_MASK) & ~PAGE_MASK_MASK;
+        if (end_pc > 0xfff || end_pc < start_pc)
+                end_pc = 0xfff;
+        start_pc >>= PAGE_MASK_SHIFT;
+        end_pc >>= PAGE_MASK_SHIFT;
         
-        block->checksum = checksum;
-//        pclog("Checksum for %08x - %08x = %08x\n", codeblock_hash_pc[block_num] & ~3, end_pc, checksum);
+//        pclog("block_end: %08x %08x\n", start_pc, end_pc);
+        for (; start_pc <= end_pc; start_pc++)
+        {                
+                block->page_mask |= ((uint64_t)1 << start_pc);
+//                pclog("  %08x %llx\n", start_pc, block->page_mask);
+        }
+        
+        pages[block->phys >> 12].code_present_mask |= block->page_mask;
+
+        block->phys_2 = -1;
+        block->page_mask2 = 0;
+        block->next_2 = block->prev_2 = NULL;
+        if ((block->pc ^ block->endpc) & ~0xfff)
+        {
+                block->phys_2 = get_phys_noabrt(block->endpc);
+                if (block->phys_2 != -1)
+                {
+//                pclog("start block - %08x %08x %p %p %p  %08x\n", block->pc, block->endpc, (void *)block, (void *)block->next_2, (void *)pages[block->phys_2 >> 12].block_2, block->phys_2);
+        
+                        if (pages[block->phys_2 >> 12].block_2 == block)
+                                fatal("Block same\n");
+                        
+                        block_prev = pages[block->phys_2 >> 12].block_2;
+
+                        if (block_prev)
+                        {
+                                block->next_2 = block_prev;
+                                block_prev->prev_2 = block;
+                                pages[block->phys_2 >> 12].block_2 = block;
+//                        pclog(" pages.block_2=%p\n", (void *)block);
+                        }
+                        else
+                        {
+                                block->next_2 = NULL;
+                                pages[block->phys_2 >> 12].block_2 = block;
+//                        pclog(" pages.block_2=%p 2\n", (void *)block);
+                        }
+                
+                        start_pc = 0;
+                        end_pc = (block->endpc & 0xfff) >> PAGE_MASK_SHIFT;
+                        for (; start_pc <= end_pc; start_pc++)
+                                block->page_mask2 |= ((uint64_t)1 << start_pc);
+                
+                        if (!pages[block->phys_2 >> 12].block_2)
+                                mem_flush_write_page(block->phys_2, block->endpc);
+//                pclog("New block - %08x %08x %p %p  phys %08x %08x %016llx\n", block->pc, block->endpc, (void *)block, (void *)block->next_2, block->phys, block->phys_2, block->page_mask2);
+                        if (!block->page_mask2)
+                                fatal("!page_mask2\n");
+                        if (block->next_2)
+                        {
+//                        pclog("  next_2->pc=%08x\n", block->next_2->pc);
+                                if (!block->next_2->pc)
+                                        fatal("block->next_2->pc=0 %p\n", (void *)block->next_2);
+                        }
+                }
+        }
+
+//        pclog("block_end: %08x %08x %016llx\n", block->pc, block->endpc, block->page_mask);
 
         codegen_timing_block_end();
 
@@ -355,36 +391,31 @@ void codegen_block_end()
                 addlong((uint32_t)&cpu_recomp_ins);
                 addlong(codegen_block_ins);
         }
-
-        addbyte(0x83); /*ADDL $8,%esp*/
+#if 0
+        if (codegen_block_full_ins)
+        {
+                addbyte(0x81); /*ADD $codegen_block_ins,ins*/
+                addbyte(0x05);
+                addlong((uint32_t)&cpu_recomp_full_ins);
+                addlong(codegen_block_full_ins);
+        }
+#endif
+        addbyte(0x83); /*ADDL $16,%esp*/
         addbyte(0xC4);
-        addbyte(0x08);
+        addbyte(0x10);
+        addbyte(0x5d); /*POP EBP*/
         addbyte(0xC3); /*RET*/
+        
+        if (block_pos > BLOCK_GPF_OFFSET)
+                fatal("Over limit!\n");
 //        pclog("End block %i\n", block_num);
+
+        recomp_page = -1;
 }
 
 void codegen_flush()
 {
         return;
-}
-
-void codegen_dirty(uint32_t addr)
-{
-        codeblock_page_dirty[addr >> 12] = 1;
-//        pclog("codegen_dirty : %08x  %04x:%04x\n", addr, CS, pc);
-//        if ((addr >> 12) == 0x152)
-//                pclog("Dirty : %08x %08x\n", addr, cs+pc);
-/*        int c;
-        int offset = HASH(addr & ~0xfff);
-//        pclog("codegen_dirty %08X\n", addr);
-        for (c = 0; c < 0x1000; c++)
-        {
-                if (!((codeblock_hash_pc[(c + offset) & HASH_MASK] ^ addr) & ~0xfff))
-                {
-//                        pclog("Throwing out %08X\n", codeblock_hash_pc[(c + offset) & HASH_MASK]);
-                        codeblock_hash_pc[(c + offset) & HASH_MASK] = 0xffffffff;
-                }
-        }*/
 }
 
 static int opcode_needs_tempc[256] =
@@ -482,7 +513,7 @@ void codegen_debug()
 {
         if (output)
         {
-                pclog("At %04x(%08x):%04x  %04x(%08x):%04x  EAX=%08x BX=%04x BP=%04x EDX=%08x\n", CS, cs, pc, SS, ss, ESP,  EAX, BX,BP,  EDX);
+                pclog("At %04x(%08x):%04x  %04x(%08x):%04x  es=%08x EAX=%08x BX=%04x ECX=%08x BP=%04x EDX=%08x EDI=%08x\n", CS, cs, pc, SS, ss, ESP,  es,EAX, BX,ECX,BP,  EDX,EDI);
         }
 }
 
@@ -666,14 +697,17 @@ void codegen_generate_call(uint8_t opcode, OpFn op, uint32_t fetchdat, uint32_t 
         uint32_t op_32 = use32;
         uint32_t op_pc = new_pc;
         OpFn *op_table = x86_dynarec_opcodes;
-        x86seg *op_ea_seg = &_ds;
-        int op_ssegs = 0;
+        RecompOpFn *recomp_op_table = recomp_opcodes;
         int opcode_shift = 0;
         int opcode_mask = 0x3ff;
         int over = 0;
         int pc_off = 0;
         int test_modrm = 1;
         int c;
+        
+        op_ea_seg = &_ds;
+        op_ssegs = 0;
+        op_old_pc = old_pc;
         
         for (c = 0; c < NR_HOST_REGS; c++)
                 host_reg_mapping[c] = -1;
@@ -686,6 +720,7 @@ void codegen_generate_call(uint8_t opcode, OpFn op, uint32_t fetchdat, uint32_t 
                 {
                         case 0x0f:
                         op_table = x86_dynarec_opcodes_0f;
+                        recomp_op_table = recomp_opcodes_0f;
                         over = 1;
                         break;
                         
@@ -723,6 +758,7 @@ void codegen_generate_call(uint8_t opcode, OpFn op, uint32_t fetchdat, uint32_t 
                         
                         case 0xd8:
                         op_table = (op_32 & 0x200) ? x86_dynarec_opcodes_d8_a32 : x86_dynarec_opcodes_d8_a16;
+                        recomp_op_table = recomp_opcodes_d8;
                         opcode_shift = 3;
                         opcode_mask = 0x1f;
                         over = 1;
@@ -731,6 +767,7 @@ void codegen_generate_call(uint8_t opcode, OpFn op, uint32_t fetchdat, uint32_t 
                         break;
                         case 0xd9:
                         op_table = (op_32 & 0x200) ? x86_dynarec_opcodes_d9_a32 : x86_dynarec_opcodes_d9_a16;
+                        recomp_op_table = recomp_opcodes_d9;
                         opcode_mask = 0xff;
                         over = 1;
                         pc_off = -1;
@@ -738,6 +775,7 @@ void codegen_generate_call(uint8_t opcode, OpFn op, uint32_t fetchdat, uint32_t 
                         break;
                         case 0xda:
                         op_table = (op_32 & 0x200) ? x86_dynarec_opcodes_da_a32 : x86_dynarec_opcodes_da_a16;
+                        recomp_op_table = recomp_opcodes_da;
                         opcode_mask = 0xff;
                         over = 1;
                         pc_off = -1;
@@ -745,6 +783,7 @@ void codegen_generate_call(uint8_t opcode, OpFn op, uint32_t fetchdat, uint32_t 
                         break;
                         case 0xdb:
                         op_table = (op_32 & 0x200) ? x86_dynarec_opcodes_db_a32 : x86_dynarec_opcodes_db_a16;
+                        recomp_op_table = recomp_opcodes_db;
                         opcode_mask = 0xff;
                         over = 1;
                         pc_off = -1;
@@ -752,6 +791,7 @@ void codegen_generate_call(uint8_t opcode, OpFn op, uint32_t fetchdat, uint32_t 
                         break;
                         case 0xdc:
                         op_table = (op_32 & 0x200) ? x86_dynarec_opcodes_dc_a32 : x86_dynarec_opcodes_dc_a16;
+                        recomp_op_table = recomp_opcodes_dc;
                         opcode_shift = 3;
                         opcode_mask = 0x1f;
                         over = 1;
@@ -760,6 +800,7 @@ void codegen_generate_call(uint8_t opcode, OpFn op, uint32_t fetchdat, uint32_t 
                         break;
                         case 0xdd:
                         op_table = (op_32 & 0x200) ? x86_dynarec_opcodes_dd_a32 : x86_dynarec_opcodes_dd_a16;
+                        recomp_op_table = recomp_opcodes_dd;
                         opcode_mask = 0xff;
                         over = 1;
                         pc_off = -1;
@@ -767,6 +808,7 @@ void codegen_generate_call(uint8_t opcode, OpFn op, uint32_t fetchdat, uint32_t 
                         break;
                         case 0xde:
                         op_table = (op_32 & 0x200) ? x86_dynarec_opcodes_de_a32 : x86_dynarec_opcodes_de_a16;
+                        recomp_op_table = recomp_opcodes_de;
                         opcode_mask = 0xff;
                         over = 1;
                         pc_off = -1;
@@ -774,6 +816,7 @@ void codegen_generate_call(uint8_t opcode, OpFn op, uint32_t fetchdat, uint32_t 
                         break;
                         case 0xdf:
                         op_table = (op_32 & 0x200) ? x86_dynarec_opcodes_df_a32 : x86_dynarec_opcodes_df_a16;
+                        recomp_op_table = recomp_opcodes_df;
                         opcode_mask = 0xff;
                         over = 1;
                         pc_off = -1;
@@ -800,15 +843,52 @@ void codegen_generate_call(uint8_t opcode, OpFn op, uint32_t fetchdat, uint32_t 
 generate_call:
         codegen_timing_opcode(opcode, fetchdat, op_32);
         
-        if (op_table == x86_dynarec_opcodes && recomp_opcodes[(opcode | op_32) & 0x1ff])
+        if ((op_table == x86_dynarec_opcodes &&
+             ((opcode & 0xf0) == 0x70 || (opcode & 0xfc) == 0xe0 || opcode == 0xc2 ||
+              (opcode & 0xfe) == 0xca || (opcode & 0xfc) == 0xcc || (opcode & 0xfc) == 0xe8 ||
+              (opcode == 0xff && ((fetchdat & 0x38) >= 0x10 && (fetchdat & 0x38) < 0x30))) ||
+            (op_table == x86_dynarec_opcodes_0f && ((opcode & 0xf0) == 0x80))))
         {
-                uint32_t new_pc = recomp_opcodes[(opcode | op_32) & 0x1ff](opcode, fetchdat, op_32, op_pc, block);
+                /*Opcode is likely to cause block to exit, update cycle count*/
+                if (codegen_block_cycles)
+                {
+                        addbyte(0x81); /*SUB $codegen_block_cycles, cyclcs*/
+                        addbyte(0x2d);
+                        addlong((uint32_t)&cycles);
+                        addlong((uint32_t)codegen_block_cycles);
+                        codegen_block_cycles = 0;
+                }
+                if (codegen_block_ins)
+                {
+                        addbyte(0x81); /*ADD $codegen_block_ins,ins*/
+                        addbyte(0x05);
+                        addlong((uint32_t)&cpu_recomp_ins);
+                        addlong(codegen_block_ins);
+                        codegen_block_ins = 0;
+                }
+#if 0
+                if (codegen_block_full_ins)
+                {
+                        addbyte(0x81); /*ADD $codegen_block_ins,ins*/
+                        addbyte(0x05);
+                        addlong((uint32_t)&cpu_recomp_full_ins);
+                        addlong(codegen_block_full_ins);
+                        codegen_block_full_ins = 0;
+                }
+#endif
+        }
+
+        if (recomp_op_table && recomp_op_table[(opcode | op_32) & 0x1ff])
+        {
+                uint32_t new_pc = recomp_op_table[(opcode | op_32) & 0x1ff](opcode, fetchdat, op_32, op_pc, block);
                 if (new_pc)
                 {
-                        STORE_IMM_ADDR_L((uintptr_t)&pc, new_pc);
+                        if (new_pc != -1)
+                                STORE_IMM_ADDR_L((uintptr_t)&pc, new_pc);
 
                         codegen_block_ins++;
                         block->ins++;
+                        codegen_block_full_ins++;
                         codegen_endpc = (cs + pc) + 8;
 
                         return;
@@ -907,29 +987,6 @@ generate_call:
         addlong(((uint8_t *)op - (uint8_t *)(&block->data[block_pos + 4])));
 
         codegen_block_ins++;
-
-        if (((op_table == x86_dynarec_opcodes && ((opcode & 0xf0) == 0x70)) ||
-            (op_table == x86_dynarec_opcodes && ((opcode & 0xfc) == 0xe0)) ||
-            (op_table == x86_dynarec_opcodes_0f && ((opcode & 0xf0) == 0x80))))
-        {
-                /*Opcode is likely to cause block to exit, update cycle count*/
-                if (codegen_block_cycles)
-                {
-                        addbyte(0x81); /*SUB $codegen_block_cycles, cyclcs*/
-                        addbyte(0x2d);
-                        addlong((uint32_t)&cycles);
-                        addlong((uint32_t)codegen_block_cycles);
-                        codegen_block_cycles = 0;
-                }
-                if (codegen_block_ins)
-                {
-                        addbyte(0x81); /*ADD $codegen_block_ins,ins*/
-                        addbyte(0x05);
-                        addlong((uint32_t)&cpu_recomp_ins);
-                        addlong(codegen_block_ins);
-                        codegen_block_ins = 0;
-                }
-        }
         
         block->ins++;
 

@@ -8,6 +8,7 @@
 #include "plat-keyboard.h"
 #include "win.h"
 #include "video.h"
+#include "pc.h"
 
 extern "C" int pcem_key[272];
 
@@ -44,4 +45,14 @@ void keyboard_poll_host()
              (rawinputkey[0x51] || rawinputkey[0xD1]) &&
               video_fullscreen)
                  leave_fullscreen();
+
+        if (rawinputkey[0x64])
+	{
+		resetpc_cad();
+	}
+
+        if (rawinputkey[0x65])
+	{
+		pclog("Breakpoint inserted\n");
+	}
 }

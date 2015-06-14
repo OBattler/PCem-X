@@ -6,7 +6,6 @@
 #include "video.h"
 #include "vid_svga.h"
 #include "vid_svga_render.h"
-#include "vid_kanji_render.h"
 #include "io.h"
 #include "timer.h"
 
@@ -18,6 +17,20 @@ extern uint8_t edatlookup[4][4];
 
 uint8_t svga_rotate[8][256];
 
+/*Primary SVGA device. As multiple video cards are not yet supported this is the
+  only SVGA device.*/
+static svga_t *svga_pri;
+
+svga_t *svga_get_pri()
+{
+	return svga_pri;
+}
+void svga_set_override(svga_t *svga, int val)
+{
+	if (svga->override && !val)
+	svga->fullchange = changeframecount;
+	svga->override = val;
+}
 
 void svga_out(uint16_t addr, uint8_t val, void *p)
 {
@@ -141,6 +154,7 @@ void svga_out(uint16_t addr, uint8_t val, void *p)
                 svga->gdcaddr = val; 
                 break;
                 case 0x3CF:
+		if (svga->gdcaddr > 0x10)  return;
                 o = svga->gdcreg[svga->gdcaddr & 15];
                 switch (svga->gdcaddr & 15)
                 {
@@ -156,6 +170,7 @@ void svga_out(uint16_t addr, uint8_t val, void *p)
                                 {
                                         case 0x0: /*128k at A0000*/
                                         mem_mapping_set_addr(&svga->mapping, 0xa0000, 0x20000);
+					// Assigning 128k but allowing access to only 64k? WTF?!
                                         svga->banked_mask = 0xffff;
                                         break;
                                         case 0x4: /*64k at A0000*/
@@ -252,32 +267,12 @@ int svga_getscan(svga_t *svga)
 	return (svga->crtc[9] & 0x1F);
 }
 
-int is_kanji(svga_t *svga)
-{
-	return (kanjirom && (svga_getscan(svga) >= 13));
-}
-
 void svga_recalctimings(svga_t *svga)
 {
         double crtcconst;
         double _dispontime, _dispofftime, disptime;
         int hdisp_old;
 
-	if(!(svga->gdcreg[6] & 1) && is_kanji(svga))
-	{
-		svga->crtc[6] = 0xD9;
-		svga->crtc[7] |= 1;
-		svga->crtc[7] &= 0xDF;
-		svga->crtc[0x12] = 0xDA;
-		svga->crtc[7] |= 2;
-		svga->crtc[7] &= 0xBF;
-		svga->crtc[0x10] = 0xDB;
-		svga->crtc[7] |= 4;
-		svga->crtc[7] &= 0x7F;
-		svga->crtc[0x15] = 0xDB;
-		svga->crtc[7] |= 8;
-		svga->crtc[9] &= 0xDF;
-	}
         svga->vtotal = svga->crtc[6];
         svga->dispend = svga->crtc[0x12];
         svga->vsyncstart = svga->crtc[0x10];
@@ -330,39 +325,12 @@ void svga_recalctimings(svga_t *svga)
                         if (svga->seqregs[1] & 8) /*40 column*/
                         {
                                 svga->render = svga_render_text_40;
-				if (kanjirom && (svga_getscan(svga) >= 13))
-				{
-					svga_setscan(svga, 18);
-					svga->video_res_y = 480;
-					ysize = 480;
-                                	svga->hdisp *= 16;
-					svga->render = svga_render_dbcs_40;
-					svga->vtotal = 482;
-					svga->dispend = 481;
-				}
-				else
-				{
-                                	svga->hdisp *= (svga->seqregs[1] & 1) ? 16 : 18;
-				}
+                               	svga->hdisp *= (svga->seqregs[1] & 1) ? 16 : 18;
                         }
                         else
                         {
                                 svga->render = svga_render_text_80;
-				if (kanjirom && (svga_getscan(svga) >= 13))
-				{
-					svga_setscan(svga, 18);
-					svga->video_res_y = 480;
-					ysize = 480;
-					printf("Scan lines are: %02X\n", svga->linecountff);
-                                	svga->hdisp *= 8;
-					svga->render = svga_render_dbcs_80;
-					svga->vtotal = 482;
-					svga->dispend = 481;
-				}
-				else
-				{
-                                	svga->hdisp *= (svga->seqregs[1] & 1) ? 8 : 9;
-				}
+                               	svga->hdisp *= (svga->seqregs[1] & 1) ? 8 : 9;
                         }
                         svga->hdisp_old = svga->hdisp;
                 }
@@ -428,7 +396,7 @@ void svga_recalctimings(svga_t *svga)
         
         svga->linedbl = svga->crtc[9] & 0x80;
         svga->rowcount = svga->crtc[9] & 31;
-	printf("lolol: %02X %02X\n", svga->linedbl, svga->rowcount);
+	// printf("lolol: %02X %02X\n", svga->linedbl, svga->rowcount);
         if (svga->recalctimings_ex) 
                 svga->recalctimings_ex(svga);
 
@@ -503,11 +471,13 @@ void svga_poll(void *p)
                         if (svga->hwcursor_on || svga->overlay_on)
                                 svga->changedvram[svga->ma >> 12] = svga->changedvram[(svga->ma >> 12) + 1] = 2;
 
-                        svga->render(svga);
+			if (!svga->override)
+                        	svga->render(svga);
                         
                         if (svga->overlay_on)
                         {
-                                svga->overlay_draw(svga, svga->displine);
+				if (!svga->override)
+                                	svga->overlay_draw(svga, svga->displine);
                                 svga->overlay_on--;
                                 if (svga->overlay_on && svga->interlace)
                                         svga->overlay_on--;
@@ -515,7 +485,8 @@ void svga_poll(void *p)
 
                         if (svga->hwcursor_on)
                         {
-                                svga->hwcursor_draw(svga, svga->displine);
+				if (!svga->override)
+                                	svga->hwcursor_draw(svga, svga->displine);
                                 svga->hwcursor_on--;
                                 if (svga->hwcursor_on && svga->interlace)
                                         svga->hwcursor_on--;
@@ -551,16 +522,8 @@ void svga_poll(void *p)
                 svga->hdisp_on = 0;
                 
                 svga->linepos = 0;
-		if (is_kanji(svga))
-		{
-                	if (svga->sc == ((svga->crtc[11] & 31) + 3)) 
-                        	svga->con = 0;
-		}
-		else
-		{
-                	if (svga->sc == (svga->crtc[11] & 31)) 
-                        	svga->con = 0;
-		}
+               	if (svga->sc == (svga->crtc[11] & 31)) 
+                       	svga->con = 0;
                 if (svga->dispon)
                 {
                         if (svga->linedbl && !svga->linecountff)
@@ -630,12 +593,8 @@ void svga_poll(void *p)
                         wx = x;
                         wy = svga->lastline - svga->firstline;
 
-			if(!(svga->gdcreg[6] & 1) && is_kanji(svga))
-			{
-				wy = 480;
-			}
-
-                        svga_doblit(svga->firstline_draw, svga->lastline_draw + 1, wx, wy, svga);
+			if (!svga->override)
+                        	svga_doblit(svga->firstline_draw, svga->lastline_draw + 1, wx, wy, svga);
 
                         readflash = 0;
 
@@ -663,16 +622,7 @@ void svga_poll(void *p)
 //                        pclog("%i %i %i\n", svga->video_res_x, svga->video_res_y, svga->lowres);
                         if (!(svga->gdcreg[6] & 1)) /*Text mode*/
                         {
-				if (is_kanji(svga))
-				{
-					wy = 480;
-                        		svga->video_res_y = wy + 1;
-                                	svga->video_res_x /= 8;
-				}
-				else
-				{
-                                	svga->video_res_x /= (svga->seqregs[1] & 1) ? 8 : 9;
-				}
+                               	svga->video_res_x /= (svga->seqregs[1] & 1) ? 8 : 9;
                                 svga->video_res_y /= (svga->crtc[9] & 31) + 1;
                                 svga->video_bpp = 0;
                         }
@@ -719,16 +669,8 @@ void svga_poll(void *p)
                         
 //                        pclog("ADDR %08X\n",hwcursor_addr);
                 }
-		if (is_kanji(svga))
-		{
-                	if (svga->sc == ((svga->crtc[10] & 31) + 3))
-                        	svga->con = 1;
-		}
-		else
-		{
-                	if (svga->sc == (svga->crtc[10] & 31))
-                        	svga->con = 1;
-		}
+               	if (svga->sc == (svga->crtc[10] & 31))
+                       	svga->con = 1;
         }
 //        printf("2 %i\n",svga_vsyncstart);
 //pclog("svga_poll %i %i %i %i %i  %i %i\n", ins, svga->dispofftime, svga->dispontime, svga->vidtime, cyc_total, svga->linepos, svga->vc);
@@ -776,6 +718,9 @@ int svga_init(svga_t *svga, void *p, int memsize,
 
         timer_add(svga_poll, &svga->vidtime, TIMER_ALWAYS_ENABLED, svga);
         vramp = svga->vram;
+
+	svga_pri = svga;
+
         return 0;
 }
 
@@ -783,6 +728,8 @@ void svga_close(svga_t *svga)
 {
         free(svga->changedvram);
         free(svga->vram);
+
+	svga_pri = NULL;
 }
 
 #define egacycles 1
@@ -792,6 +739,8 @@ void svga_write(uint32_t addr, uint8_t val, void *p)
         svga_t *svga = (svga_t *)p;
         uint8_t vala, valb, valc, vald, wm = svga->writemask;
         int writemask2 = svga->writemask;
+
+	if (!(svga->miscout & 2))  return;
 
         egawrites++;
 
@@ -972,6 +921,8 @@ uint8_t svga_read(uint32_t addr, void *p)
         cycles -= video_timing_b;
         cycles_lost += video_timing_b;
         
+	if (!(svga->miscout & 2))  return 0;
+
         egareads++;
 //        pclog("Readega %06X   ",addr);
         addr &= svga->banked_mask;
@@ -1198,6 +1149,8 @@ uint8_t svga_read_linear(uint32_t addr, void *p)
         cycles -= video_timing_b;
         cycles_lost += video_timing_b;
 
+	if (!(svga->miscout & 2))  return 0;
+
         egareads++;
         
         if (svga->chain4 || svga->fb_only) 
@@ -1246,12 +1199,6 @@ void svga_doblit(int y1, int y2, int wx, int wy, svga_t *svga)
 //        pclog("svga_doblit %i %i\n", wx, svga->hdisp);
         if (y1 > y2) 
         {
-		if ((!(svga->gdcreg[6] & 1)) && is_kanji(svga))
-		{
-			wy = 480;
-			ysize = wy + 1;
-		}
-
                 video_blit_memtoscreen(32, 0, 0, 0, xsize, ysize);
                 return;   
         }     
@@ -1263,12 +1210,6 @@ void svga_doblit(int y1, int y2, int wx, int wy, svga_t *svga)
                 if (xsize<64) xsize=656;
                 if (ysize<32) ysize=200;
 
-		if ((!(svga->gdcreg[6] & 1)) && is_kanji(svga))
-		{
-			wy = 480;
-			ysize = wy + 1;
-		}
-
                	updatewindowsize(xsize,ysize);
         }
         if (vid_resize)
@@ -1277,12 +1218,6 @@ void svga_doblit(int y1, int y2, int wx, int wy, svga_t *svga)
                 ysize = wy + 1;
         }
 
-	if ((!(svga->gdcreg[6] & 1)) && is_kanji(svga))
-	{
-		wy = 480;
-		ysize = wy + 1;
-	}
-
         video_blit_memtoscreen(32, 0, y1, y2, xsize, ysize);
 //        pclog("svga_doblit end\n");
 }
@@ -1290,6 +1225,9 @@ void svga_doblit(int y1, int y2, int wx, int wy, svga_t *svga)
 void svga_writew(uint32_t addr, uint16_t val, void *p)
 {
         svga_t *svga = (svga_t *)p;
+
+	if (!(svga->miscout & 2))  return;
+
         if (!svga->fast)
         {
                 svga_write(addr, val, p);
@@ -1302,7 +1240,7 @@ void svga_writew(uint32_t addr, uint16_t val, void *p)
         cycles -= video_timing_w;
         cycles_lost += video_timing_w;
 
-        if (svga_output) pclog("svga_writew: %05X ", addr);
+        // if (svga_output) pclog("svga_writew: %05X ", addr);
         addr = (addr & svga->banked_mask) + svga->write_bank;
         addr &= 0x7FFFFF;        
         if (addr >= svga->vram_limit)
@@ -1316,6 +1254,8 @@ void svga_writel(uint32_t addr, uint32_t val, void *p)
 {
         svga_t *svga = (svga_t *)p;
         
+	if (!(svga->miscout & 2))  return;
+
         if (!svga->fast)
         {
                 svga_write(addr, val, p);
@@ -1330,7 +1270,7 @@ void svga_writel(uint32_t addr, uint32_t val, void *p)
         cycles -= video_timing_l;
         cycles_lost += video_timing_l;
 
-        if (svga_output) pclog("svga_writel: %05X ", addr);
+        // if (svga_output) pclog("svga_writel: %05X ", addr);
         addr = (addr & svga->banked_mask) + svga->write_bank;
         addr &= 0x7FFFFF;
         if (addr >= svga->vram_limit)
@@ -1345,6 +1285,8 @@ uint16_t svga_readw(uint32_t addr, void *p)
 {
         svga_t *svga = (svga_t *)p;
         
+	if (!(svga->miscout & 2))  return 0;
+
         if (!svga->fast)
            return svga_read(addr, p) | (svga_read(addr + 1, p) << 8);
         
@@ -1366,6 +1308,8 @@ uint32_t svga_readl(uint32_t addr, void *p)
 {
         svga_t *svga = (svga_t *)p;
         
+	if (!(svga->miscout & 2))  return 0;
+
         if (!svga->fast)
            return svga_read(addr, p) | (svga_read(addr + 1, p) << 8) | (svga_read(addr + 2, p) << 16) | (svga_read(addr + 3, p) << 24);
         
@@ -1387,6 +1331,8 @@ void svga_writew_linear(uint32_t addr, uint16_t val, void *p)
 {
         svga_t *svga = (svga_t *)p;
         
+	if (!(svga->miscout & 2))  return;
+
         if (!svga->fast)
         {
                 svga_write_linear(addr, val, p);
@@ -1411,6 +1357,8 @@ void svga_writel_linear(uint32_t addr, uint32_t val, void *p)
 {
         svga_t *svga = (svga_t *)p;
         
+	if (!(svga->miscout & 2))  return;
+
         if (!svga->fast)
         {
                 svga_write_linear(addr, val, p);
@@ -1437,6 +1385,8 @@ uint16_t svga_readw_linear(uint32_t addr, void *p)
 {
         svga_t *svga = (svga_t *)p;
         
+	if (!(svga->miscout & 2))  return 0;
+
         if (!svga->fast)
            return svga_read_linear(addr, p) | (svga_read_linear(addr + 1, p) << 8);
         
@@ -1455,6 +1405,8 @@ uint32_t svga_readl_linear(uint32_t addr, void *p)
 {
         svga_t *svga = (svga_t *)p;
         
+	if (!(svga->miscout & 2))  return 0;
+
         if (!svga->fast)
            return svga_read_linear(addr, p) | (svga_read_linear(addr + 1, p) << 8) | (svga_read_linear(addr + 2, p) << 16) | (svga_read_linear(addr + 3, p) << 24);
         

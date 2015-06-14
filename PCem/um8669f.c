@@ -9,6 +9,8 @@
 
 
 C0
+Added by OBattler based on more sources:
+	bit 7 = duplex
 bit 3 = LPT1 enable
 bit 2 = COM2 enable
 bit 1 = COM1 enable
@@ -17,6 +19,13 @@ bit 0 = FDC enable
 C1
 bits 7-6 = LPT1 mode : 11 = ECP/EPP, 01 = EPP, 10 = SPP
 bit 3 = clear when LPT1 = 278
+
+Added by OBattler based on more sources:
+	C2
+	bit 2 = I430FX: floppy drive swap (1 = swap, 0 = do not swap)
+		I430VX: DENSEL polarity
+	bits 3-6 = IR stuff
+	bits 3-4 = 00 = Normal, 01 = Infrared (HPSIR), 10 - Amplitude Shift Keyed IR (ASKIR), 11 - Reserved
 
 C3
 bits 7-6 = LPT1 DMA mode : 11 = ECP/EPP DMA1, 10 = ECP/EPP DMA3, 01 = EPP/SPP, 00 = ECP
@@ -52,7 +61,7 @@ static uint8_t um8669f_regs[256];
 void um8669f_write(uint16_t port, uint8_t val, void *priv)
 {
         int temp;
-//        pclog("um8669f_write : port=%04x reg %02X = %02X locked=%i\n", port, um8669f_curreg, val, um8669f_locked);
+        // pclog("um8669f_write : port=%04x reg %02X = %02X locked=%i\n", port, um8669f_curreg, val, um8669f_locked);
         if (um8669f_locked)
         {
                 if (port == 0x108 && val == 0xaa)
@@ -71,56 +80,80 @@ void um8669f_write(uint16_t port, uint8_t val, void *priv)
                 {
                         um8669f_regs[um8669f_curreg] = val;
 
-                        fdc_remove();
-                        if (um8669f_regs[0xc0] & 1)
-                           fdc_add();
+			if (um8669f_curreg == 0xC2)
+			{
+				/* Make sure to invert this. */
+				if (romset ==  ROM_430VX)
+				{
+					pclog("Setting DENSEL polarity to: %i (before: %i)\n", (val & 4 ? 1 : 0), densel_polarity);
+					densel_polarity = val & 4 ? 1 : 0;
+				}
+				else
+				{
+					pclog("Setting drive swap to: %i (before: %i)\n", (val & 4 ? 1 : 0), drive_swap);
+					fdc_setswap(val & 4 ? 1 : 0);
+				}
+			}
+
+			if (um8669f_curreg == 0xc0)
+			{
+	                        fdc_remove();
+	                        if (um8669f_regs[0xc0] & 1)
+        	                   fdc_add();
+			}
                            
-                        if (um8669f_regs[0xc0] & 2)
-                        {
-                                temp = um8669f_regs[0xc3] & 1; /*might be & 2*/
-                                if (!(um8669f_regs[0xc1] & 2))
-                                   temp |= 2;
-                                switch (temp)
-                                {
-                                        case 0: serial1_set(0x3f8, 4); break;
-                                        case 1: serial1_set(0x2f8, 4); break;
-                                        case 2: serial1_set(0x3e8, 4); break;
-                                        case 3: serial1_set(0x2e8, 4); break;
-                                }
-                        }
+			if ((um8669f_curreg == 0xc0) || (um8669f_curreg == 0xc1) || (um8669f_curreg == 0xc3))
+			{
+	                        if (um8669f_regs[0xc0] & 2)
+        	                {
+	                                temp = um8669f_regs[0xc3] & 1; /*might be & 2*/
+        	                        if (!(um8669f_regs[0xc1] & 2))
+                	                   temp |= 2;
+                        	        switch (temp)
+	                                {
+        	                                case 0: serial1_set(0x3f8, 4); break;
+                	                        case 1: serial1_set(0x2f8, 4); break;
+                        	                case 2: serial1_set(0x3e8, 4); break;
+                                	        case 3: serial1_set(0x2e8, 4); break;
+	                                }
+	                        }
                         
-                        if (um8669f_regs[0xc0] & 4)
-                        {
-                                temp = (um8669f_regs[0xc3] & 4) ? 0 : 1; /*might be & 8*/
-                                if (!(um8669f_regs[0xc1] & 4))
-                                   temp |= 2;
-                                switch (temp)
-                                {
-                                        case 0: serial2_set(0x3f8, 3); break;
-                                        case 1: serial2_set(0x2f8, 3); break;
-                                        case 2: serial2_set(0x3e8, 3); break;
-                                        case 3: serial2_set(0x2e8, 3); break;
-                                }
-                        }
+	                        if (um8669f_regs[0xc0] & 4)
+        	                {
+                	                temp = (um8669f_regs[0xc3] & 4) ? 0 : 1; /*might be & 8*/
+                        	        if (!(um8669f_regs[0xc1] & 4))
+                                	   temp |= 2;
+	                                switch (temp)
+        	                        {
+                	                        case 0: serial2_set(0x3f8, 3); break;
+                        	                case 1: serial2_set(0x2f8, 3); break;
+	                                        case 2: serial2_set(0x3e8, 3); break;
+        	                                case 3: serial2_set(0x2e8, 3); break;
+                	                }
+	                        }
+                
+	                        mouse_serial_init();
+			}
                         
-                        mouse_serial_init();
-                        
-                        lpt1_remove();
-                        lpt2_remove();
-                        temp = (um8669f_regs[0xc3] >> 4) & 3;
-                        switch (temp)
-                        {
-                                case 0: lpt1_init(0x378); break;
-                                case 1: lpt1_init(0x3bc); break;
-                                case 2: lpt1_init(0x278); break;
-                        }
+			if (um8669f_curreg == 0xc3)
+			{
+	                        lpt1_remove();
+	                        lpt2_remove();
+	                        temp = (um8669f_regs[0xc3] >> 4) & 3;
+	                        switch (temp)
+        	                {
+                	                case 0: lpt1_init(0x378); break;
+                        	        case 1: lpt1_init(0x3bc); break;
+                                	case 2: lpt1_init(0x278); break;
+	                        }
+			}
                 }
         }
 }
 
 uint8_t um8669f_read(uint16_t port, void *priv)
 {
-//        pclog("um8669f_read : port=%04x reg %02X locked=%i\n", port, um8669f_curreg, um8669f_locked);
+        // pclog("um8669f_read : port=%04x reg %02X locked=%i\n", port, um8669f_curreg, um8669f_locked);
         if (um8669f_locked)
            return 0xff;
         
@@ -132,6 +165,20 @@ uint8_t um8669f_read(uint16_t port, void *priv)
 
 void um8669f_init()
 {
+	if (romset == ROM_430VX)
+	{
+		um8669f_regs[0xC2] = 0xE5;
+	}
+	else
+	{
+		um8669f_regs[0xC2] = 0x81;
+	}
+
+	/*
+		The UM8699F seems to invert this compared to the PC87306.
+	*/
+	densel_polarity = 1;
+	fdc_setswap(0);
         io_sethandler(0x0108, 0x0002, um8669f_read, NULL, NULL, um8669f_write, NULL, NULL,  NULL);
         um8669f_locked = 1;
 }

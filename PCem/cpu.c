@@ -4,6 +4,7 @@
 #include "io.h"
 #include "x86_ops.h"
 #ifdef DYNAREC
+#include "mem.h"
 #include "codegen.h"
 #endif
 
@@ -66,6 +67,8 @@ int cpu_hasrdtsc;
 int cpu_hasMMX, cpu_hasMSR;
 int cpu_hasCR4;
 
+int is80286;
+
 uint64_t cpu_CR4_mask;
 
 uint64_t tsc = 0;
@@ -75,8 +78,6 @@ int timing_mr, timing_mrl;
 int timing_rm, timing_rml;
 int timing_mm, timing_mml;
 int timing_bt, timing_bnt;
-
-int is80286;
 
 static struct
 {
@@ -110,11 +111,12 @@ static struct
 CPU cpus_8088[] =
 {
         /*8088 standard*/
-        {"8088/4.77",    CPU_8088,  0,  4772727, 1, 0, 0, 0},
-        {"8088/8",       CPU_8088,  1,  8000000, 1, 0, 0, 0},
-        {"8088/10",      CPU_8088,  2, 10000000, 1, 0, 0, 0},
-        {"8088/12",      CPU_8088,  3, 12000000, 1, 0, 0, 0},
-        {"8088/16",      CPU_8088,  4, 16000000, 1, 0, 0, 0},
+	/*4772727*/
+        {"8088/4.77",    CPU_8088,  0,  3512199, 1, 0, 0, 0},
+        {"8088/8",       CPU_8088,  1,  5887115, 1, 0, 0, 0},
+        {"8088/10",      CPU_8088,  2,  7358893, 1, 0, 0, 0},
+        {"8088/12",      CPU_8088,  3,  8830672, 1, 0, 0, 0},
+        {"8088/16",      CPU_8088,  4, 11774229, 1, 0, 0, 0},
         {"",             -1,        0, 0, 0, 0}
 };
 
@@ -307,6 +309,16 @@ CPU cpus_Pentium5V[] =
         {"",             -1,        0, 0, 0}
 };
 
+CPU cpus_PentiumS5[] =
+{
+        /*Intel Pentium (Socket 5)*/
+        {"Pentium 75",       CPU_PENTIUM,     7,  75000000, 2, 0x52c, 0x52c, 0},
+        {"Pentium 90",       CPU_PENTIUM,     9,  90000000, 2, 0x52c, 0x52c, 0},
+        {"Pentium 100",      CPU_PENTIUM,    10, 100000000, 2, 0x52c, 0x52c, 0},
+        {"Pentium 120",      CPU_PENTIUM,    11, 120000000, 2, 0x52c, 0x52c, 0},
+        {"",             -1,        0, 0, 0}
+};
+
 CPU cpus_Pentium[] =
 {
         /*Intel Pentium*/
@@ -315,12 +327,20 @@ CPU cpus_Pentium[] =
         {"Pentium 100",      CPU_PENTIUM,    10, 100000000, 2, 0x52c, 0x52c, 0},
         {"Pentium 120",      CPU_PENTIUM,    11, 120000000, 2, 0x52c, 0x52c, 0},
         {"Pentium 133",      CPU_PENTIUM,    12, 133333333, 2, 0x52c, 0x52c, 0},
-        {"Pentium 150",      CPU_PENTIUM,    12, 150000000, 3, 0x52c, 0x52c, 0},
-        {"Pentium 166",      CPU_PENTIUM,    12, 166666666, 3, 0x52c, 0x52c, 0},
-        {"Pentium 200",      CPU_PENTIUM,    12, 200000000, 3, 0x52c, 0x52c, 0},
-        {"Pentium MMX 166",  CPU_PENTIUMMMX, 12, 166666666, 3, 0x543, 0x543, 0},
-        {"Pentium MMX 200",  CPU_PENTIUMMMX, 12, 200000000, 3, 0x543, 0x543, 0},
-        {"Pentium MMX 233",  CPU_PENTIUMMMX, 12, 233333333, 4, 0x543, 0x543, 0},
+        {"Pentium 150",      CPU_PENTIUM,    13, 150000000, 3, 0x52c, 0x52c, 0},
+        {"Pentium 166",      CPU_PENTIUM,    15, 166666666, 3, 0x52c, 0x52c, 0},
+        {"Pentium 200",      CPU_PENTIUM,    17, 200000000, 3, 0x52c, 0x52c, 0},
+        {"Pentium MMX 166",  CPU_PENTIUMMMX, 15, 166666666, 3, 0x543, 0x543, 0},
+        {"Pentium MMX 200",  CPU_PENTIUMMMX, 17, 200000000, 3, 0x543, 0x543, 0},
+        {"Pentium MMX 233",  CPU_PENTIUMMMX, 17, 233333333, 4, 0x543, 0x543, 0},
+        {"Mobile Pentium MMX 120",  CPU_PENTIUMMMX, 11, 120000000, 2, 0x543, 0x543, 0},
+        {"Mobile Pentium MMX 133",  CPU_PENTIUMMMX, 12, 133333333, 2, 0x543, 0x543, 0},
+        {"Mobile Pentium MMX 150",  CPU_PENTIUMMMX, 13, 150000000, 3, 0x544, 0x544, 0},
+        {"Mobile Pentium MMX 166",  CPU_PENTIUMMMX, 15, 166666666, 3, 0x544, 0x544, 0},
+        {"Mobile Pentium MMX 200",  CPU_PENTIUMMMX, 17, 200000000, 3, 0x581, 0x581, 0},
+        {"Mobile Pentium MMX 233",  CPU_PENTIUMMMX, 17, 233333333, 4, 0x581, 0x581, 0},
+        {"Mobile Pentium MMX 266",  CPU_PENTIUMMMX, 17, 266666666, 4, 0x582, 0x582, 0},
+        {"Mobile Pentium MMX 300",  CPU_PENTIUMMMX, 17, 300000000, 5, 0x582, 0x582, 0},
         {"",             -1,        0, 0, 0}
 };
 #endif
@@ -345,7 +365,7 @@ void cpu_set()
         CPUID    = cpu_s->cpuid_model;
         cpuspeed = cpu_s->speed;
         is8086   = (cpu_s->cpu_type >= CPU_8088);
-	is80286	 = (cpu_s->cpu_type == CPU_286);
+        is80286   = (cpu_s->cpu_type == CPU_286);
         is486    = (cpu_s->cpu_type >= CPU_i486SX) || (cpu_s->cpu_type == CPU_486SLC || cpu_s->cpu_type == CPU_486DLC);
         hasfpu   = (cpu_s->cpu_type >= CPU_i486DX);
         cpu_iscyrix = (cpu_s->cpu_type == CPU_486SLC || cpu_s->cpu_type == CPU_486DLC || cpu_s->cpu_type == CPU_Cx486S || cpu_s->cpu_type == CPU_Cx486DX || cpu_s->cpu_type == CPU_Cx5x86);

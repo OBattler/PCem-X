@@ -1,4 +1,5 @@
 /*EGA emulation*/
+#include <stdio.h>	/* OB */
 #include <stdlib.h>
 #include "ibm.h"
 #include "device.h"
@@ -35,6 +36,7 @@ void ega_out(uint16_t addr, uint8_t val, void *p)
                 else
                 {
                         ega->attrregs[ega->attraddr & 31] = val;
+			// ega->attrregs[0x10] &= 0xF7;
                         if (ega->attraddr < 16) 
                                 fullchange = changeframecount;
                         if (ega->attraddr == 0x10 || ega->attraddr == 0x14 || ega->attraddr < 0x10)
@@ -156,6 +158,7 @@ if (addr != 0x3da && addr != 0x3ba)
                 case 0x3c0: 
                 return ega->attraddr;
                 case 0x3c1: 
+		if (ega->attraddr == 0x10)  return ((ega->attrregs[ega->attraddr] & 0x7F) | (ega->attrff << 7));
                 return ega->attrregs[ega->attraddr];
                 case 0x3c2:
 //                printf("Read egaswitch %02X %02X %i\n",egaswitchread,egaswitches,VGA);
@@ -197,34 +200,43 @@ void ega_recalctimings(ega_t *ega)
         ega->dispend = ega->crtc[0x12];
         ega->vsyncstart = ega->crtc[0x10];
         ega->split = ega->crtc[0x18];
+        ega->vblankstart = ega->crtc[0x15];
 
         if (ega->crtc[7] & 1)  ega->vtotal |= 0x100;
-        if (ega->crtc[7] & 32) ega->vtotal |= 0x200;
         ega->vtotal++;
 
         if (ega->crtc[7] & 2)  ega->dispend |= 0x100;
-        if (ega->crtc[7] & 64) ega->dispend |= 0x200;
         ega->dispend++;
 
         if (ega->crtc[7] & 4)   ega->vsyncstart |= 0x100;
-        if (ega->crtc[7] & 128) ega->vsyncstart |= 0x200;
         ega->vsyncstart++;
 
         if (ega->crtc[7] & 0x10) ega->split |= 0x100;
-        if (ega->crtc[9] & 0x40) ega->split |= 0x200;
         ega->split+=2;
+
+        if (ega->crtc[7] & 0x08) ega->vblankstart |= 0x100;
+        ega->vblankstart++;
 
         ega->hdisp = ega->crtc[1];
         ega->hdisp++;
+
+        // ega->htotal = ega->crtc[0];
+        // svga->htotal += 6; /*+6 is required for Tyrian*/
+	// ega->htotal += 5; /*according to my data, +5 is correct*/
 
         ega->rowoffset = ega->crtc[0x13];
 
         printf("Recalc! %i %i %i %i   %i %02X\n", ega->vtotal, ega->dispend, ega->vsyncstart, ega->split, ega->hdisp, ega->attrregs[0x16]);
 
-        if (ega->vidclock) crtcconst = (ega->seqregs[1] & 1) ? MDACONST : (MDACONST * (9.0 / 8.0));
-        else               crtcconst = (ega->seqregs[1] & 1) ? CGACONST : (CGACONST * (9.0 / 8.0));
+        if (ega->vblankstart < ega->dispend)
+                ega->dispend = ega->vblankstart;
 
-        disptime = ega->crtc[0] + 2;
+	crtcconst = (ega->seqregs[1] & 1) ? (((ega->vidclock) ? VGACONST2 : VGACONST1) * 8.0) : (((ega->vidclock) ? VGACONST2 : VGACONST1) * 9.0);
+
+        /* if (ega->vidclock) crtcconst = (ega->seqregs[1] & 1) ? MDACONST : (MDACONST * (9.0 / 8.0));
+        else               crtcconst = (ega->seqregs[1] & 1) ? CGACONST : (CGACONST * (9.0 / 8.0)); */
+
+        /* disptime = ega->crtc[0] + 2;
         _dispontime = ega->crtc[1] + 1;
 
         printf("Disptime %f dispontime %f hdisp %i\n", disptime, _dispontime, ega->crtc[1] * 8);
@@ -240,7 +252,22 @@ void ega_recalctimings(ega_t *ega)
 	ega->dispontime  = (int)(_dispontime  * (1 << TIMER_SHIFT));
 	ega->dispofftime = (int)(_dispofftime * (1 << TIMER_SHIFT));
         pclog("dispontime %i (%f)  dispofftime %i (%f)\n", ega->dispontime, (float)ega->dispontime / (1 << TIMER_SHIFT),
-                                                           ega->dispofftime, (float)ega->dispofftime / (1 << TIMER_SHIFT));
+                                                           ega->dispofftime, (float)ega->dispofftime / (1 << TIMER_SHIFT)); */
+
+        // disptime  = ega->htotal;
+	disptime = ega->crtc[0] + 2;
+        _dispontime = ega->hdisp;
+	// _dispontime = ega->crtc[1] + 1;
+        
+//        printf("Disptime %f dispontime %f hdisp %i\n",disptime,dispontime,crtc[1]*8);
+        if (ega->seqregs[1] & 8) { disptime *= 2; _dispontime *= 2; }
+        _dispofftime = disptime - _dispontime;
+        _dispontime *= crtcconst;
+        _dispofftime *= crtcconst;
+
+	ega->dispontime = (int)(_dispontime * (1 << TIMER_SHIFT));
+	ega->dispofftime = (int)(_dispofftime * (1 << TIMER_SHIFT));
+
 //        printf("EGA horiz total %i display end %i clock rate %i vidclock %i %i\n",crtc[0],crtc[1],egaswitchread,vidclock,((ega3c2>>2)&3) | ((tridentnewctrl2<<2)&4));
 //        printf("EGA vert total %i display end %i max row %i vsync %i\n",ega_vtotal,ega_dispend,(crtc[9]&31)+1,ega_vsyncstart);
 //        printf("total %f on %f cycles off %f cycles frame %f sec %f %02X\n",disptime*crtcconst,dispontime,dispofftime,(dispontime+dispofftime)*ega_vtotal,(dispontime+dispofftime)*ega_vtotal*70,seqregs[1]);
@@ -827,10 +854,53 @@ void *ega_standalone_init()
                 }
         }
 
+        ega->crtc[0] = 63;
+        // ega->crtc[6] = 255;
+        ega->dispontime = 1000 * (1 << TIMER_SHIFT);
+        ega->dispofftime = 1000 * (1 << TIMER_SHIFT);
+
         ega_init(ega);        
+	// ega->attrregs[0x10] |= 0xF7;
 
         mem_mapping_add(&ega->mapping, 0xa0000, 0x20000, ega_read, NULL, NULL, ega_write, NULL, NULL, NULL, 0, ega);
         timer_add(ega_poll, &ega->vidtime, TIMER_ALWAYS_ENABLED, ega);
+        vramp = ega->vram;
+        io_sethandler(0x03a0, 0x0040, ega_in, NULL, NULL, ega_out, NULL, NULL, ega);
+        return ega;
+}
+
+void *sega_standalone_init()
+{
+        int c, d, e;
+        ega_t *ega = malloc(sizeof(ega_t));
+        memset(ega, 0, sizeof(ega_t));
+        
+        rom_init(&ega->bios_rom, "roms/lega.vbi", 0xc0000, 0x8000, 0x7fff, 0, MEM_MAPPING_EXTERNAL);
+
+        if (ega->bios_rom.rom[0x3ffe] == 0xaa && ega->bios_rom.rom[0x3fff] == 0x55)
+        {
+                int c;
+                pclog("Read EGA ROM in reverse\n");
+
+                for (c = 0; c < 0x2000; c++)
+                {
+                        uint8_t temp = ega->bios_rom.rom[c];
+                        ega->bios_rom.rom[c] = ega->bios_rom.rom[0x3fff - c];
+                        ega->bios_rom.rom[0x3fff - c] = temp;
+                }
+        }
+
+        ega->crtc[0] = 63;
+        // ega->crtc[6] = 255;
+        ega->dispontime = 1000 * (1 << TIMER_SHIFT);
+        ega->dispofftime = 1000 * (1 << TIMER_SHIFT);
+
+        ega_init(ega);        
+	// ega->attrregs[0x10] |= 0xF7;
+
+        mem_mapping_add(&ega->mapping, 0xa0000, 0x20000, ega_read, NULL, NULL, ega_write, NULL, NULL, NULL, 0, ega);
+        timer_add(ega_poll, &ega->vidtime, TIMER_ALWAYS_ENABLED, ega);
+        vramp = ega->vram;
         io_sethandler(0x03a0, 0x0040, ega_in, NULL, NULL, ega_out, NULL, NULL, ega);
         return ega;
 }
@@ -838,6 +908,11 @@ void *ega_standalone_init()
 static int ega_standalone_available()
 {
         return rom_present("roms/ibm_6277356_ega_card_u44_27128.bin");
+}
+
+static int sega_standalone_available()
+{
+        return rom_present("roms/lega.vbi");
 }
 
 void ega_close(void *p)
@@ -862,6 +937,18 @@ device_t ega_device =
         ega_standalone_init,
         ega_close,
         ega_standalone_available,
+        ega_speed_changed,
+        NULL,
+        NULL
+};
+
+device_t sega_device =
+{
+        "EGA",
+        0,
+        sega_standalone_init,
+        ega_close,
+        sega_standalone_available,
         ega_speed_changed,
         NULL,
         NULL

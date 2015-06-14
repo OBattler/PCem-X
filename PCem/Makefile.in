@@ -35,6 +35,8 @@ POST_INSTALL = :
 NORMAL_UNINSTALL = :
 PRE_UNINSTALL = :
 POST_UNINSTALL = :
+build_triplet = @build@
+host_triplet = @host@
 bin_PROGRAMS = pcem$(EXEEXT)
 subdir = src
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
@@ -193,14 +195,22 @@ am__quote = @am__quote@
 am__tar = @am__tar@
 am__untar = @am__untar@
 bindir = @bindir@
+build = @build@
 build_alias = @build_alias@
+build_cpu = @build_cpu@
+build_os = @build_os@
+build_vendor = @build_vendor@
 builddir = @builddir@
 datadir = @datadir@
 datarootdir = @datarootdir@
 docdir = @docdir@
 dvidir = @dvidir@
 exec_prefix = @exec_prefix@
+host = @host@
 host_alias = @host_alias@
+host_cpu = @host_cpu@
+host_os = @host_os@
+host_vendor = @host_vendor@
 htmldir = @htmldir@
 includedir = @includedir@
 infodir = @infodir@
@@ -1804,6 +1814,13 @@ pcem-vid_ics2595.obj: vid_ics2595.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='vid_ics2595.c' object='pcem-vid_ics2595.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pcem_CFLAGS) $(CFLAGS) -c -o pcem-vid_ics2595.obj `if test -f 'vid_ics2595.c'; then $(CYGPATH_W) 'vid_ics2595.c'; else $(CYGPATH_W) '$(srcdir)/vid_ics2595.c'; fi`
+
+pcem-vid_ega.obj: vid_jega.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pcem_CFLAGS) $(CFLAGS) -MT pcem-vid_jega.obj -MD -MP -MF $(DEPDIR)/pcem-vid_jega.Tpo -c -o pcem-vid_jega.obj `if test -f 'vid_jega.c'; then $(CYGPATH_W) 'vid_jega.c'; else $(CYGPATH_W) '$(srcdir)/vid_jega.c'; fi`
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/pcem-vid_jega.Tpo $(DEPDIR)/pcem-vid_jega.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='vid_jega.c' object='pcem-vid_jega.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pcem_CFLAGS) $(CFLAGS) -c -o pcem-vid_jega.obj `if test -f 'vid_jega.c'; then $(CYGPATH_W) 'vid_jega.c'; else $(CYGPATH_W) '$(srcdir)/vid_jega.c'; fi`
 
 pcem-vid_kanji_render.obj: vid_kanji_render.c
 @am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pcem_CFLAGS) $(CFLAGS) -MT pcem-vid_kanji_render.obj -MD -MP -MF $(DEPDIR)/pcem-vid_kanji_render.Tpo -c -o pcem-vid_kanji_render.obj `if test -f 'vid_kanji_render.c'; then $(CYGPATH_W) 'vid_kanji_render.c'; else $(CYGPATH_W) '$(srcdir)/vid_kanji_render.c'; fi`

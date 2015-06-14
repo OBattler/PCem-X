@@ -379,7 +379,8 @@ void s3_updatemapping(s3_t *s3)
         {
                 case 0x0: /*128k at A0000*/
                 mem_mapping_set_addr(&svga->mapping, 0xa0000, 0x20000);
-                svga->banked_mask = 0xffff;
+                // svga->banked_mask = 0xffff;
+                svga->banked_mask = 0x1ffff;
                 break;
                 case 0x4: /*64k at A0000*/
                 mem_mapping_set_addr(&svga->mapping, 0xa0000, 0x10000);
@@ -424,8 +425,16 @@ void s3_updatemapping(s3_t *s3)
                         mem_mapping_disable(&s3->linear_mapping);
                         if (!(svga->crtc[0x53] & 0x10))
                         {
-                                mem_mapping_set_addr(&svga->mapping, 0xa0000, 0x10000);
-                                svga->banked_mask = 0xffff;
+				if (svga->gdcreg[6] & 0xc)
+				{
+                                	mem_mapping_set_addr(&svga->mapping, 0xa0000, 0x10000);
+                                	svga->banked_mask = 0xffff;
+				}
+				else
+				{
+                                	mem_mapping_set_addr(&svga->mapping, 0xa0000, 0x20000);
+                                	svga->banked_mask = 0x1ffff;
+				}
                         }
 //                        mem_mapping_set_addr(&s3->linear_mapping, 0xa0000, 0x10000);
                 }

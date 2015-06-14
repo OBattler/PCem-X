@@ -33,6 +33,7 @@ typedef struct mda_t
 } mda_t;
 
 static int mdacols[256][2][2];
+int mda_font = 0;
 
 void mda_recalctimings(mda_t *mda);
 
@@ -261,6 +262,22 @@ void mda_poll(void *p)
         }
 }
 
+void mda_load_font()
+{
+	switch(mda_font)
+	{
+		case 0:
+			loadfont("mda.rom", 0);
+			break;
+		case 1:
+			loadfont("kam.bin", 0);
+			break;
+		case 2:
+			loadfont("kamcl16.bin", 0);
+			break;
+	}
+}
+
 void *mda_init()
 {
         int c;
@@ -268,6 +285,20 @@ void *mda_init()
         memset(mda, 0, sizeof(mda_t));
 
         mda->vram = malloc(0x1000);
+
+	switch(device_get_config_int("font"))
+	{
+		case 0:
+			loadfont("mda.rom", 0);
+			break;
+		case 1:
+			loadfont("kam.bin", 0);
+			break;
+		case 2:
+			loadfont("kamcl16.bin", 0);
+			break;
+	}
+	mda_font = device_get_config_int("font");
 
         timer_add(mda_poll, &mda->vidtime, TIMER_ALWAYS_ENABLED, mda);
         mem_mapping_add(&mda->mapping, 0xb0000, 0x08000, mda_read, NULL, NULL, mda_write, NULL, NULL,  NULL, 0, mda);
@@ -310,6 +341,37 @@ void mda_speed_changed(void *p)
         mda_recalctimings(mda);
 }
 
+static device_config_t mda_config[] =
+{
+        {
+                .name = "font",
+                .description = "Font",
+                .type = CONFIG_SELECTION,
+                .selection =
+                {
+                        {
+                                .description = "US (CP 437)",
+                                .value = 0
+                        },
+                        {
+                                .description = "Czech Kamenicky (CP 895) #1",
+                                .value = 1
+                        },
+                        {
+                                .description = "Czech Kamenicky (CP 895) #2",
+                                .value = 2
+                        },
+                        {
+                                .description = ""
+                        }
+                },
+                .default_int = 0
+        },
+        {
+                .type = -1
+        }
+};
+
 device_t mda_device =
 {
         "MDA",
@@ -319,5 +381,6 @@ device_t mda_device =
         NULL,
         mda_speed_changed,
         NULL,
-        NULL
+        NULL,
+        mda_config
 };

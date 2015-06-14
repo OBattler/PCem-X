@@ -82,7 +82,7 @@ void x86_doabrt(int x86_abrt)
         pc = oldpc;
         _cs.access = oldcpl << 5;
 //        pclog("x86_doabrt - %02X %08X  %04X:%08X  %i\n", x86_abrt, abrt_error, CS, pc, ins);
-
+        
 /*        if (CS == 0x3433 && pc == 0x000006B0)
         {
                 pclog("Quit it\n");
@@ -118,9 +118,9 @@ void x86_doabrt(int x86_abrt)
                 loadcs(readmemw(0,addr+2));
                 return;
         }
-
+        
         if (abrt) return;
-
+        
         if (intgatesize == 16)
         {
                 if (stack32)
@@ -185,7 +185,7 @@ static void do_seg_load(x86seg *s, uint16_t *segdat)
         if (is386)
                 s->base |= ((segdat[3] >> 8) << 24);
         s->access = segdat[2] >> 8;
-
+                        
         if ((segdat[2] & 0x1800) != 0x1000 || !(segdat[2] & (1 << 10))) /*expand-down*/
         {
                 s->limit_high = s->limit;
@@ -241,15 +241,15 @@ static void check_seg_valid(x86seg *s)
                         break;
                 }
                 break;
-
+                
                 case 0x1E: case 0x1F: /*Readable conforming code*/
                 break;
-
+                
                 default:
                 valid = 0;
                 break;
         }
-
+        
         if (!valid)
                 loadseg(0, s);
 }
@@ -359,6 +359,14 @@ void loadseg(uint16_t seg, x86seg *s)
                                 case 0x14: case 0x15: case 0x16: case 0x17:
                                 case 0x1A: case 0x1B: /*Readable non-conforming code*/
 //                                pclog("Load seg %04X %i %i %04X:%08X\n",seg,dpl,CS&3,CS,pc);
+                                if ((seg&3)>dpl || (CPL)>dpl)
+                                {
+                                        pclog("Data seg fail - %04X:%08X %04X %i %04X\n",CS,pc,seg,dpl,segdat[2]);
+                                        x86gpf(NULL,seg&~3);
+//                                        x86abort("Data segment load - level too low!\n",seg&0xFFFC);
+                                        return;
+                                }
+                                break;
                                 case 0x1E: case 0x1F: /*Readable conforming code*/
                                 break;
                                 default:
@@ -379,8 +387,8 @@ void loadseg(uint16_t seg, x86seg *s)
 #ifndef CS_ACCESSED
                 if (s != &_cs)
                 {
-#endif
-#ifdef SEL_ACCESSED
+#endif                   
+#ifdef SEL_ACCESSED         
                         cpl_override = 1;
                         writememw(0, addr+4, segdat[2] | 0x100); /*Set accessed bit*/
                         cpl_override = 0;
@@ -483,7 +491,7 @@ void loadcs(uint16_t seg)
                         use32=(segdat[3]&0x40)?0x300:0;
                         if (CPL==3 && oldcpl!=3) flushmmucache_cr3();
 
-#ifdef CS_ACCESSED
+#ifdef CS_ACCESSED                        
                         cpl_override = 1;
                         writememw(0, addr+4, segdat[2] | 0x100); /*Set accessed bit*/
                         cpl_override = 0;
@@ -597,12 +605,12 @@ void loadcsjmp(uint16_t seg, uint32_t oxpc)
                         if (segdat[3]&0x40) use32=0x300;
                         else                use32=0;
 
-#ifdef CS_ACCESSED
+#ifdef CS_ACCESSED                        
                         cpl_override = 1;
                         writememw(0, addr+4, segdat[2] | 0x100); /*Set accessed bit*/
                         cpl_override = 0;
 #endif
-
+                        
                         CS = (seg & ~3) | CPL;
                         segdat[2] = (segdat[2] & ~(3 << (5+8))) | (CPL << (5+8));
 
@@ -706,7 +714,7 @@ void loadcsjmp(uint16_t seg, uint32_t oxpc)
                                         use32=(segdat[3]&0x40)?0x300:0;
                                                 pc=newpc;
 
-#ifdef CS_ACCESSED
+#ifdef CS_ACCESSED                                                
                                         cpl_override = 1;
                                         writememw(0, addr+4, segdat[2] | 0x100); /*Set accessed bit*/
                                         cpl_override = 0;
@@ -720,7 +728,7 @@ void loadcsjmp(uint16_t seg, uint32_t oxpc)
                                 }
                                 break;
 
-
+                                
                                 case 0x900: /*386 Task gate*/
 //                                pclog("Task gate\n");
                                 pc=oxpc;
@@ -836,9 +844,9 @@ void loadcscall(uint16_t seg)
         uint32_t oldss,oldsp,newsp,oldpc, oldsp2;
         int type;
         uint16_t tempw;
-
+        
         int csout = output;
-
+        
         if (msw&1 && !(eflags&VM_FLAG))
         {
                 //flushmmucache();
@@ -914,12 +922,12 @@ void loadcscall(uint16_t seg)
                         if (segdat[3]&0x40) use32=0x300;
                         else                use32=0;
 
-#ifdef CS_ACCESSED
+#ifdef CS_ACCESSED                        
                         cpl_override = 1;
                         writememw(0, addr+4, segdat[2] | 0x100); /*Set accessed bit*/
                         cpl_override = 0;
 #endif
-
+                        
                         /*Conforming segments don't change CPL, so preserve existing CPL*/
                         if (segdat[2]&0x400)
                         {
@@ -960,9 +968,9 @@ void loadcscall(uint16_t seg)
                                         return;
                                 }
                                 seg2=segdat[1];
-
+                                
                                 if (output) pclog("New address : %04X:%08X\n", seg2, newpc);
-
+                                
                                 if (!(seg2&~3))
                                 {
                                         pclog("Trying to load CS with NULL selector! lcscallcg\n");
@@ -997,9 +1005,9 @@ void loadcscall(uint16_t seg)
                                 segdat[1]=readmemw(0,addr+2);
                                 segdat[2]=readmemw(0,addr+4);
                                 segdat[3]=readmemw(0,addr+6); cpl_override=0; if (abrt) return;
-
+                                
                                 if (output) pclog("Code seg2 call - %04X - %04X %04X %04X\n",seg2,segdat[0],segdat[1],segdat[2]);
-
+                                
                                 if (DPL > CPL)
                                 {
                                         x86gpf(NULL,seg2&~3);
@@ -1012,7 +1020,7 @@ void loadcscall(uint16_t seg)
                                         return;
                                 }
 
-
+                                
                                 switch (segdat[2]&0x1F00)
                                 {
                                         case 0x1800: case 0x1900: case 0x1A00: case 0x1B00: /*Non-conforming code*/
@@ -1097,31 +1105,31 @@ void loadcscall(uint16_t seg)
                                                 stack32=segdat2[3]&0x40;
                                                 if (stack32) ESP=newsp;
                                                 else         SP=newsp;
-
+                                                
                                                 do_seg_load(&_ss, segdat2);
 
                                                 if (output) pclog("Set access 1\n");
 
-#ifdef SEL_ACCESSED
+#ifdef SEL_ACCESSED                                                
                                                 cpl_override = 1;
                                                 writememw(0, addr+4, segdat2[2] | 0x100); /*Set accessed bit*/
                                                 cpl_override = 0;
 #endif
-
+                                                
                                                 CS=seg2;
                                                 do_seg_load(&_cs, segdat);
                                                 if (CPL==3 && oldcpl!=3) flushmmucache_cr3();
                                                 use32=(segdat[3]&0x40)?0x300:0;
                                                 pc=newpc;
-
+                                                
                                                 if (output) pclog("Set access 2\n");
-
+                                                
 #ifdef CS_ACCESSED
                                                 cpl_override = 1;
                                                 writememw(0, oaddr+4, segdat[2] | 0x100); /*Set accessed bit*/
                                                 cpl_override = 0;
 #endif
-
+                        
                                                 if (output) pclog("Type %04X\n",type);
                                                 if (type==0xC00)
                                                 {
@@ -1217,13 +1225,13 @@ void loadcscall(uint16_t seg)
                                         use32=(segdat[3]&0x40)?0x300:0;
                                                 pc=newpc;
 
-#ifdef CS_ACCESSED
+#ifdef CS_ACCESSED                                                
                                         cpl_override = 1;
                                         writememw(0, addr+4, segdat[2] | 0x100); /*Set accessed bit*/
                                         cpl_override = 0;
 #endif
                                         break;
-
+                                        
                                         default:
                                         pclog("Call gate bad segment type\n");
                                         x86gpf(NULL,seg2&~3);
@@ -1332,7 +1340,7 @@ void pmoderetf(int is32, uint16_t off)
         segdat[2]=readmemw(0,addr+4);
         segdat[3]=readmemw(0,addr+6); cpl_override=0; if (abrt) { ESP=oldsp; return; }
         oaddr = addr;
-
+        
         if (output) pclog("CPL %i RPL %i %i\n",CPL,seg&3,is32);
 
         if (stack32) ESP+=off;
@@ -1373,13 +1381,13 @@ void pmoderetf(int is32, uint16_t off)
                         x86np("RETF CS not present\n", seg & 0xfffc);
                         return;
                 }
-
+                
 #ifdef CS_ACCESSED
                 cpl_override = 1;
                 writememw(0, addr+4, segdat[2] | 0x100); /*Set accessed bit*/
                 cpl_override = 0;
 #endif
-
+                                
                 pc=newpc;
                 if (segdat[2] & 0x400)
                    segdat[2] = (segdat[2] & ~(3 << (5+8))) | ((seg & 3) << (5+8));
@@ -1387,7 +1395,7 @@ void pmoderetf(int is32, uint16_t off)
                 do_seg_load(&_cs, segdat);
                 if (CPL==3 && oldcpl!=3) flushmmucache_cr3();
                 use32=(segdat[3]&0x40)?0x300:0;
-
+                
 //                pclog("CPL=RPL return to %04X:%08X\n",CS,pc);
         }
         else
@@ -1527,7 +1535,7 @@ void pmoderetf(int is32, uint16_t off)
                 writememw(0, oaddr+4, segdat[2] | 0x100); /*Set accessed bit*/
 #endif
                 cpl_override = 0;
-#endif
+#endif                
                         /*Conforming segments don't change CPL, so CPL = RPL*/
                         if (segdat[2]&0x400)
                            segdat[2] = (segdat[2] & ~(3 << (5+8))) | ((seg & 3) << (5+8));
@@ -1537,10 +1545,10 @@ void pmoderetf(int is32, uint16_t off)
                 do_seg_load(&_cs, segdat);
                 if (CPL==3 && oldcpl!=3) flushmmucache_cr3();
                 use32=(segdat[3]&0x40)?0x300:0;
-
+                
                 if (stack32) ESP+=off;
                 else         SP+=off;
-
+                
                 check_seg_valid(&_ds);
                 check_seg_valid(&_es);
                 check_seg_valid(&_fs);
@@ -1564,7 +1572,7 @@ void pmodeint(int num, int soft)
         uint32_t newsp;
         uint16_t seg;
         int stack_changed=0;
-
+        
 //        if (!num) pclog("Pmode int 0 at %04X(%06X):%08X\n",CS,cs,pc);
 //        pclog("Pmode int %02X %i %04X:%08X %04X:%08X %i\n",num,soft,CS,pc, SS, ESP, abrt);
         if (eflags&VM_FLAG && IOPL!=3 && soft)
@@ -1635,7 +1643,7 @@ void pmodeint(int num, int soft)
                         }
                         seg=segdat[1];
 //                        pclog("Interrupt gate : %04X:%04X%04X\n",seg,segdat[3],segdat[0]);
-
+                        
                         addr=seg&~7;
                         if (seg&4)
                         {
@@ -1669,7 +1677,7 @@ void pmodeint(int num, int soft)
                         segdat2[2]=readmemw(0,addr+4);
                         segdat2[3]=readmemw(0,addr+6); cpl_override=0; if (abrt) return;
                         oaddr = addr;
-
+                        
                         if (DPL2 > CPL)
                         {
                                 pclog("INT to higher level 2\n");
@@ -1768,12 +1776,12 @@ void pmodeint(int num, int soft)
                                         else         SP=newsp;
                                         do_seg_load(&_ss, segdat3);
 
-#ifdef CS_ACCESSED
+#ifdef CS_ACCESSED                                        
                                         cpl_override = 1;
                                         writememw(0, addr+4, segdat3[2] | 0x100); /*Set accessed bit*/
                                         cpl_override = 0;
 #endif
-
+                                        
                                         if (output) pclog("New stack %04X:%08X\n",SS,ESP);
                                         cpl_override=1;
                                         if (type>=0x800)
@@ -1795,7 +1803,7 @@ void pmodeint(int num, int soft)
                                                 PUSHL(flags|(eflags<<16));
 //                                                if (soft) pclog("Pushl CS %08X\n", CS);
                                                 PUSHL(CS);
-//                                                if (soft) pclog("Pushl PC %08X\n", pc);
+//                                                if (soft) pclog("Pushl PC %08X\n", pc);                                                
                                                 PUSHL(pc); if (abrt) return;
 //                                                if (output) pclog("32Stack %04X:%08X\n",SS,ESP);
                                         }
@@ -1805,9 +1813,9 @@ void pmodeint(int num, int soft)
                                                 PUSHW(oldss);
                                                 PUSHW(oldsp);
                                                 PUSHW(flags);
-//                                                if (soft) pclog("Pushw CS %04X\n", CS);
+//                                                if (soft) pclog("Pushw CS %04X\n", CS);                                                
                                                 PUSHW(CS);
-//                                                if (soft) pclog("Pushw pc %04X\n", pc);
+//                                                if (soft) pclog("Pushw pc %04X\n", pc);                                                
                                                 PUSHW(pc); if (abrt) return;
 //                                                if (output) pclog("16Stack %04X:%08X\n",SS,ESP);
                                         }
@@ -1858,9 +1866,9 @@ void pmodeint(int num, int soft)
                                 x86gpf(NULL,seg&~3);
                                 return;
                         }
+                do_seg_load(&_cs, segdat2);
                 CS=(seg&~3)|CPL;
 //                pclog("New CS = %04X\n",CS);
-                do_seg_load(&_cs, segdat2);
                 if (CPL==3 && oldcpl!=3) flushmmucache_cr3();
                 if (type>0x800) pc=segdat[0]|(segdat[3]<<16);
                 else            pc=segdat[0];
@@ -1872,7 +1880,7 @@ void pmodeint(int num, int soft)
                 writememw(0, oaddr+4, segdat2[2] | 0x100); /*Set accessed bit*/
                 cpl_override = 0;
 #endif
-
+                        
                 eflags&=~VM_FLAG;
                 if (!(type&0x100))
                 {
@@ -1882,7 +1890,7 @@ void pmodeint(int num, int soft)
                 flags&=~(T_FLAG|NT_FLAG);
 //                if (output) pclog("Final Stack %04X:%08X\n",SS,ESP);
                 break;
-
+                
                 case 0x500: /*Task gate*/
 //                pclog("Task gate\n");
                 seg=segdat[1];
@@ -1924,7 +1932,7 @@ void pmodeint(int num, int soft)
                 taskswitch286(seg,segdat2,segdat2[2]&0x800);
                 cpl_override=0;
                 break;
-
+                
                 default:
                 pclog("Bad int gate type %04X   %04X %04X %04X %04X\n",segdat[2]&0x1F00,segdat[0],segdat[1],segdat[2],segdat[3]);
                 x86gpf(NULL,seg&~3);
@@ -2044,11 +2052,11 @@ void pmodeiret(int is32)
                         loadseg(segs[2],&_fs);
                         do_seg_v86_init(&_fs);
                         loadseg(segs[3],&_gs);
-                        do_seg_v86_init(&_gs);
-
+                        do_seg_v86_init(&_gs);                        
+                        
 //                        pclog("V86 IRET %04X:%08X\n",SS,ESP);
 //                        output=3;
-
+                        
                         pc=newpc;
                         _cs.base=seg<<4;
                         _cs.limit=0xFFFF;
@@ -2128,7 +2136,7 @@ void pmodeiret(int is32)
         segdat[2]=readmemw(0,addr+4);
         segdat[3]=readmemw(0,addr+6); cpl_override=0; if (abrt) { ESP = oldsp; return; }
 //        pclog("Seg type %04X %04X\n",segdat[2]&0x1F00,segdat[2]);
-
+        
         switch (segdat[2]&0x1F00)
         {
                 case 0x1800: case 0x1900: case 0x1A00: case 0x1B00: /*Non-conforming code*/
@@ -2175,7 +2183,7 @@ void pmodeiret(int is32)
                 if (CPL==3 && oldcpl!=3) flushmmucache_cr3();
                 use32=(segdat[3]&0x40)?0x300:0;
 
-#ifdef CS_ACCESSED
+#ifdef CS_ACCESSED                
                 cpl_override = 1;
                 writememw(0, addr+4, segdat[2] | 0x100); /*Set accessed bit*/
                 cpl_override = 0;
@@ -2195,9 +2203,9 @@ void pmodeiret(int is32)
                         newsp=POPW();
                         newss=POPW(); if (abrt) { ESP = oldsp; return; }
                 }
-
+                
                 if (output) pclog("IRET load stack %04X:%04X\n",newss,newsp);
-
+                
                 if (!(newss&~3))
                 {
                         pclog("IRET loading null SS\n");
@@ -2279,7 +2287,7 @@ void pmodeiret(int is32)
                 writememw(0, oaddr+4, segdat[2] | 0x100); /*Set accessed bit*/
 #endif
                 cpl_override = 0;
-#endif
+#endif                
                         /*Conforming segments don't change CPL, so CPL = RPL*/
                         if (segdat[2]&0x400)
                            segdat[2] = (segdat[2] & ~(3 << (5+8))) | ((seg & 3) << (5+8));
@@ -2288,7 +2296,7 @@ void pmodeiret(int is32)
                 do_seg_load(&_cs, segdat);
                 if (CPL==3 && oldcpl!=3) flushmmucache_cr3();
                 use32=(segdat[3]&0x40)?0x300:0;
-
+                        
                 check_seg_valid(&_ds);
                 check_seg_valid(&_es);
                 check_seg_valid(&_fs);
@@ -2314,7 +2322,7 @@ void taskswitch286(uint16_t seg, uint16_t *segdat, int is32)
 	uint32_t new_eax,new_ebx,new_ecx,new_edx,new_esp,new_ebp,new_esi,new_edi,new_pc,new_flags;
 
         uint32_t addr;
-
+        
 	uint16_t segdat2[4];
 
 //output=3;
@@ -2327,11 +2335,11 @@ void taskswitch286(uint16_t seg, uint16_t *segdat, int is32)
         if (is386)
         {
 //                if (output) pclog("32-bit TSS\n");
-
+                
                 new_cr3=readmeml(base,0x1C);
                 new_pc=readmeml(base,0x20);
                 new_flags=readmeml(base,0x24);
-
+                
                 new_eax=readmeml(base,0x28);
                 new_ecx=readmeml(base,0x2C);
                 new_edx=readmeml(base,0x30);
@@ -2349,7 +2357,7 @@ void taskswitch286(uint16_t seg, uint16_t *segdat, int is32)
                 new_fs=readmemw(base,0x58);
                 new_gs=readmemw(base,0x5C);
                 new_ldt=readmemw(base,0x60);
-
+                
                 if (abrt) return;
                 if (optype==JMP || optype==INT)
                 {
@@ -2360,15 +2368,15 @@ void taskswitch286(uint16_t seg, uint16_t *segdat, int is32)
                         if (tr.seg&4) writememw(ldt.base,(tr.seg&~7)+4,tempw);
                         else          writememw(gdt.base,(tr.seg&~7)+4,tempw);
                 }
-
+                
                 if (optype==IRET) flags&=~NT_FLAG;
-
+                
 //                if (output) pclog("Write PC %08X %08X\n",tr.base,pc);
                 cpu_386_flags_rebuild();
                 writememl(tr.base,0x1C,cr3);
                 writememl(tr.base,0x20,pc);
                 writememl(tr.base,0x24,flags|(eflags<<16));
-
+                
                 writememl(tr.base,0x28,EAX);
                 writememl(tr.base,0x2C,ECX);
                 writememl(tr.base,0x30,EDX);
@@ -2377,7 +2385,7 @@ void taskswitch286(uint16_t seg, uint16_t *segdat, int is32)
                 writememl(tr.base,0x3C,EBP);
                 writememl(tr.base,0x40,ESI);
                 writememl(tr.base,0x44,EDI);
-
+                
                 writememl(tr.base,0x48,ES);
 //                if (output) pclog("Write CS %04X to %08X\n",CS,tr.base+0x4C);
                 writememl(tr.base,0x4C,CS);
@@ -2386,7 +2394,7 @@ void taskswitch286(uint16_t seg, uint16_t *segdat, int is32)
                 writememl(tr.base,0x58,FS);
                 writememl(tr.base,0x5C,GS);
                 writememl(tr.base,0x60,ldt.seg);
-
+                
                 if (optype==INT)
                 {
                         writememl(base,0,tr.seg);
@@ -2402,15 +2410,15 @@ void taskswitch286(uint16_t seg, uint16_t *segdat, int is32)
                         if (tr.seg&4) writememw(ldt.base,(seg&~7)+4,tempw);
                         else          writememw(gdt.base,(seg&~7)+4,tempw);
                 }
-
-
-
+                
+                
+                
                 cr3=new_cr3;
 //                pclog("TS New CR3 %08X\n",cr3);
                 flushmmucache();
-
-
-
+                
+                
+                
                 pc=new_pc;
 //                if (output) pclog("New pc %08X\n",new_pc);
                 flags=new_flags;

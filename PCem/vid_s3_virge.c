@@ -465,6 +465,15 @@ static void s3_virge_recalctimings(svga_t *svga)
         if (svga->crtc[0x5e] & 0x40) svga->split       += 0x400;
         svga->interlace = svga->crtc[0x42] & 0x20;
 
+	if (svga->crtc[0x42] & 0x20)
+	{
+		svga->vtotal *= 2;
+		svga->dispend *= 2;
+		svga->vblankstart *= 2;
+		svga->vsyncstart *= 2;
+		svga->split *= 2;
+	}
+
         if ((svga->crtc[0x67] & 0xc) != 0xc) /*VGA mode*/
         {
                 svga->ma_latch |= (virge->ma_ext << 16);
@@ -640,9 +649,13 @@ static void s3_virge_updatemapping(virge_t *virge)
                         mem_mapping_set_addr(&virge->mmio_mapping, 0xb8000, 0x8000);
                 else
                         mem_mapping_set_addr(&virge->mmio_mapping, 0xa0000, 0x10000);
+		svga->fb_only = 1;
         }
         else
+	{
                 mem_mapping_disable(&virge->mmio_mapping);
+		svga->fb_only = 0;
+	}
 
         if (svga->crtc[0x53] & 0x08) /*New MMIO*/
                 mem_mapping_set_addr(&virge->new_mmio_mapping, virge->linear_base + 0x1000000, 0x10000);
@@ -1596,7 +1609,7 @@ static void s3_virge_bitblt(virge_t *virge, int count, uint32_t cpu_dat)
                                                                  virge->s3d.rop, virge->s3d.dest_base);*/
                 }
 
-                while (count)
+                while (count && virge->s3d.h)
                 {
                         uint32_t dest_addr = virge->s3d.dest_base + (virge->s3d.dest_x * x_mul) + (virge->s3d.dest_y * virge->s3d.dest_str);
                         uint32_t source = 0, dest, pattern = virge->s3d.pat_fg_clr;

@@ -14,10 +14,12 @@
 #include "resources.h"
 #include "sound.h"
 #include "video.h"
+#include "vid_voodoo.h"
 #include "vid_svga.h"
 #include "vid_svga_render.h"
 #include "win.h"
 #include "fdc.h"
+#include "win-display.h"
 
 extern int is486;
 static int romstolist[ROM_MAX], listtomodel[ROM_MAX], romstomodel[ROM_MAX], modeltolist[ROM_MAX];
@@ -31,13 +33,11 @@ static BOOL CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPAR
         int c, d;
         int rom, gfx, mem, fpu;
         int temp_cpu, temp_cpu_m, temp_model;
-        int temp_GAMEBLASTER, temp_GUS, temp_SSI2001, temp_sound_card_current;
+        int temp_GAMEBLASTER, temp_GUS, temp_SSI2001, temp_voodoo, temp_sound_card_current;
         int temp_network_card_current;
 	int temp_network_interface_current;
-	int temp_fdcmodel_current;
 	int temp_fdtype_a_current;
 	int temp_fdtype_b_current;
-	int temp_kanjirom;
 //        pclog("Dialog msg %i %08X\n",message,message);
         switch (message)
         {
@@ -168,21 +168,11 @@ static BOOL CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPAR
                 h=GetDlgItem(hdlg, IDC_CHECK4);
                 SendMessage(h, BM_SETCHECK, cga_comp, 0);
 
-                h=GetDlgItem(hdlg, IDC_CHECKVEC);
-                SendMessage(h, BM_SETCHECK, vectorworkaround, 0);
+                h=GetDlgItem(hdlg, IDC_CHECKVOODOO);
+                SendMessage(h, BM_SETCHECK, voodoo_enabled, 0);
 
-                h=GetDlgItem(hdlg, IDC_CHECKKANJI);
-                SendMessage(h, BM_SETCHECK, kanjirom, 0);
-
-                h = GetDlgItem(hdlg, IDC_COMBOFDC);
-                SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"Intel 82078");
-                SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"SMSC FDC37N869");
-                SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"SMSC FDC37M81X");
-                SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"ITE IT8712F");
-                SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"SMSC LPC47B272X");
-                SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"SMSC FDC37N958FR");
-                SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"NEC µPD765A/B");
-                SendMessage(h, CB_SETCURSEL, fdc_model(), 0);
+                h=GetDlgItem(hdlg, IDC_CHECKFORCE43);
+                SendMessage(h, BM_SETCHECK, force_43, 0);
 
                 h = GetDlgItem(hdlg, IDC_COMBOFDA);
                 SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"3.5\" 720 kB DD");
@@ -190,17 +180,18 @@ static BOOL CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPAR
                 SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"3.5\" 1.44 MB HD");
                 SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"3.5\" 1.25/1.44 MB HD (3-Mode)");
                 SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"3.5\" 2.88 MB ED");
-                SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"Invalid (5)");
-                SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"Invalid (6)");
-                SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"None");
+                SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"3.5\" 2.45/2.88 MB ED (3-Mode)");
+                SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"3.5\" 5.76 MB 2MEG");
+                SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"3.5\" 4.85/5.76 MB 2MEG (3-Mode)");
                 SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"5.25\" 360 kB DD");
                 SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"5.25\" 720 kB QD");
                 SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"5.25\" 1.2 MB HD 360 rpm");
                 SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"5.25\" 1.2 MB HD 300/360 rpm");
                 SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"5.25\" 2.4 MB ED 360 rpm");
                 SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"5.25\" 2.4 MB ED 300/360 rpm");
-                SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"Invalid (14)");
-                SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"Invalid (15)");
+                SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"5.25\" 4.8 MB ED 360 rpm");
+                SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"5.25\" 4.8 MB ED 300/360 rpm");
+                SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"Disabled");
                 SendMessage(h, CB_SETCURSEL, int_from_config(0), 0);
 
                 h = GetDlgItem(hdlg, IDC_COMBOFDB);
@@ -209,17 +200,18 @@ static BOOL CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPAR
                 SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"3.5\" 1.44 MB HD");
                 SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"3.5\" 1.25/1.44 MB HD (3-Mode)");
                 SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"3.5\" 2.88 MB ED");
-                SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"Invalid (5)");
-                SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"Invalid (6)");
-                SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"None");
+                SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"3.5\" 2.45/2.88 MB ED (3-Mode)");
+                SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"3.5\" 5.76 MB 2MEG");
+                SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"3.5\" 4.85/5.76 MB 2MEG (3-Mode)");
                 SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"5.25\" 360 kB DD");
                 SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"5.25\" 720 kB QD");
                 SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"5.25\" 1.2 MB HD 360 rpm");
                 SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"5.25\" 1.2 MB HD 300/360 rpm");
                 SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"5.25\" 2.4 MB ED 360 rpm");
                 SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"5.25\" 2.4 MB ED 300/360 rpm");
-                SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"Invalid (14)");
-                SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"Invalid (15)");
+                SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"5.25\" 4.8 MB ED 360 rpm");
+                SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"5.25\" 4.8 MB ED 300/360 rpm");
+                SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"Disabled");
                 SendMessage(h, CB_SETCURSEL, int_from_config(1), 0);
 
                 h = GetDlgItem(hdlg, IDC_COMBOCHC);
@@ -304,11 +296,11 @@ static BOOL CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPAR
                         h = GetDlgItem(hdlg, IDC_CHECKSSI);
                         temp_SSI2001 = SendMessage(h, BM_GETCHECK, 0, 0);
 
-                        h = GetDlgItem(hdlg, IDC_CHECKVEC);
-                        vectorworkaround = SendMessage(h, BM_GETCHECK, 0, 0);
+                        h = GetDlgItem(hdlg, IDC_CHECKVOODOO);
+                        temp_voodoo = SendMessage(h, BM_GETCHECK, 0, 0);
 
-                        h = GetDlgItem(hdlg, IDC_CHECKKANJI);
-                        temp_kanjirom = SendMessage(h, BM_GETCHECK, 0, 0);
+                        h = GetDlgItem(hdlg, IDC_CHECKFORCE43);
+                        force_43 = SendMessage(h, BM_GETCHECK, 0, 0);
 
                         h = GetDlgItem(hdlg, IDC_COMBOSND);
                         temp_sound_card_current = settings_list_to_sound[SendMessage(h, CB_GETCURSEL, 0, 0)];
@@ -316,18 +308,15 @@ static BOOL CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPAR
                         h = GetDlgItem(hdlg, IDC_COMBONET);
                         temp_network_card_current = settings_list_to_network[SendMessage(h, CB_GETCURSEL, 0, 0)];
 
-                        h = GetDlgItem(hdlg, IDC_COMBOFDC);
-                        temp_fdcmodel_current = SendMessage(h, CB_GETCURSEL, 0, 0);
-
                         h = GetDlgItem(hdlg, IDC_COMBOFDA);
                         temp_fdtype_a_current = SendMessage(h, CB_GETCURSEL, 0, 0);
 
                         h = GetDlgItem(hdlg, IDC_COMBOFDB);
                         temp_fdtype_b_current = SendMessage(h, CB_GETCURSEL, 0, 0);
 
-                        if (temp_model != model || gfx != gfxcard || mem != mem_size || fpu != hasfpu || temp_GAMEBLASTER != GAMEBLASTER || temp_GUS != GUS || temp_SSI2001 != SSI2001 || temp_sound_card_current != sound_card_current || temp_network_card_current != network_card_current || temp_fdcmodel_current != fdc_model() || temp_fdtype_a_current != int_from_config(0) || temp_fdtype_b_current != int_from_config(1) || temp_kanjirom != kanjirom)
+                        if (temp_model != model || gfx != gfxcard || mem != mem_size || fpu != hasfpu || temp_GAMEBLASTER != GAMEBLASTER || temp_GUS != GUS || temp_SSI2001 != SSI2001 || temp_sound_card_current != sound_card_current || temp_network_card_current != network_card_current || temp_fdtype_a_current != int_from_config(0) || temp_fdtype_b_current != int_from_config(1) || temp_voodoo != voodoo_enabled)
                         {
-                                if (MessageBox(NULL,"This will reset PCem!\nOkay to continue?","PCem",MB_OKCANCEL)==IDOK)
+                                if (MessageBox(NULL,"This will reset PCem-X!\nAre you sure you want to continue?","PCem",MB_OKCANCEL)==IDOK)
                                 {
                                         model = temp_model;
                                         romset = model_getromset();
@@ -339,22 +328,12 @@ static BOOL CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPAR
                                         GUS = temp_GUS;
                                         SSI2001 = temp_SSI2001;
                                         sound_card_current = temp_sound_card_current;
+					voodoo_enabled = temp_voodoo;
                                         network_card_current = temp_network_card_current;
-
-					if (model_getromset() == ROM_IBMPCJR)
-					{
-						fdc_change_pcjr(temp_fdcmodel_current);
-					}
-					else
-					{
-						fdc_change(temp_fdcmodel_current);
-					}
 
 					configure_from_int(0, temp_fdtype_a_current);
 					configure_from_int(1, temp_fdtype_b_current);
 
-					kanjirom = temp_kanjirom;
-                                        
                                         mem_resize();
                                         loadbios();
                                         resetpchard();
@@ -384,6 +363,8 @@ static BOOL CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPAR
                         saveconfig();
 
                         speedchanged();
+
+			uws_natural();
 
                         case IDCANCEL:
                         EndDialog(hdlg, 0);
@@ -505,11 +486,6 @@ static BOOL CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPAR
                                 EnableWindow(h, FALSE);
                         break;                                
 
-                        case IDC_COMBOFDC:
-                        h = GetDlgItem(hdlg, IDC_COMBOFDC);
-                        temp_fdcmodel_current = SendMessage(h, CB_GETCURSEL, 0, 0);
-                        break;                                
-
                         case IDC_COMBOFDA:
                         h = GetDlgItem(hdlg, IDC_COMBOFDA);
                         temp_fdtype_a_current = SendMessage(h, CB_GETCURSEL, 0, 0);
@@ -537,6 +513,9 @@ static BOOL CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPAR
                         else
                                 EnableWindow(h, FALSE);
                         break;
+
+			case IDC_CONFIGUREVOODOO:
+			deviceconfig_open(hdlg, (void *)&voodoo_device);
                 }
                 break;
         }

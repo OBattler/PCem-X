@@ -36,6 +36,8 @@ uint16_t readmemwl(uint32_t seg, uint32_t addr);
 void writememwl(uint32_t seg, uint32_t addr, uint16_t val);
 uint32_t readmemll(uint32_t seg, uint32_t addr);
 void writememll(uint32_t seg, uint32_t addr, uint32_t val);
+uint64_t readmemql(uint32_t seg, uint32_t addr);
+void writememql(uint32_t seg, uint32_t addr, uint64_t val);
 
 uint8_t *getpccache(uint32_t a);
 
@@ -155,6 +157,7 @@ union
 #define msw CR0.w
 
 uint32_t cr2, cr3, cr4;
+uint32_t dr[8];
 
 #define C_FLAG  0x0001
 #define P_FLAG  0x0004
@@ -266,12 +269,15 @@ int driveempty[2];
 
 
 /*Config stuff*/
+#define GMDA (gfxcard==GFX_MDA || gfxcard==GFX_HERCULES)
 #define MDA ((gfxcard==GFX_MDA || gfxcard==GFX_HERCULES) && (romset<ROM_TANDY || romset>=ROM_IBMAT))
+#define GHERC (gfxcard==GFX_HERCULES)
 #define HERCULES (gfxcard==GFX_HERCULES && (romset<ROM_TANDY || romset>=ROM_IBMAT))
 #define AMSTRAD (romset==ROM_PC1512 || romset==ROM_PC1640 || romset==ROM_PC3086)
 #define AMSTRADIO (romset==ROM_PC1512 || romset==ROM_PC1640 || romset==ROM_PC200 || romset==ROM_PC2086 || romset == ROM_PC3086)
 #define TANDY (romset==ROM_TANDY/* || romset==ROM_IBMPCJR*/)
-#define VID_EGA (gfxcard==GFX_EGA)
+#define VID_EGA ((gfxcard==GFX_EGA) || (gfxcard==GFX_JEGA))
+#define VID_JEGA (gfxcard==GFX_JEGA)
 #define EGA (romset==ROM_PC1640 || VID_EGA || VGA)
 #define VGA ((gfxcard>=GFX_TVGA || romset==ROM_ACER386) && romset!=ROM_PC1640 && romset!=ROM_PC1512 && romset!=ROM_TANDY && romset!=ROM_PC200)
 #define SVGA (gfxcard==GFX_ET4000 && VGA)
@@ -285,7 +291,7 @@ int driveempty[2];
 
 #define AMIBIOS (romset==ROM_AMI386 || romset==ROM_AMI486 || romset == ROM_WIN486)
 
-int GAMEBLASTER, GUS, SSI2001;
+int GAMEBLASTER, GUS, SSI2001, voodoo_enabled;
 
 enum
 {
@@ -311,13 +317,16 @@ enum
         ROM_ACER386,
         ROM_MEGAPC,
         ROM_AMI386,
+	ROM_HP200LX,
         ROM_AMI486,
         ROM_WIN486,
         ROM_PCI486,
+	ROM_SIS471,
         ROM_SIS496,
         ROM_430VX,
         ROM_ENDEAVOR,
         ROM_REVENGE,
+        ROM_430FX,
         
         ROM_MAX
 };
@@ -354,6 +363,12 @@ enum
         GFX_PHOENIX_TRIO32, /*S3 732/Trio32 (Phoenix)*/
         GFX_PHOENIX_TRIO64, /*S3 764/Trio64 (Phoenix)*/
 	GFX_PHOENIX_VISION964, /*S3 964/Vision964 (Phoenix/miro cyrstal)*/
+	GFX_JEGA,	/*JEGA*/
+	GFX_PARADISE,
+	GFX_CL_GD5436,
+	GFX_CL_GD5446,
+	GFX_SUPEREGA,
+	GFX_RIVA128,
         
         GFX_MAX
 };
@@ -447,7 +462,7 @@ typedef struct
         int tracks;
 } PcemHDC;
 
-PcemHDC hdc[2];
+PcemHDC hdc[4];
 
 /*Keyboard*/
 int keybsenddelay;
@@ -488,3 +503,30 @@ void onesec();
 
 void resetpc_cad();
 
+extern int machine_class;
+
+// IBM PC and compatibles
+#define MC_PCAT		0
+// IBM PCjr
+#define MC_PCJR		1
+// AX (Architecture eXtended)
+#define MC_AX		2
+// IBM PS/2
+#define MC_PS2		3
+// IBM PS/2 Model 30
+#define MC_PS2M30	4
+// IBM PS/55
+#define MC_PS55		5
+// Amstrad pre-MegaPC/PC70x86 machines
+#define MC_AMSTRAD	6
+// NEC PC-98x1 and APC III (emulate in separate fork of the emulator please)
+#define MC_NEC		7
+// Fujitsu FM-Towns and Marty (emulate in separate fork of the emulator please)
+#define MC_FUJITSU	8
+// RM Nimbus PC-186
+#define MC_NIMBUS	9
+// Invalid machine class
+#define MC_INVALID	-1
+
+extern int supports_slave;
+extern int has_pc87306;

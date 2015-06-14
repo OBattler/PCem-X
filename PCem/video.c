@@ -16,11 +16,15 @@
 #include "vid_ati_mach64.h"
 #include "vid_cga.h"
 #include "vid_cl5429.h"
+#include "vid_cl_ramdac.h"
+#include "vid_cl5446.h"
 #include "vid_ega.h"
 #include "vid_et4000.h"
 #include "vid_et4000w32.h"
 #include "vid_hercules.h"
+#include "vid_jega.h"
 #include "vid_mda.h"
+#include "vid_nv_riva128.h"
 #include "vid_olivetti_m24.h"
 #include "vid_oti067.h"
 #include "vid_paradise.h"
@@ -49,18 +53,24 @@ static VIDEO_CARD video_cards[] =
         {"ATI VGA Edge-16 (ATI-18800)",            &ati18800_device,            GFX_VGAEDGE16},
         {"CGA",                                    &cga_device,                 GFX_CGA},
         {"Cirrus Logic CL-GD5429",                 &gd5429_device,              GFX_CL_GD5429},
+        {"Cirrus Logic CL-GD5436",                 &gd5436_device,              GFX_CL_GD5436},
+        {"Cirrus Logic CL-GD5446",                 &gd5446_device,              GFX_CL_GD5446},
         {"Diamond Stealth 32 (Tseng ET4000/w32p)", &et4000w32p_device,          GFX_ET4000W32},
         {"Diamond Stealth 3D 2000 (S3 ViRGE)",     &s3_virge_device,            GFX_VIRGE},
         {"EGA",                                    &ega_device,                 GFX_EGA},
         {"Hercules",                               &hercules_device,            GFX_HERCULES},
+        {"JEGA",                                   &jega_device,                GFX_JEGA},
         {"MDA",                                    &mda_device,                 GFX_MDA},
         {"Number Nine 9FX (S3 Trio64)",            &s3_9fx_device,              GFX_N9_9FX},
+        {"nVidia RIVA 128",                        &riva128_device,             GFX_RIVA128},
         {"OAK OTI-067",                            &oti067_device,              GFX_OTI067},
         {"Paradise Bahamas 64 (S3 Vision864)",     &s3_bahamas64_device,        GFX_BAHAMAS64},
+	{"Paradise WD90C11",			   &paradise_wd90c11_megapc_device,GFX_PARADISE},
         {"Phoenix S3 Trio32",                      &s3_phoenix_trio32_device,   GFX_PHOENIX_TRIO32},
         {"Phoenix S3 Trio64",                      &s3_phoenix_trio64_device,   GFX_PHOENIX_TRIO64},
         {"Phoenix S3 Vision964",                   &s3_phoenix_vision964_device,GFX_PHOENIX_VISION964},
         {"S3 ViRGE/DX",                            &s3_virge_375_device,        GFX_VIRGEDX},
+        {"SuperEGA",                               &sega_device,                GFX_SUPEREGA},
         {"Trident TVGA8900D",                      &tvga8900d_device,           GFX_TVGA},
         {"Tseng ET4000AX",                         &et4000_device,              GFX_ET4000},
         {"Trident TGUI9440",                       &tgui9440_device,            GFX_TGUI9440},
@@ -274,11 +284,16 @@ PALETTE cgapal;
 
 void loadfont(char *s, int format)
 {
-        FILE *f=romfopen(s,"rb");
+        // FILE *f=romfopen(s,"rb");
+        FILE *f=fopen(s,"rb");
         int c,d;
         if (!f)
+	{
+	   fclose(f);
            return;
+	}
 
+	fseek(f, 0, SEEK_SET);
         if (!format)
         {
                 for (c=0;c<256;c++)

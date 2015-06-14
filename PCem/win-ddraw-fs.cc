@@ -235,6 +235,7 @@ static void ddraw_fs_blit_memtoscreen(int x, int y, int y1, int y2, int w, int h
                 lpdds_back2->Blt(&r_dest, lpdds_back, &r_src, DDBLT_WAIT, NULL);
         }
         
+#ifdef DO_FLASH
         if (readflash)
         {
                 RECT r;
@@ -245,6 +246,7 @@ static void ddraw_fs_blit_memtoscreen(int x, int y, int y1, int y2, int w, int h
                 ddbltfx.dwFillColor = 0xffffff;
                 lpdds_back2->Blt(&r, NULL, NULL, DDBLT_WAIT | DDBLT_COLORFILL, &ddbltfx);
         }
+#endif
         
         hr = lpdds_pri->Flip(NULL, DDFLIP_NOVSYNC);        
         if (hr == DDERR_SURFACELOST)
@@ -309,6 +311,7 @@ static void ddraw_fs_blit_memtoscreen_8(int x, int y, int w, int h)
                 lpdds_back2->Blt(&r_dest, lpdds_back, &r_src, DDBLT_WAIT, NULL);
         }
         
+#ifdef DO_FLASH
         if (readflash)
         {
                 RECT r;
@@ -319,6 +322,7 @@ static void ddraw_fs_blit_memtoscreen_8(int x, int y, int w, int h)
                 ddbltfx.dwFillColor = 0xffffff;
                 lpdds_back2->Blt(&r, NULL, NULL, DDBLT_WAIT | DDBLT_COLORFILL, &ddbltfx);
         }
+#endif
         
         lpdds_pri->Flip(NULL, DDFLIP_NOVSYNC);        
 }

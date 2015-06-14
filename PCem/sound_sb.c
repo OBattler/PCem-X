@@ -349,6 +349,7 @@ void *sb_pro_v2_init()
         io_sethandler(0x0388, 0x0002, opl3_read,   NULL, NULL, opl3_write,   NULL, NULL, &sb->opl);
         io_sethandler(addr+4, 0x0002, sb_pro_mixer_read, NULL, NULL, sb_pro_mixer_write, NULL, NULL, sb);
         sound_add_handler(sb_opl3_poll, sb_get_buffer, sb);
+        mpu401_uart_init(&sb->mpu, 0x330);
 
         sb->mixer.regs[0x22] = 0xff;
         sb->mixer.regs[0x04] = 0xff;

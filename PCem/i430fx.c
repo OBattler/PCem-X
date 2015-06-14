@@ -125,19 +125,30 @@ void i430fx_init()
         card_i430fx[0x02] = 0x22; card_i430fx[0x03] = 0x01; /*SB82437FX-66*/
         card_i430fx[0x04] = 0x06; card_i430fx[0x05] = 0x00;
         card_i430fx[0x06] = 0x00; card_i430fx[0x07] = 0x82;
+	if (romset == ROM_430FX)  card_i430fx[0x07] = 0x02;
         card_i430fx[0x08] = 0x00; /*A0 stepping*/
         card_i430fx[0x09] = 0x00; card_i430fx[0x0a] = 0x00; card_i430fx[0x0b] = 0x06;
         card_i430fx[0x52] = 0x40; /*256kb PLB cache*/
-//        card_i430fx[0x53] = 0x14;
-//        card_i430fx[0x56] = 0x52; /*DRAM control*/
+	if (romset == ROM_430FX)
+	{
+		card_i430fx[0x52] = 0x42;
+	        card_i430fx[0x53] = 0x14;
+	        card_i430fx[0x56] = 0x52; /*DRAM control*/
+	}
         card_i430fx[0x57] = 0x01;
         card_i430fx[0x60] = card_i430fx[0x61] = card_i430fx[0x62] = card_i430fx[0x63] = card_i430fx[0x64] = 0x02;
-//        card_i430fx[0x67] = 0x11;
-//        card_i430fx[0x69] = 0x03;
-//        card_i430fx[0x70] = 0x20;
+	if (romset == ROM_430FX)
+	{
+	        card_i430fx[0x67] = 0x11;
+	        card_i430fx[0x69] = 0x03;
+	        card_i430fx[0x70] = 0x20;
+	}
         card_i430fx[0x72] = 0x02;
-//        card_i430fx[0x74] = 0x0e;
-//        card_i430fx[0x78] = 0x23;
+	if (romset == ROM_430FX)
+	{
+	        card_i430fx[0x74] = 0x0e;
+	        card_i430fx[0x78] = 0x23;
+	}
 
-        io_sethandler(0x0cf9, 0x0001, NULL, NULL, NULL, i430fx_trc_write, NULL, NULL, NULL);
+	if (romset != ROM_430FX)  io_sethandler(0x0cf9, 0x0001, NULL, NULL, NULL, i430fx_trc_write, NULL, NULL, NULL);
 }

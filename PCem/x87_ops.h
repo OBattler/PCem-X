@@ -23,7 +23,7 @@
                                 pclog("FPU : divide by zero\n"); \
                                 picint(1 << 13);                \
                         }                                       \
-                        return;                                 \
+                        return 1;                               \
                 }                                               \
                 else                                            \
                         dst = src1 / (double)src2;              \
@@ -32,13 +32,13 @@
 static inline void x87_set_mmx()
 {
         TOP = 0;
-        tag = 0;
+        *(uint64_t *)tag = 0;
         ismmx = 1;
 }
 
 static inline void x87_emms()
 {
-        tag = 0xffff;
+        *tag = 0x0303030303030303ll;
         ismmx = 0;
 }
 
@@ -50,14 +50,13 @@ static inline void x87_push(double i)
 {
         TOP=(TOP-1)&7;
         ST[TOP]=i;
-        tag&=~(3<<((TOP&7)<<1));
-        if (i==0.0) tag|=(1<<((TOP&7)<<1));
+        tag[TOP&7] = (i == 0.0) ? 1 : 0;
 }
 
 static inline double x87_pop()
 {
         double t=ST[TOP];
-        tag|=(3<<((TOP&7)<<1));
+        tag[TOP&7] = 3;
         TOP=(TOP+1)&7;
         return t;
 }
@@ -150,6 +149,39 @@ static inline void x87_st80(double d)
 	writememw(easeg,eaaddr+8,test.begin);
 }
 
+static inline void x87_st_fsave(int reg)
+{
+        reg = (TOP + reg) & 7;
+        
+        if (tag[reg] & TAG_UINT64)
+        {
+        	writememl(easeg, eaaddr, ST_i64[reg] & 0xffffffff);
+        	writememl(easeg, eaaddr + 4, ST_i64[reg] >> 32);
+        	writememw(easeg, eaaddr + 8, 0x5555);
+        }
+        else
+                x87_st80(ST[reg]);
+}
+
+static inline void x87_ld_frstor(int reg)
+{
+        uint16_t temp;
+        
+        reg = (TOP + reg) & 7;
+        
+        temp = readmemw(easeg, eaaddr + 8);
+
+        if (temp == 0x5555 && tag[reg] == 2)
+        {
+                tag[reg] = TAG_UINT64;
+                ST_i64[reg] = readmeml(easeg, eaaddr);
+                ST_i64[reg] |= ((uint64_t)readmeml(easeg, eaaddr + 4) << 32);
+                ST[reg] = (double)ST_i64[reg];
+        }
+        else
+                ST[reg] = x87_ld80();
+}
+
 static inline void x87_ldmmx(MMX_REG *r)
 {
         r->l[0] = readmeml(easeg, eaaddr);
@@ -162,6 +194,74 @@ static inline void x87_stmmx(MMX_REG r)
         writememl(easeg, eaaddr,     r.l[0]);
         writememl(easeg, eaaddr + 4, r.l[1]);
         writememw(easeg, eaaddr + 8, 0xffff);
+}
+
+static inline uint16_t x87_compare(double a, double b)
+{
+#if defined i386 || defined __i386 || defined __i386__ || defined _X86_ || defined WIN32 || defined _WIN32 || defined _WIN32
+        uint32_t out;
+        
+        /* Memory barrier, to force GCC to write to the input parameters
+         * before the compare rather than after */
+        asm volatile ("" : : : "memory");
+        
+        asm(
+                "fldl %2\n"
+                "fldl %1\n"
+                "fclex\n"
+                "fcompp\n"                
+                "fnstsw %0\n"
+                : "=m" (out)
+                : "m" (a), "m" (b)
+        );
+
+        return out & (C0|C2|C3);
+#else
+        /* Generic C version is known to give incorrect results in some
+         * situations, eg comparison of infinity (Unreal) */
+        uint32_t out = 0;
+        
+        if (a == b)
+                out |= C3;
+        else if (a < b)
+                out |= C0;
+                
+        return out;
+#endif
+}
+
+static inline uint16_t x87_ucompare(double a, double b)
+{
+#if defined i386 || defined __i386 || defined __i386__ || defined _X86_ || defined WIN32 || defined _WIN32 || defined _WIN32
+        uint32_t out;
+        
+        /* Memory barrier, to force GCC to write to the input parameters
+         * before the compare rather than after */
+        asm volatile ("" : : : "memory");
+        
+        asm(
+                "fldl %2\n"
+                "fldl %1\n"
+                "fclex\n"
+                "fucompp\n"                
+                "fnstsw %0\n"
+                : "=m" (out)
+                : "m" (a), "m" (b)
+        );
+
+        return out & (C0|C2|C3);
+#else
+        /* Generic C version is known to give incorrect results in some
+         * situations, eg comparison of infinity (Unreal) */
+        uint32_t out = 0;
+        
+        if (a == b)
+                out |= C3;
+        else if (a < b)
+                out |= C0;
+                
+        return out;
+#endif
 }
 
 typedef union
@@ -263,7 +363,7 @@ OpFn OP_TABLE(fpu_d9_a16)[256] =
         opFCHS,  opFABS,   ILLEGAL,  ILLEGAL,   opFTST,    opFXAM,   ILLEGAL,   ILLEGAL,
         opFLD1,  opFLDL2T, opFLDL2E, opFLDPI,   opFLDEG2,  opFLDLN2, opFLDZ,    ILLEGAL,
         opF2XM1, opFYL2X,  opFPTAN,  opFPATAN,  ILLEGAL,   ILLEGAL,  opFDECSTP, opFINCSTP,
-        opFPREM, ILLEGAL,  opFSQRT,  opFSINCOS, opFRNDINT, opFSCALE, opFSIN,    opFCOS
+        opFPREM, opFYL2XP1,opFSQRT,  opFSINCOS, opFRNDINT, opFSCALE, opFSIN,    opFCOS
 };
 
 OpFn OP_TABLE(fpu_d9_a32)[256] =
@@ -302,7 +402,7 @@ OpFn OP_TABLE(fpu_d9_a32)[256] =
         opFCHS,  opFABS,   ILLEGAL,  ILLEGAL,   opFTST,    opFXAM,   ILLEGAL,   ILLEGAL,
         opFLD1,  opFLDL2T, opFLDL2E, opFLDPI,   opFLDEG2,  opFLDLN2, opFLDZ,    ILLEGAL,
         opF2XM1, opFYL2X,  opFPTAN,  opFPATAN,  ILLEGAL,   ILLEGAL,  opFDECSTP, opFINCSTP,
-        opFPREM, ILLEGAL,  opFSQRT,  opFSINCOS, opFRNDINT, opFSCALE, opFSIN,    opFCOS
+        opFPREM, opFYL2XP1,opFSQRT,  opFSINCOS, opFRNDINT, opFSCALE, opFSIN,    opFCOS
 };
 
 OpFn OP_TABLE(fpu_da_a16)[256] =
@@ -599,7 +699,7 @@ OpFn OP_TABLE(fpu_de_a32)[256] =
         opFSUBiw_a32,  opFSUBiw_a32,  opFSUBiw_a32,  opFSUBiw_a32,  opFSUBiw_a32,  opFSUBiw_a32,  opFSUBiw_a32,  opFSUBiw_a32,
         opFSUBRiw_a32, opFSUBRiw_a32, opFSUBRiw_a32, opFSUBRiw_a32, opFSUBRiw_a32, opFSUBRiw_a32, opFSUBRiw_a32, opFSUBRiw_a32,
         opFDIViw_a32,  opFDIViw_a32,  opFDIViw_a32,  opFDIViw_a32,  opFDIViw_a32,  opFDIViw_a32,  opFDIViw_a32,  opFDIViw_a32,
-        opFDIVRd_a32,  opFDIVRd_a32,  opFDIVRd_a32,  opFDIVRd_a32,  opFDIVRd_a32,  opFDIVRd_a32,  opFDIVRd_a32,  opFDIVRd_a32,
+        opFDIVRiw_a32, opFDIVRiw_a32, opFDIVRiw_a32, opFDIVRiw_a32, opFDIVRiw_a32, opFDIVRiw_a32, opFDIVRiw_a32, opFDIVRiw_a32,
 
         opFADDiw_a32,  opFADDiw_a32,  opFADDiw_a32,  opFADDiw_a32,  opFADDiw_a32,  opFADDiw_a32,  opFADDiw_a32,  opFADDiw_a32,
         opFMULiw_a32,  opFMULiw_a32,  opFMULiw_a32,  opFMULiw_a32,  opFMULiw_a32,  opFMULiw_a32,  opFMULiw_a32,  opFMULiw_a32,
@@ -608,7 +708,7 @@ OpFn OP_TABLE(fpu_de_a32)[256] =
         opFSUBiw_a32,  opFSUBiw_a32,  opFSUBiw_a32,  opFSUBiw_a32,  opFSUBiw_a32,  opFSUBiw_a32,  opFSUBiw_a32,  opFSUBiw_a32,
         opFSUBRiw_a32, opFSUBRiw_a32, opFSUBRiw_a32, opFSUBRiw_a32, opFSUBRiw_a32, opFSUBRiw_a32, opFSUBRiw_a32, opFSUBRiw_a32,
         opFDIViw_a32,  opFDIViw_a32,  opFDIViw_a32,  opFDIViw_a32,  opFDIViw_a32,  opFDIViw_a32,  opFDIViw_a32,  opFDIViw_a32,
-        opFDIVRd_a32,  opFDIVRd_a32,  opFDIVRd_a32,  opFDIVRd_a32,  opFDIVRd_a32,  opFDIVRd_a32,  opFDIVRd_a32,  opFDIVRd_a32,
+        opFDIVRiw_a32, opFDIVRiw_a32, opFDIVRiw_a32, opFDIVRiw_a32, opFDIVRiw_a32, opFDIVRiw_a32, opFDIVRiw_a32, opFDIVRiw_a32,
 
         opFADDiw_a32,  opFADDiw_a32,  opFADDiw_a32,  opFADDiw_a32,  opFADDiw_a32,  opFADDiw_a32,  opFADDiw_a32,  opFADDiw_a32,
         opFMULiw_a32,  opFMULiw_a32,  opFMULiw_a32,  opFMULiw_a32,  opFMULiw_a32,  opFMULiw_a32,  opFMULiw_a32,  opFMULiw_a32,
@@ -617,7 +717,7 @@ OpFn OP_TABLE(fpu_de_a32)[256] =
         opFSUBiw_a32,  opFSUBiw_a32,  opFSUBiw_a32,  opFSUBiw_a32,  opFSUBiw_a32,  opFSUBiw_a32,  opFSUBiw_a32,  opFSUBiw_a32,
         opFSUBRiw_a32, opFSUBRiw_a32, opFSUBRiw_a32, opFSUBRiw_a32, opFSUBRiw_a32, opFSUBRiw_a32, opFSUBRiw_a32, opFSUBRiw_a32,
         opFDIViw_a32,  opFDIViw_a32,  opFDIViw_a32,  opFDIViw_a32,  opFDIViw_a32,  opFDIViw_a32,  opFDIViw_a32,  opFDIViw_a32,
-        opFDIVRd_a32,  opFDIVRd_a32,  opFDIVRd_a32,  opFDIVRd_a32,  opFDIVRd_a32,  opFDIVRd_a32,  opFDIVRd_a32,  opFDIVRd_a32,
+        opFDIVRiw_a32, opFDIVRiw_a32, opFDIVRiw_a32, opFDIVRiw_a32, opFDIVRiw_a32, opFDIVRiw_a32, opFDIVRiw_a32, opFDIVRiw_a32,
 
         opFADDP,       opFADDP,       opFADDP,       opFADDP,       opFADDP,       opFADDP,       opFADDP,       opFADDP,
         opFMULP,       opFMULP,       opFMULP,       opFMULP,       opFMULP,       opFMULP,       opFMULP,       opFMULP,

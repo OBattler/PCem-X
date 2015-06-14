@@ -66,6 +66,7 @@ extern CPU cpus_Cx486[];
 extern CPU cpus_WinChip[];
 #ifdef DYNAREC
 extern CPU cpus_Pentium5V[];
+extern CPU cpus_PentiumS5[];
 extern CPU cpus_Pentium[];
 #endif
 

@@ -18,7 +18,6 @@
 #include "mem.h"
 #include "video.h"
 #include "vid_svga.h"
-#include "vid_kanji_render.h"
 #include "resources.h"
 #include "cpu.h"
 #include "ide.h"
@@ -38,6 +37,7 @@
 #include "win-d3d.h"
 #include "win-d3d-fs.h"
 //#include "win-opengl.h"
+#include "win-display.h"
 
 #ifndef MAPVK_VK_TO_VSC
 #define MAPVK_VK_TO_VSC 0
@@ -70,6 +70,7 @@ static struct
 #define TIMER_1SEC 1
 
 int winsizex=640,winsizey=480;
+int efwinsizey=480;
 int gfx_present[GFX_MAX];
 int firststart = 1;
 #undef cs
@@ -110,8 +111,23 @@ void updatewindowsize(int x, int y)
         RECT r;
         if (vid_resize) return;
 
-        winsizex=x; winsizey=y;
+        winsizex=x; efwinsizey=y;
+
+	if (force_43)
+	{
+		winsizey = (int) (((double) x / 4.0) * 3.0);
+	}
+	else
+	{
+		winsizey = efwinsizey;
+	}
+
         win_doresize = 1;
+}
+
+void uws_natural()
+{
+	updatewindowsize(winsizex, efwinsizey);
 }
 
 void releasemouse()
@@ -140,6 +156,11 @@ void leave_fullscreen()
 }
 
 uint64_t main_time;
+
+void SleepExA(int time)
+{
+	Sleep(time);
+}
 
 void mainthread(LPVOID param)
 {
@@ -277,7 +298,7 @@ static void initmenu(void)
         HMENU m;
         char s[32];
         m=GetSubMenu(menu,2); /*Settings*/
-        m=GetSubMenu(m,1); /*CD-ROM*/
+        m=GetSubMenu(m,4); /*CD-ROM*/
 
         /* Loop through each Windows drive letter and test to see if
            it's a CDROM */
@@ -788,10 +809,12 @@ LRESULT CALLBACK WindowProcedure (HWND hwnd, UINT message, WPARAM wParam, LPARAM
                         pause=0;
                         break;
                         case IDM_FILE_EXIT:
+			fflush(pclogf);
+			free(rtlog);
                         PostQuitMessage (0);       /* send a WM_QUIT to the message queue */
                         break;
                         case IDM_DISC_A:
-                        if (!getfile(hwnd,"Disc image (*.IMG;*.IMA)\0*.IMG;*.IMA\0All files (*.*)\0*.*\0",discfns[0]))
+                        if (!getfile(hwnd,"Disk image (*.IMG;*.IMA;*.FDI;*.PEF;*.FLP;*.XDF)\0*.IMG;*.IMA;*.FDI;*.PEF;*.FLP;*.XDF\0All files (*.*)\0*.*\0",discfns[0]))
                         {
                                 savedisc(0);
                                 loaddisc(0,openfilestring);
@@ -799,7 +822,7 @@ LRESULT CALLBACK WindowProcedure (HWND hwnd, UINT message, WPARAM wParam, LPARAM
                         }
                         break;
                         case IDM_DISC_B:
-                        if (!getfile(hwnd,"Disc image (*.IMG;*.IMA)\0*.IMG;*.IMA\0All files (*.*)\0*.*\0",discfns[1]))
+                        if (!getfile(hwnd,"Disc image (*.IMG;*.IMA;*.FDI;*.PEF;*.FLP;*.XDF)\0*.IMG;*.IMA;*.FDI;*.PEF;*.FLP;*.XDF\0All files (*.*)\0*.*\0",discfns[1]))
                         {
                                 savedisc(1);
                                 loaddisc(1,openfilestring);
@@ -821,6 +844,9 @@ LRESULT CALLBACK WindowProcedure (HWND hwnd, UINT message, WPARAM wParam, LPARAM
                         break;
                         case IDM_CONFIG:
                         config_open(hwnd);
+                        break;
+                        case IDM_DEBUG:
+                        debug_open(hwnd);
                         break;
                         case IDM_STATUS:
                         status_open(hwnd);
@@ -1125,6 +1151,8 @@ LRESULT CALLBACK WindowProcedure (HWND hwnd, UINT message, WPARAM wParam, LPARAM
                 case WM_DESTROY:
                 UnhookWindowsHookEx( hKeyboardHook );
                 KillTimer(hwnd, TIMER_1SEC);
+		fflush(pclogf);
+		free(rtlog);
                 PostQuitMessage (0);       /* send a WM_QUIT to the message queue */
                 break;
 
