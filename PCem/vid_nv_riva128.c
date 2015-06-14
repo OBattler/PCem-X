@@ -40,6 +40,7 @@ typedef struct riva128_t
     int width;
     int height;
     int bpp;
+    uint32_t config_0;
   } pfb;
 
   struct
