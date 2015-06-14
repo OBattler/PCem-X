@@ -313,8 +313,6 @@ void fdc_reset()
         fdc.head[1] = 0;
         fdc.abort[0] = 0;
 	fdc.abort[1] = 0;
-	fdc.pos[0] = 0;
-	fdc.pos[1] = 0;
 	fdd[0].rws = 0;
 	fdd[1].rws = 0;
         if (!AT)
@@ -350,19 +348,6 @@ int fdc_fail(int dint)
 	discint=dint;
 	if (dint==0xFE)  return 2;
 	disctime = 1024 * (1 << TIMER_SHIFT);
-	return 1;
-}
-
-int fdc_cfail()
-{
-	if (vfdd[fdc.drive].BIGFLOPPY)
-	{
-		fdc_fail(0xFE);
-	}
-	else
-	{
-		fdc_fail(0xFF);
-	}
 	return 1;
 }
 
@@ -703,108 +688,6 @@ int fifo_buf_read()
 	return temp;
 }
 
-uint8_t fdc_queue[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-
-void set_queue(uint64_t val, uint8_t len)
-{
-	fdc_queue[0] = len;
-	*(uint64_t *) (&(fdc_queue[1])) = val;
-}
-
-uint8_t read_next_byte()
-{
-	uint8_t temp = 0;
-	if (fdc_queue[0] > 0)
-	{
-		temp = fdc_queue[2 + fdc_queue[1]];
-		fdc_queue[0]--;
-		fdc_queue[1]++;
-	}
-	else
-	{
-		temp = 0;
-	}
-	return temp;
-}
-
-uint8_t debug_reg = 0;
-
-// PCem-X-specific FDC debugging port
-void fdc_debug_write(uint16_t addr, uint8_t val, void *priv)
-{
-	uint64_t b = 0;
-
-	int is_cr = (addr == 0x3e0) ? 1 : 0;
-
-	int rpm[2] = {0, 0};
-	int r[2] = {0, 0};
-	/* In the future, these will be replaced with proper indicators. */
-	int mfm[2] = {1, 1};
-	int dsi[2] = {0, 0};
-	int cls[2] = {0, 0};
-
-	printf("OUT 0x%04X, %02X\n", addr, val);
-
-	rpm[0] = (mode3_enabled()) ? 1 : 0;
-	rpm[1] = (mode3_enabled()) ? 1 : 0;
-
-	r[0] = fdd[0].discchanged || (((fdd[0].driveempty) ? 0 : 1) << 1);
-	r[1] = fdd[1].discchanged || (((fdd[1].driveempty) ? 0 : 1) << 1);
-
-	dsi[0] = (fdd[0].SIDES == 2) ? 1 : 0;
-	dsi[1] = (fdd[1].SIDES == 2) ? 1 : 0;
-
-	cls[0] = (fdd[0].CLASS != -1) ? fdd[0].CLASS : 10;
-	cls[1] = (fdd[1].CLASS != -1) ? fdd[1].CLASS : 10;
-
-	if (is_cr)
-	{
-		debug_reg = val;
-		switch(val)
-		{
-			case 0:
-				// Flush queue
-				set_queue(0, 0);
-				break;
-			case 1:
-			case 2:
-				// Drive: Bits 0-3 are class, 4-5 are FDC rate, 6-7 are DRT
-				// Bits 8-11 are sector size code, 12 is RPM, 13 is FM/MFM, 14 is sides, 15 is write protect
-				// Byte 2 is tracks, byte 3 is sectors per track, byte 4 is media type ID
-				b = ((uint64_t) fdd[val - 1].CLASS) & 0xF;
-				b |= ((uint64_t) fdc.rate) << 4;
-				b |= 0 << 6;
-				b |= ((uint64_t) fdd[val - 1].BPSCODE) << 8;
-				b |= ((uint64_t) rpm[val - 1]) << 12;
-				b |= ((uint64_t) mfm[val - 1]) << 13;
-				b |= ((uint64_t) dsi[val - 1]) << 14;
-				b |= ((uint64_t) fdd[val - 1].WP) << 15;
-				b |= ((uint64_t) fdd[val - 1].TRACKS) << 16;
-				b |= ((uint64_t) fdd[val - 1].SECTORS) << 24;
-				b |= ((uint64_t) fdd[val - 1].MID) << 32;
-				set_queue(b, 5);
-				printf("Queued: %02X %02X %02X %02X %02X\n", fdc_queue[2], fdc_queue[3], fdc_queue[4], fdc_queue[5], fdc_queue[6]);
-				break;
-			// 3 and 4 are reserved for possible future floppy drives 3 and 4
-			case 5:
-				// Byte 0: ready0, ready1, ready2, ready3
-				// Byte 1: density0, density1, density2, density3
-				// Byte 2: dt0, dt1, dt2, dt3
-				// Byte 3: bigfloppy0, threemode0, bigfloppy1, threemode1, bigfloppy2, threemode2, bigfloppy3, threemode3
-				set_queue(r[0] | (r[1] << 2) | (fdd[0].DENSITY << 8) | (fdd[1].DENSITY << 10) | (fdd[0].BIGFLOPPY << 24) | (fdd[0].THREEMODE << 25) | (fdd[1].BIGFLOPPY << 26) | (fdd[1].THREEMODE << 27), 4);
-				printf("Queued: %02X %02X %02X %02X\n", fdc_queue[2], fdc_queue[3], fdc_queue[4], fdc_queue[5]);
-				break;
-			// Installation check
-			case 0x4e:
-				set_queue(0x20, 1);
-				break;
-			default:
-				set_queue((uint64_t) 0xFF, 1);
-				break;
-		}
-	}
-}
-
 int paramstogo=0;
 void fdc_write(uint16_t addr, uint8_t val, void *priv)
 {
@@ -840,30 +723,19 @@ void fdc_write(uint16_t addr, uint8_t val, void *priv)
                 }
                 else
                 {
-			if ((machine_class == MC_PS2) || (machine_class == MC_PS55))
-			{
-				// TODO: PS/2 Mode DOR Write
-			}
-			else if (machine_class == MC_PS2M30)
-			{
-				// TODO: PS/2 Model 3 Mode DOR Write
-			}
-			else
-			{
-				//  If in RESET state, return
-				if (!(val&4) && !(fdc.dor&4))  return;
-                        	if ((val&4) && !(fdc.dor&4))
-                        	{
-        				timer_process();
-                                	disctime = 128 * (1 << TIMER_SHIFT);
-                                	timer_update_outstanding();
-                                	discint=-1;
-					// printf("Resetting the FDC\n");
-                                	fdc.stat=0x80;
-                                	fdc.pnum=fdc.ptot=0;
-                                	fdc_reset();
-                        	}
-			}
+			//  If in RESET state, return
+			if (!(val&4) && !(fdc.dor&4))  return;
+                       	if ((val&4) && !(fdc.dor&4))
+                       	{
+       				timer_process();
+                               	disctime = 128 * (1 << TIMER_SHIFT);
+                               	timer_update_outstanding();
+                               	discint=-1;
+				// printf("Resetting the FDC\n");
+                               	fdc.stat=0x80;
+                               	fdc.pnum=fdc.ptot=0;
+                               	fdc_reset();
+                       	}
                 }
                 fdc.dor=val;
 		// if(!(fdc.pcjr))  fdc.dor |= 0x30;
@@ -872,12 +744,12 @@ void fdc_write(uint16_t addr, uint8_t val, void *priv)
                 return;
 		case 3:
 		if (!(fdc.dor&4))  return;
-		if (!(fdc.dor&0x80) && fdc.pcjr)  return;		
+		if (!(fdc.dor&0x80) && fdc.pcjr)  return;
 		fdc.tdr=val&3;
 		return;
                 case 4:
 		if (!(fdc.dor&4))  return;
-		if (!(fdc.dor&0x80) && fdc.pcjr)  return;		
+		if (!(fdc.dor&0x80) && fdc.pcjr)  return;
                 if (val & 0x80)
                 {
 			if (!fdc.pcjr)  fdc.dor &= 0xFB;
@@ -898,11 +770,10 @@ void fdc_write(uint16_t addr, uint8_t val, void *priv)
 			discint=-1;
 			fdc_reset();
 		}
-               	fdc.rate=val&3;
                 return;
                 case 5: /*Command register*/
 		if (!(fdc.dor&4) && !fdc.pcjr)  return;		
-		if (!(fdc.dor&0x80) && fdc.pcjr)  return;		
+		if (!(fdc.dor&0x80) && fdc.pcjr)  return;
                 if ((fdc.stat & 0xf0) == 0xb0)
                 {
 			if (!fdc.fifo)
@@ -1100,11 +971,12 @@ void fdc_write(uint16_t addr, uint8_t val, void *priv)
 					// Check rate after the format stuff
                                         pclog("Rate %i %i %i at %i RPM (dp %i, df %i, ds %i)\n",fdc.rate,vfdd[fdc.drive].CLASS,vfdd[fdc.drive].driveempty,(mode3_enabled() ? 360 : 300), densel_polarity, densel_force, densel_pin());
 					if (discint < 0xFC)  fdc_checkrate();
+					if (discint == 0xFE)  pclog("Not ready\n");
 					if (discint >= 0xFF)  pclog("Wrong rate\n");
                                 }
                                 if (discint == 7 || discint == 0xf)
                                 {
-                                        fdc.stat = 1 << fdc.drive;
+                                        // fdc.stat = 1 << fdc.drive;
 //                                        disctime = 8000000;
                                 }
                                 if (discint == 0xf || discint == 10)
@@ -1129,32 +1001,10 @@ end_of_dwrite:
 //        printf("Write FDC %04X %02X\n",addr,val);
 }
 
-// PCem-X-specific FDC debugging port
-uint8_t fdc_debug_read(uint16_t addr, void *priv)
-{
-	printf("IN 0x%04X, ", addr);
-
-	int is_cr = (addr == 0x3e0) ? 1 : 0;
-	uint8_t b = 0;
-
-	if (is_cr)
-	{
-		printf("%02X\n", debug_reg);
-		return debug_reg;
-	}
-	else
-	{
-		b = read_next_byte();
-		printf("%02X\n", b);
-		return b;
-	}
-}
-
 uint8_t fdc_read(uint16_t addr, void *priv)
 {
         uint8_t temp;
 	uint8_t fdcd;
-	// printf("IN 0x%04X\n", addr);
 //        /*if (addr!=0x3f4) */printf("Read FDC %04X %04X:%04X %04X %i %02X %i ",addr,cs>>4,pc,BX,fdc.pos[fdc.drive],fdc.st0,ins);
         switch (addr&7)
         {
@@ -1163,27 +1013,18 @@ uint8_t fdc_read(uint16_t addr, void *priv)
 		case 1:	/*Data, and status register B*/
 		return 0x50;
 		case 2:
-		if ((machine_class == MC_PS2) || (machine_class == MC_PS55))
+		temp = fdc.dor;
+		if (!AT)  temp = 0xFF;
+		if (AT)
 		{
-			// TODO: PS/2 Mode DOR Read
-		}
-		else if (machine_class == MC_PS2M30)
-		{
-			// TODO: PS/2 Mode 30 Mode DOR Read
-		}
-		else
-		{
-			temp = fdc.dor;
-			if (!AT)  temp = 0xFF;
-			if (AT)
-			{
-				if (!vfdd[0].floppy_drive_enabled)  temp &= 0xEF;
-				if (!vfdd[1].floppy_drive_enabled)  temp &= 0xDF;
-				temp &= 0x3F;
-			}
+			if (!vfdd[0].floppy_drive_enabled)  temp &= 0xEF;
+			if (!vfdd[1].floppy_drive_enabled)  temp &= 0xDF;
+			temp &= 0x3F;
 		}
 		break;
                 case 3:
+		temp = 0x30;
+		break;
 		if (!AT)
 		{
 			temp = 0x20;
@@ -1196,18 +1037,14 @@ uint8_t fdc_read(uint16_t addr, void *priv)
 		}
                 break;
                 case 4: /*Status*/
-		if(!fdc.pcjr)  fdc.dor |= 4;
-		if(fdc.pcjr)  fdc.dor |= 0x80;
+		temp = fdc.stat;
+		break;
 		temp=fdc.stat;
-		if (!vfdd[0].floppy_drive_enabled)  temp &= 0xFE;
-		if (!vfdd[1].floppy_drive_enabled)  temp &= 0xFD;
-		temp &= 0xF3;
                 break;
                 case 5: /*Data*/
                 fdc.stat&=~0x80;
                 if ((fdc.stat & 0xf0) == 0xf0)
                 {
-                        // temp = fdc.dat;
 			temp = fifo_buf_read();
 			if (fdc.fifobufpos != 0)  fdc.stat |= 0x80;
                         break;
@@ -1241,10 +1078,8 @@ uint8_t fdc_read(uint16_t addr, void *priv)
                 fdc.stat &= 0xf0;
                 break;
                 case 7: /*Disk change*/
-		fdcd = (fdc.dor & 1);
-		// if (drive_swap)  fdcd = 1 - fdcd;
-                if (fdc.dor & (0x10 << fdcd))
-                   temp = (vfdd[fdcd].discchanged || vfdd[fdcd].driveempty)?0x80:0;
+                if (fdc.dor & (0x10 << (fdc.dor & 1)))
+                   temp = (vfdd[fdc.dor & 1].discchanged || vfdd[fdc.dor & 1].driveempty)?0x80:0;
                 else
                    temp = 0;
                 if (AMSTRADIO)  /*PC2086/3086 seem to reverse this bit*/
@@ -1255,6 +1090,7 @@ uint8_t fdc_read(uint16_t addr, void *priv)
 //                printf("Bad read FDC %04X\n",addr);
         }
 //        /*if (addr!=0x3f4) */printf("%02X rate=%i\n",temp,fdc.rate);
+	// printf("IN 0x%04X, %02X\n", addr, temp);
         return temp;
 }
 
@@ -1622,10 +1458,11 @@ rw_result_phase:
 		if (vfdd[fdc.drive].sstates)  fdc.res[4] |= 0x40;
 		fdc.st0=fdc.res[4];
 		fdc.res[5]=fdc.st1;
-		fdc.st2 &= 0xF3;
 
 		if (mode > 2)
 		{
+			fdc.st2 &= 0xF3;
+
 			switch (scan_results)
 			{
 				case 0:
@@ -1660,6 +1497,8 @@ void fdc_poll()
 	int a = 0;
 	int n = 0;
 	int rbps = 0;
+	int maxsteps = 79;
+	if (romset == ROM_ENDEAVOR)  maxsteps = 85;
         disctime = 0;
         // pclog("fdc_poll %08X %i %02X\n", discint, fdc.drive, fdc.st0);
         switch (discint)
@@ -1710,26 +1549,16 @@ void fdc_poll()
 			fdc_readwrite(2);
 			return;
                 case 7: /*Recalibrate*/
-			if (romset == ROM_ENDEAVOR)
-			{
-				/*
-					The National Semiconductors PC87306 used by the Endeavor has a bigger number of steps per
-					recalibrate.
-				*/
-				fdc.track[fdc.drive] -= 85;
-			}
-			else
-			{
-				fdc.track[fdc.drive] -= 79;
-			}
-			if (fdc.track[fdc.drive] < 0)
+			if (fdc.track[fdc.drive] <= maxsteps)
 			{
 				fdc.track[fdc.drive] = 0;
 			}
-			if (fdc.track[fdc.drive] > 0)
+			else
 			{
+				fdc.track[fdc.drive] -= maxsteps;
 				fdc.st0 |= 0x10;
 			}
+			// fdc.sector[fdc.drive] = 1;
 	                if (!vfdd[fdc.drive].driveempty)  vfdd[fdc.drive].discchanged = 0;
 			fdc.st0=(fdc.head[fdc.drive]?4:0)|fdc.drive;
 			fdc.st0 |= 0x20;
@@ -1745,7 +1574,6 @@ void fdc_poll()
 	                if (fdc_reset_stat)
         	        {
 				fdc.st0 &= 0xf8;
-				fdc.st0 |= (4 - fdc_reset_stat);
 				fdc.st0|=(fdc.head[4 - fdc_reset_stat]?4:0)|(4 - fdc_reset_stat);
 	                        fdc_reset_stat--;
 	                }
@@ -1764,10 +1592,13 @@ void fdc_poll()
 	                discint=-2;
 	                fdc_int();
 	                fdc.stat=0xD0;
+			fdc.drive = fdc.params[0] & 3;
+			fdc.head[fdc.drive] = (fdc.params[0] & 4) ? 1 : 0;
 			if (fdc.sector[fdc.drive] <= 0)  fdc.sector[fdc.drive] = 1;
 			fdc.res[4]=(fdc.head[fdc.drive]?4:0)|fdc.drive;
-			vfdd[fdc.drive].sstates = sector_state(3);
+			/* vfdd[fdc.drive].sstates = sector_state(3);
 			if (vfdd[fdc.drive].sstates)  fdc.res[4] |= 0x40;
+			if (vfdd[fdc.drive].sstates)  fatal("%c: ID not found\n", 0x41 + fdc.drive); */
 			fdc.st0=fdc.res[4];
 	                fdc.res[5]=fdc.st1;
 	                fdc.res[6]=fdc.st2;
@@ -1777,6 +1608,7 @@ void fdc_poll()
 			fdc.res[8]=vfdd[fdc.drive].scid[fdc.head[fdc.drive]][fdc.track[fdc.drive]][fdc.sector[fdc.drive]-1][1];
 			fdc.res[9]=vfdd[fdc.drive].scid[fdc.head[fdc.drive]][fdc.track[fdc.drive]][fdc.sector[fdc.drive]-1][2];
 			fdc.res[10]=vfdd[fdc.drive].scid[fdc.head[fdc.drive]][fdc.track[fdc.drive]][fdc.sector[fdc.drive]-1][3];
+			pclog("RSID: %02X %02X %02X %02X %02X %02X %02X\n", fdc.res[4], fdc.res[5], fdc.res[6], fdc.res[7], fdc.res[8], fdc.res[9], fdc.res[10]);
 	                paramstogo=7;
 	                return;
 		case 13: /*Format*/
@@ -1961,6 +1793,7 @@ format_result_phase_after_statuses:
 			{
 				fdc.track[fdc.drive] = vfdd[fdc.drive].TRACKS - 1;
 			}
+			// fdc.sector[fdc.drive] = 1;
 			// No result phase = no interrupt
 			discint=-3;
 	                timer_process();
@@ -1979,14 +1812,16 @@ format_result_phase_after_statuses:
 			return;
                 case 0x0e: /*Dump registers*/
 	                fdc.stat = (fdc.stat & 0xf) | 0xd0;
-	                fdc.res[3] = fdc.track[0];
-	                fdc.res[4] = fdc.track[1];
-	                fdc.res[5] = 0;
-	                fdc.res[6] = 0;
-	                fdc.res[7] = fdc.specify[0];
-	                fdc.res[8] = fdc.specify[1];
-	                fdc.res[9] = fdc.eot[fdc.drive];
-	                fdc.res[10] = (fdc.perp & 0x7f) | ((fdc.lock) ? 0x80 : 0);
+	                fdc.res[1] = fdc.track[0];
+	                fdc.res[2] = fdc.track[1];
+	                fdc.res[3] = 0;
+	                fdc.res[4] = 0;
+	                fdc.res[5] = fdc.specify[0];
+	                fdc.res[6] = fdc.specify[1];
+	                fdc.res[7] = fdc.eot[fdc.drive];
+	                fdc.res[8] = (fdc.perp & 0x7f) | ((fdc.lock) ? 0x80 : 0);
+			fdc.res[9] = fdc.config;
+			fdc.res[10] = fdc.pretrk;
 	                paramstogo=10;
 	                discint=0;
 	                disctime=0;
@@ -2163,7 +1998,6 @@ void fdc_add_ex(uint16_t port, uint8_t superio)
 	else
 	        io_sethandler(port, 0x0006, fdc_read, NULL, NULL, fdc_write, NULL, NULL, NULL);
         io_sethandler(port + 7, 0x0001, fdc_read, NULL, NULL, fdc_write, NULL, NULL, NULL);
-       	io_sethandler(0x3e0, 0x0002, fdc_debug_read, NULL, NULL, fdc_debug_write, NULL, NULL, NULL);
         fdc.pcjr = 0;
 }
 
@@ -2187,7 +2021,6 @@ void fdc_remove_ex(uint16_t port)
 	else
 		io_removehandler(port, 0x0006, fdc_read, NULL, NULL, fdc_write, NULL, NULL, NULL);
         if (!fdc.pcjr)  io_removehandler(port + 7, 0x0001, fdc_read, NULL, NULL, fdc_write, NULL, NULL, NULL);        
-       	io_removehandler(0x3e0, 0x0002, fdc_debug_read, NULL, NULL, fdc_debug_write, NULL, NULL, NULL);
 }
 
 void fdc_remove_stab()
