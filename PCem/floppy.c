@@ -1569,6 +1569,7 @@ void fdd_init()
 
 	for (i = 0; i < 2; i++)
 	{
+		fdd[i].drive_id = i;
 		fdd[i].FDIDATA = 0;
 		fdd[i].MID = 0;
 		fdd[i].TRACKS = 80;

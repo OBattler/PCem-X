@@ -360,6 +360,7 @@ void freetracksectors(int d, int h, int t);
 
 typedef struct FDD
 {
+	uint8_t drive_id;
 	uint64_t FDIDATA;
 	uint8_t MID;
 	int TRACKS;
@@ -413,6 +414,7 @@ typedef struct FDD
 	uint8_t sequential_sectors_index[21930][4];
 
 	uint8_t driveempty;
+	uint16_t ltpos;
 } FDD;
 
 extern FDD fdd[2];
