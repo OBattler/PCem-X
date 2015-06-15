@@ -322,9 +322,8 @@ void at_i430fx_init()
         i430fx_init();
         piix_init(7);
         um8669f_init();
-        serial3_init(0x3e8, 4);
-        serial4_init(0x2e8, 3);
 }
+
 void at_i430vx_init()
 {
         at_init();
@@ -333,8 +332,6 @@ void at_i430vx_init()
         i430vx_init();
         piix_init(7);
         um8669f_init();
-        serial3_init(0x3e8, 4);
-        serial4_init(0x2e8, 3);
 }
 
 void model_init()
