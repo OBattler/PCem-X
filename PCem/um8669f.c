@@ -86,7 +86,7 @@ void um8669f_write(uint16_t port, uint8_t val, void *priv)
 				if (romset ==  ROM_430VX)
 				{
 					pclog("Setting DENSEL polarity to: %i (before: %i)\n", (val & 4 ? 1 : 0), densel_polarity);
-					densel_polarity = val & 4 ? 1 : 0;
+					densel_polarity = val & 4 ? 0 : 1;
 				}
 				else
 				{
