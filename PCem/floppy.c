@@ -411,6 +411,7 @@ void ejectdisc(int d)
 	fdd[d].XDF = 0;
 	fdd[d].CLASS = 0;
 	fdd[d].LITE = 0;
+	fdd[d].discmodified=0;
 	fdc_setswap(drive_swap);
 }
 
@@ -1156,6 +1157,7 @@ int pef_open_ext_raw_image(FILE **f, int d)
 		*(fdd[d].ph_raw_image_file + i) = 0;
 	}
 
+	fdd[d].ph_raw_image_temp[255] = 0;
 	fread(fdd[d].ph_raw_image_temp, 255, 1, *f);
 
 	temp = strrchr(fdd[d].image_file, '\\');
@@ -1269,8 +1271,8 @@ void init_raw_image_fn_buffers()
 	for (i = 0; i < 1; i++)
 	{
 		if (fdd[i].image_file == NULL)  fdd[i].image_file = (char *) malloc(4095);
-		if (fdd[i].ph_raw_image_temp == NULL)  fdd[i].ph_raw_image_temp = (char *) malloc(255);
-		if (fdd[i].ph_raw_image_file == NULL)  fdd[i].ph_raw_image_file = (char *) malloc(4095);
+		if (fdd[i].ph_raw_image_temp == NULL)  fdd[i].ph_raw_image_temp = (char *) malloc(256);
+		if (fdd[i].ph_raw_image_file == NULL)  fdd[i].ph_raw_image_file = (char *) malloc(4096);
 	}
 
 	int raw_image_fn_buffers_initialized = 1;
@@ -1593,6 +1595,7 @@ void fdd_init()
 		fdd[i].IDTYPE = 0;
 		fdd[i].rws = 0;
 		fdd[i].sectors_formatted = 0;
+		fdd[i].discmodified = 0;
 		fdd[i].image_file = NULL;
 	}
 }
