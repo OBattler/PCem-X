@@ -1,7 +1,7 @@
 typedef struct svga_t
 {
         mem_mapping_t mapping;
-        
+
         uint8_t crtcreg;
         uint8_t crtc[128];
 	// Maximum increased to 64 for Cirrus purposes
@@ -11,33 +11,34 @@ typedef struct svga_t
         int attraddr, attrff;
         uint8_t seqregs[64];
         int seqaddr;
-        
+
         uint8_t miscout;
         int vidclock;
 
         uint32_t vram_limit;
-        
+
         uint8_t la, lb, lc, ld;
-        
+
         uint8_t dac_mask, dac_status;
         int dac_read, dac_write, dac_pos;
-        
+
         uint8_t cgastat;
-        
+
         uint8_t plane_mask;
-        
+
         int fb_only;
-        
+
         int fast;
         uint8_t colourcompare, colournocare;
         int readmode, writemode, readplane;
         int chain4;
         uint8_t writemask;
         uint32_t charseta, charsetb;
-        
+
         uint8_t egapal[16];
         uint32_t pallook[256];
         PALETTE vgapal;
+        int dac8bit;
 
         int vtotal, dispend, vsyncstart, split, vblankstart;
         int hdisp,  hdisp_old, htotal,  hdisp_time, rowoffset;
@@ -46,12 +47,12 @@ typedef struct svga_t
         double clock;
         uint32_t ma_latch;
         int bpp;
-        
+
         int dispontime, dispofftime;
         int vidtime;
-        
+
         uint8_t scrblank;
-        
+
         int dispon;
         int hdisp_on;
 
@@ -61,20 +62,20 @@ typedef struct svga_t
         int linepos, vslines, linecountff, oddeven;
         int con, cursoron, blink;
         int scrollcache;
-        
+
         int firstline, lastline;
         int firstline_draw, lastline_draw;
         int displine;
-        
+
         uint8_t *vram;
         uint8_t *changedvram;
         int vrammask;
         uint32_t banked_mask;
 
         uint32_t write_bank, read_bank;
-                
+
         int fullchange;
-        
+
         int video_res_x, video_res_y, video_bpp;
         int frames, fps;
 
@@ -87,13 +88,13 @@ typedef struct svga_t
                 uint32_t addr;
                 int v_acc, h_acc;
         } hwcursor, hwcursor_latch, overlay, overlay_latch;
-        
+
         int hwcursor_on;
         int overlay_on;
-        
+
         int hwcursor_oddeven;
         int overlay_oddeven;
-        
+
         void (*render)(struct svga_t *svga);
         void (*recalctimings_ex)(struct svga_t *svga);
 
@@ -103,14 +104,14 @@ typedef struct svga_t
         void (*hwcursor_draw)(struct svga_t *svga, int displine);
 
         void (*overlay_draw)(struct svga_t *svga, int displine);
-        
+
         /*If set then another device is driving the monitor output and the SVGA
           card should not attempt to display anything */
         int override;
         void *p;
 } svga_t;
 
-extern int svga_init(svga_t *svga, void *p, int memsize, 
+extern int svga_init(svga_t *svga, void *p, int memsize,
                void (*recalctimings_ex)(struct svga_t *svga),
                uint8_t (*video_in) (uint16_t addr, void *p),
                void    (*video_out)(uint16_t addr, uint8_t val, void *p),
