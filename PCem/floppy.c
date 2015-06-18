@@ -28,7 +28,7 @@ uint8_t get_n_from_hn(uint8_t hn)
 /* Functions for dealing with sector states */
 uint8_t current_state()
 {
-	return vfdd[fdc.drive].scid[fdc.head[fdc.drive]][fdc.track[fdc.drive]][fdc.sector[fdc.drive]-1][4];
+	return fdd[vfdd[fdc.drive]].scid[fdc.head[fdc.drive]][fdc.track[fdc.drive]][fdc.sector[fdc.drive]-1][4];
 }
 
 int ss_good_sector1(uint8_t state)
@@ -412,7 +412,6 @@ void ejectdisc(int d)
 	fdd[d].CLASS = 0;
 	fdd[d].LITE = 0;
 	fdd[d].discmodified=0;
-	fdc_setswap(drive_swap);
 }
 
 initialize_sector(int d, int t, int h, int s, int nb, uint8_t b)
@@ -1312,12 +1311,12 @@ void find_next_big_scid(int st, int *c, int *h, int *r, int *n, int *sn)
 	*h = 255;
 	for (s = st; s < 255; s++)
 	{
-		if (is_nonzero_sector_size(vfdd[fdc.drive].scid[fdc.head[fdc.drive]][fdc.track[fdc.drive]][s][3]))
+		if (is_nonzero_sector_size(fdd[vfdd[fdc.drive]].scid[fdc.head[fdc.drive]][fdc.track[fdc.drive]][s][3]))
 		{
-			*c = (int) vfdd[fdc.drive].scid[fdc.head[fdc.drive]][fdc.track[fdc.drive]][s][0];
-			*h = (int) vfdd[fdc.drive].scid[fdc.head[fdc.drive]][fdc.track[fdc.drive]][s][1];
-			*r = (int) vfdd[fdc.drive].scid[fdc.head[fdc.drive]][fdc.track[fdc.drive]][s][2];
-			*n = (int) vfdd[fdc.drive].scid[fdc.head[fdc.drive]][fdc.track[fdc.drive]][s][3];
+			*c = (int) fdd[vfdd[fdc.drive]].scid[fdc.head[fdc.drive]][fdc.track[fdc.drive]][s][0];
+			*h = (int) fdd[vfdd[fdc.drive]].scid[fdc.head[fdc.drive]][fdc.track[fdc.drive]][s][1];
+			*r = (int) fdd[vfdd[fdc.drive]].scid[fdc.head[fdc.drive]][fdc.track[fdc.drive]][s][2];
+			*n = (int) fdd[vfdd[fdc.drive]].scid[fdc.head[fdc.drive]][fdc.track[fdc.drive]][s][3];
 			*sn = s;
 			return;
 		}
@@ -1333,9 +1332,9 @@ void clear_sectors()
 	{
 		for (i = 0; i < 4; i++)
 		{
-			vfdd[fdc.drive].scid[fdc.head[fdc.drive]][fdc.track[fdc.drive]][s][i] = 0xff;
+			fdd[vfdd[fdc.drive]].scid[fdc.head[fdc.drive]][fdc.track[fdc.drive]][s][i] = 0xff;
 		}
-		vfdd[fdc.drive].scid[fdc.head[fdc.drive]][fdc.track[fdc.drive]][s][4] = 3;
+		fdd[vfdd[fdc.drive]].scid[fdc.head[fdc.drive]][fdc.track[fdc.drive]][s][4] = 3;
 	}
 }
 
@@ -1366,13 +1365,13 @@ void consolidate_special_sectors()
 			if (s == 0)  temp_smap[s][4] |= 0x40;
 			lastsector = sn + 1;
 		} */
-		ssize = vfdd[fdc.drive].scid[fdc.head[fdc.drive]][fdc.track[fdc.drive]][s][3];
+		ssize = fdd[vfdd[fdc.drive]].scid[fdc.head[fdc.drive]][fdc.track[fdc.drive]][s][3];
 		if (ssize <= 7)
 		{
 			ssize = 1 << ssize;
 			for (i = 0; i < 4; i++)
 			{
-				temp_smap[s][i] = vfdd[fdc.drive].scid[fdc.head[fdc.drive]][fdc.track[fdc.drive]][s][i];
+				temp_smap[s][i] = fdd[vfdd[fdc.drive]].scid[fdc.head[fdc.drive]][fdc.track[fdc.drive]][s][i];
 			}
 			temp_smap[s][4] = 0xbf;
 			if (s == 0)  temp_smap[s][4] |= 0x40;
@@ -1390,7 +1389,7 @@ void consolidate_special_sectors()
 	{
 		for (i = 0; i < 4; i++)
 		{
-			vfdd[fdc.drive].scid[fdc.head[fdc.drive]][fdc.track[fdc.drive]][s][i] = temp_smap[s][i];
+			fdd[vfdd[fdc.drive]].scid[fdc.head[fdc.drive]][fdc.track[fdc.drive]][s][i] = temp_smap[s][i];
 		}
 	}
 }
@@ -1561,8 +1560,6 @@ drive_disabled:
 	fdc.sector[d] = 1;
 	fdc.pos[d] = 0;
 	fdc.gotdata[d] = 0;
-
-	fdc_setswap(drive_swap);
 }
 
 void fdd_init()
@@ -1571,7 +1568,6 @@ void fdd_init()
 
 	for (i = 0; i < 2; i++)
 	{
-		fdd[i].drive_id = i;
 		fdd[i].FDIDATA = 0;
 		fdd[i].MID = 0;
 		fdd[i].TRACKS = 80;

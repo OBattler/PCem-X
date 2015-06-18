@@ -360,7 +360,6 @@ void freetracksectors(int d, int h, int t);
 
 typedef struct FDD
 {
-	uint8_t drive_id;
 	uint64_t FDIDATA;
 	uint8_t MID;
 	int TRACKS;
@@ -418,8 +417,9 @@ typedef struct FDD
 } FDD;
 
 extern FDD fdd[2];
-/* Pointers, in default mode, corresponding to fdd[], in swapped drive mode, swapped. */
-extern FDD vfdd[2];
+
+/* For drive swap functionality. */
+uint8_t vfdd[2];
 
 extern int allocated;
 
