@@ -10,7 +10,7 @@
 
 int cdrom_drive;
 
-#ifndef CDROM_TOC_SESSION_DATA
+#ifndef NEWWINDDK
 typedef struct _CDROM_TOC_SESSION_DATA {
   UCHAR      Length[2];
   UCHAR      FirstCompleteSession;
