@@ -243,7 +243,8 @@ void ps1_init()
         common_init();
         pit_set_out_func(1, pit_refresh_timer_at);
         dma16_init();
-        ide_init();
+        // ide_init();
+	xtide_init();
         keyboard_at_init();
         mouse_ps2_init();
         nvr_init();

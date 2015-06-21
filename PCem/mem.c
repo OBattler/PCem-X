@@ -86,6 +86,19 @@ static void mem_load_atide_bios()
         }
 }
 
+static void mem_load_atide_ps1_bios()
+{
+        FILE *f;
+        f=romfopen("roms/ide_at_ps1.bin","rb");
+
+//        is486=0;
+        if (f)
+        {
+                fread(romext,16384,1,f);
+                fclose(f);
+        }
+}
+
 int font_index = 0;
 
 int loadbios()
@@ -336,6 +349,7 @@ int loadbios()
                 fclose(f);
 //#endif
                 biosmask = 0x1ffff;
+		mem_load_atide_ps1_bios();
                 return 1;
 
 /*                case ROM_IBMAT386:
