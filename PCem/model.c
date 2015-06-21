@@ -52,6 +52,7 @@ void           ams_init();
 void        europc_init();
 void        olim24_init();
 void            at_init();
+void           ps1_init();
 void       at_neat_init();
 void  at_acer386sx_init();
 void    at_wd76c10_init();
