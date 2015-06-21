@@ -1972,7 +1972,7 @@ format_result_phase_after_statuses:
 void fdc_init()
 {
 	timer_add(fdc_poll, &disctime, &disctime, NULL);
-	fdc.dsckhg_activelow = 0;
+	fdc.dskchg_activelow = 0;
 	config_default();
 	/*
 		Setting this to -1 means "do not care, return always 1 for 3.5 inch floppy drives".
