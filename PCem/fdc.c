@@ -2065,3 +2065,8 @@ void fdc_set_dskchg_activelow()
 {
 	fdc.dskchg_activelow = 1;
 }
+
+void fdc_clear_dskchg_activelow()
+{
+	fdc.dskchg_activelow = 0;
+}

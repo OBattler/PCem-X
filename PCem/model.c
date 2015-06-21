@@ -156,6 +156,8 @@ void common_init()
         device_add(&gameport_device);
 	machine_class = MC_PCAT;
 	has_pc87306 = 0;
+	/* It then gets set for the models that do need it. */
+	fdc_clear_dskchg_activelow();
 }
 
 void xt_init()

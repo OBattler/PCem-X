@@ -10,6 +10,7 @@ void fdc_reset();
 void fdc_poll();
 void fdc_abort();
 void fdc_set_dskchg_activelow();
+void fdc_clear_dskchg_activelow();
 
 void configure_from_int(int d, int val);
 int int_from_config(int d);
