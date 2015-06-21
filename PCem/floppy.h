@@ -97,6 +97,8 @@ typedef struct FDC
         
         int watchdog_timer;
         int watchdog_count;
+
+	int dskchg_activelow;
 } FDC;
 
 FDC fdc;

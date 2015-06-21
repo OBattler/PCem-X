@@ -36,6 +36,7 @@
 #include "pic.h"
 #include "piix.h"
 #include "pit.h"
+#include "ps1.h"
 #include "serial.h"
 #include "sis496.h"
 #include "sound_sn76489.h"
@@ -89,6 +90,7 @@ MODEL models[] =
         {"Commodore PC 30 III", ROM_CMDPC30,   { "",      cpus_286,     "",    NULL,         "",      NULL},         0,      at_init},        
         {"AMI 286 clone",       ROM_AMI286,    { "",      cpus_286,     "",    NULL,         "",      NULL},         0,      at_neat_init},        
         {"DELL System 200",     ROM_DELL200,   { "",      cpus_286,     "",    NULL,         "",      NULL},         0,           at_init},
+        {"IBM PS/1 model 2011", ROM_IBMPS1_2011, { "",      cpus_286,     "",    NULL,         "",      NULL},         1,          ps1_init},
         {"Acer 386SX25/N",      ROM_ACER386,   { "Intel", cpus_acer,    "",    NULL,         "",      NULL},         1, at_acer386sx_init},
         {"Amstrad MegaPC",      ROM_MEGAPC,    { "Intel", cpus_i386,    "AMD", cpus_Am386,   "Cyrix", cpus_486SDLC}, 1,   at_wd76c10_init},
         {"Amstrad PC7286",      ROM_MEGAPC,    { "Intel", cpus_286,     "",    NULL,         "",      NULL},         1,   at_wd76c10_init},
@@ -197,6 +199,7 @@ void ams_init()
         xtide_init();
 	nmi_init();
 	machine_class = MC_AMSTRAD;
+	fdc_set_dskchg_activelow();
 }
 
 void europc_init()
@@ -230,6 +233,20 @@ void at_init()
            mouse_serial_init();
         nvr_init();
         pic2_init();
+}
+
+void ps1_init()
+{
+        common_init();
+        pit_set_out_func(1, pit_refresh_timer_at);
+        dma16_init();
+        ide_init();
+        keyboard_at_init();
+        mouse_ps2_init();
+        nvr_init();
+        pic2_init();
+        ps1mb_init();
+        fdc_set_dskchg_activelow();
 }
 
 void at_neat_init()

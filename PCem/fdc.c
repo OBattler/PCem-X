@@ -1007,7 +1007,12 @@ uint8_t fdc_read(uint16_t addr, void *priv)
 		case 0: /*Configuration, index, and status register A*/
 		return 0xFF;
 		case 1:	/*Data, and status register B*/
-		return 0x50;
+		temp = 0x70;
+		if (fdc.dor & 1)
+			temp &= ~0x40;
+		else
+			temp &= ~0x20;
+		break;
 		case 2:
 		temp = fdc.dor;
 		if (!AT)  temp = 0xFF;
@@ -1078,7 +1083,7 @@ uint8_t fdc_read(uint16_t addr, void *priv)
                    temp = (fdd[vfdd[fdc.dor & 1]].discchanged || fdd[vfdd[fdc.dor & 1]].driveempty)?0x80:0;
                 else
                    temp = 0;
-                if (AMSTRADIO)  /*PC2086/3086 seem to reverse this bit*/
+                if (fdc.dskchg_activelow)  /*PC2086/3086 seem to reverse this bit*/
                    temp ^= 0x80;
                 break;
                 default:
@@ -1967,6 +1972,7 @@ format_result_phase_after_statuses:
 void fdc_init()
 {
 	timer_add(fdc_poll, &disctime, &disctime, NULL);
+	fdc.dsckhg_activelow = 0;
 	config_default();
 	/*
 		Setting this to -1 means "do not care, return always 1 for 3.5 inch floppy drives".
@@ -2053,4 +2059,9 @@ void fdc_setswap(int val)
 			vfdd[1] = 0;
 			break;
 	}
+}
+
+void fdc_set_dskchg_activelow()
+{
+	fdc.dskchg_activelow = 1;
 }

@@ -355,6 +355,7 @@ void loadnvr()
                 case ROM_PC2086:     f = romfopen("pc2086.nvr",     "rb"); break;
                 case ROM_PC3086:     f = romfopen("pc3086.nvr",     "rb"); break;                
                 case ROM_IBMAT:      f = romfopen("at.nvr",         "rb"); break;
+                case ROM_IBMPS1_2011: f = romfopen("ibmps1_2011.nvr", "rb"); /*nvrmask = 127; */break;
                 case ROM_CMDPC30:    f = romfopen("cmdpc30.nvr",    "rb"); nvrmask = 127; break;                
                 case ROM_AMI286:     f = romfopen("ami286.nvr",     "rb"); nvrmask = 127; break;
                 case ROM_DELL200:    f = romfopen("dell200.nvr",    "rb"); nvrmask = 127; break;
@@ -398,6 +399,7 @@ void savenvr()
                 case ROM_PC2086:     f = romfopen("pc2086.nvr",     "wb"); break;
                 case ROM_PC3086:     f = romfopen("pc3086.nvr",     "wb"); break;
                 case ROM_IBMAT:      f = romfopen("at.nvr",         "wb"); break;
+		case ROM_IBMPS1_2011: f = romfopen("ibmps1_2011.nvr", "wb"); break;
                 case ROM_CMDPC30:    f = romfopen("cmdpc30.nvr",    "wb"); break;                
                 case ROM_AMI286:     f = romfopen("ami286.nvr",     "wb"); break;
                 case ROM_DELL200:    f = romfopen("dell200.nvr",    "wb"); break;

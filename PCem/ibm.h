@@ -312,6 +312,7 @@ enum
         ROM_CMDPC30,
         ROM_AMI286,
         ROM_DELL200,
+	ROM_IBMPS1_2011,
         ROM_MISC286,
         ROM_IBMAT386,
         ROM_ACER386,
