@@ -531,3 +531,5 @@ extern int machine_class;
 
 extern int supports_slave;
 extern int has_pc87306;
+
+extern int ps1xtide;

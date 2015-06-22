@@ -48,6 +48,7 @@ static mem_mapping_t bios_high_mapping[8];
 static mem_mapping_t romext_mapping;
 
 int shadowbios,shadowbios_write;
+int ps1xtide;
 
 static unsigned char isram[0x10000];
 
@@ -349,7 +350,7 @@ int loadbios()
                 fclose(f);
 //#endif
                 biosmask = 0x1ffff;
-		mem_load_atide_ps1_bios();
+		if (ps1xtide)  mem_load_atide_ps1_bios();
                 return 1;
 
 /*                case ROM_IBMAT386:

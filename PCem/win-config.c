@@ -33,7 +33,7 @@ static BOOL CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPAR
         int c, d;
         int rom, gfx, mem, fpu;
         int temp_cpu, temp_cpu_m, temp_model;
-        int temp_GAMEBLASTER, temp_GUS, temp_SSI2001, temp_voodoo, temp_sound_card_current;
+        int temp_GAMEBLASTER, temp_GUS, temp_SSI2001, temp_voodoo, temp_ps1xtide, temp_sound_card_current;
         int temp_network_card_current;
 	int temp_network_interface_current;
 	int temp_fdtype_a_current;
@@ -174,6 +174,9 @@ static BOOL CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPAR
                 h=GetDlgItem(hdlg, IDC_CHECKFORCE43);
                 SendMessage(h, BM_SETCHECK, force_43, 0);
 
+                h=GetDlgItem(hdlg, IDC_CHECKPS1XTIDE);
+                SendMessage(h, BM_SETCHECK, ps1xtide, 0);
+
                 h = GetDlgItem(hdlg, IDC_COMBOFDA);
                 SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"3.5\" 720 kB DD");
                 SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"Invalid (1)");
@@ -302,6 +305,9 @@ static BOOL CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPAR
                         h = GetDlgItem(hdlg, IDC_CHECKFORCE43);
                         force_43 = SendMessage(h, BM_GETCHECK, 0, 0);
 
+                        h = GetDlgItem(hdlg, IDC_CHECKPS1XTIDE);
+                        temp_ps1xtide = SendMessage(h, BM_GETCHECK, 0, 0);
+
                         h = GetDlgItem(hdlg, IDC_COMBOSND);
                         temp_sound_card_current = settings_list_to_sound[SendMessage(h, CB_GETCURSEL, 0, 0)];
 
@@ -314,7 +320,7 @@ static BOOL CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPAR
                         h = GetDlgItem(hdlg, IDC_COMBOFDB);
                         temp_fdtype_b_current = SendMessage(h, CB_GETCURSEL, 0, 0);
 
-                        if (temp_model != model || gfx != gfxcard || mem != mem_size || fpu != hasfpu || temp_GAMEBLASTER != GAMEBLASTER || temp_GUS != GUS || temp_SSI2001 != SSI2001 || temp_sound_card_current != sound_card_current || temp_network_card_current != network_card_current || temp_fdtype_a_current != int_from_config(0) || temp_fdtype_b_current != int_from_config(1) || temp_voodoo != voodoo_enabled)
+                        if (temp_model != model || gfx != gfxcard || mem != mem_size || fpu != hasfpu || temp_GAMEBLASTER != GAMEBLASTER || temp_GUS != GUS || temp_SSI2001 != SSI2001 || temp_sound_card_current != sound_card_current || temp_network_card_current != network_card_current || temp_fdtype_a_current != int_from_config(0) || temp_fdtype_b_current != int_from_config(1) || temp_voodoo != voodoo_enabled || temp_ps1xtide != ps1xtide)
                         {
                                 if (MessageBox(NULL,"This will reset PCem-X!\nAre you sure you want to continue?","PCem",MB_OKCANCEL)==IDOK)
                                 {
@@ -329,6 +335,7 @@ static BOOL CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPAR
                                         SSI2001 = temp_SSI2001;
                                         sound_card_current = temp_sound_card_current;
 					voodoo_enabled = temp_voodoo;
+					ps1xtide = temp_ps1xtide;
                                         network_card_current = temp_network_card_current;
 
 					configure_from_int(0, temp_fdtype_a_current);

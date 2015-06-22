@@ -607,6 +607,7 @@ void loadconfig(char *fn)
 	configure_from_int(1, config_get_int(NULL, "drivetype_b", 8));
 
 	force_43 = config_get_int(NULL, "force_43", 0);
+	ps1xtide = config_get_int(NULL, "ps1xtide", 0);
 
         mem_size = config_get_int(NULL, "mem_size", 4);
         cdrom_drive = config_get_int(NULL, "cdrom_drive", 0);
@@ -674,6 +675,7 @@ void saveconfig()
         config_set_string(NULL, "disc_b", discfns[1]);
         config_set_int(NULL, "drivetype_b", int_from_config(1));
         config_set_int(NULL, "force_43", force_43);
+        config_set_int(NULL, "ps1xtide", ps1xtide);
         config_set_int(NULL, "mem_size", mem_size);
         config_set_int(NULL, "cdrom_drive", cdrom_drive);
         config_set_int(NULL, "cdrom_enabled", cdrom_enabled);
