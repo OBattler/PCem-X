@@ -6,6 +6,7 @@
 #include "acer386sx.h"
 #include "ali1429.h"
 #include "amstrad.h"
+#include "compaq.h"
 #include "device.h"
 #include "dma.h"
 #include "fdc.h"
@@ -52,6 +53,7 @@ void           ams_init();
 void        europc_init();
 void        olim24_init();
 void            at_init();
+void    deskpro386_init();
 void           ps1_init();
 void       at_neat_init();
 void  at_acer386sx_init();
@@ -96,7 +98,7 @@ MODEL models[] =
         {"Amstrad MegaPC",      ROM_MEGAPC,    { "Intel", cpus_i386,    "AMD", cpus_Am386,   "Cyrix", cpus_486SDLC}, 1,   at_wd76c10_init},
         {"Amstrad PC7286",      ROM_MEGAPC,    { "Intel", cpus_286,     "",    NULL,         "",      NULL},         1,   at_wd76c10_init},
         {"AMI 386 clone",       ROM_AMI386,    { "Intel", cpus_i386,    "AMD", cpus_Am386,   "Cyrix", cpus_486SDLC}, 0,  at_headland_init},
-        // {"HP 200LX",            ROM_HP200LX,   { "Intel", cpus_i386,    "AMD", cpus_Am386,   "Cyrix", cpus_486SDLC}, 0,  at_init},
+        {"Compaq Deskpro 386",  ROM_DESKPRO_386, { "Intel", cpus_i386,    "AMD", cpus_Am386,   "Cyrix", cpus_486SDLC}, 0,   deskpro386_init},
         {"AMI 486 clone",       ROM_AMI486,    { "Intel", cpus_i486,    "AMD", cpus_Am486,   "Cyrix", cpus_Cx486},   0,   at_ali1429_init},
         {"AMI WinBIOS 486",     ROM_WIN486,    { "Intel", cpus_i486,    "AMD", cpus_Am486,   "Cyrix", cpus_Cx486},   0,   at_ali1429_init},
 /*        {"AMI WinBIOS 486 PCI", ROM_PCI486,    { "Intel", cpus_i486,    "AMD", cpus_Am486, "Cyrix", cpus_Cx486},   0,   at_um8881f_init},*/
@@ -236,6 +238,13 @@ void at_init()
            mouse_serial_init();
         nvr_init();
         pic2_init();
+}
+
+void deskpro386_init()
+{
+        at_init();
+        mouse_serial_init();
+        compaq_init();
 }
 
 void ps1_init()

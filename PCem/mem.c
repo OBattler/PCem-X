@@ -368,11 +368,19 @@ int loadbios()
                 fclose(f);
                 return 1;
 
-                case ROM_HP200LX:
-                f=romfopen("roms/hp200lx/F0000.bin","rb");
-                if (!f) break;
-                fread(rom,65536,1,f);
+                case ROM_DESKPRO_386:
+		f=romfopen("roms/deskpro386/109592-005.U11.bin","rb");
+                ff=romfopen("roms/deskpro386/109591-005.U13.bin","rb");
+                if (!f || !ff) break;
+                for (c = 0x0000; c < 0x8000; c += 2)
+                {
+                        rom[c] = getc(f);
+                        rom[c+1] = getc(ff);
+                }
+                fclose(ff);
                 fclose(f);
+                biosmask = 0x7fff;
+                mem_load_atide_bios();
                 return 1;
 
                 case ROM_ACER386:
@@ -942,7 +950,7 @@ uint8_t *getpccache(uint32_t a)
 }
 #define printf pclog
 
-static uint32_t mem_logical_addr;
+uint32_t mem_logical_addr;
 uint8_t readmembl(uint32_t addr)
 {
         mem_logical_addr = addr;
@@ -1366,7 +1374,7 @@ uint32_t mem_read_raml(uint32_t addr, void *priv)
         return *(uint32_t *)&ram[addr];
 }
 
-static void mem_write_ramb_page(uint32_t addr, uint8_t val, page_t *p)
+void mem_write_ramb_page(uint32_t addr, uint8_t val, page_t *p)
 {      
 #if DYNAREC
         uint64_t mask = (uint64_t)1 << ((addr >> PAGE_MASK_SHIFT) & PAGE_MASK_MASK);
@@ -1375,7 +1383,8 @@ static void mem_write_ramb_page(uint32_t addr, uint8_t val, page_t *p)
 #endif
         p->mem[addr & 0xfff] = val;
 }
-static void mem_write_ramw_page(uint32_t addr, uint16_t val, page_t *p)
+
+void mem_write_ramw_page(uint32_t addr, uint16_t val, page_t *p)
 {
 #if DYNAREC
         uint64_t mask = (uint64_t)1 << ((addr >> PAGE_MASK_SHIFT) & PAGE_MASK_MASK);
@@ -1386,7 +1395,8 @@ static void mem_write_ramw_page(uint32_t addr, uint16_t val, page_t *p)
 #endif
         *(uint16_t *)&p->mem[addr & 0xfff] = val;
 }
-static void mem_write_raml_page(uint32_t addr, uint32_t val, page_t *p)
+
+void mem_write_raml_page(uint32_t addr, uint32_t val, page_t *p)
 {       
 #if DYNAREC
         uint64_t mask = (uint64_t)1 << ((addr >> PAGE_MASK_SHIFT) & PAGE_MASK_MASK);

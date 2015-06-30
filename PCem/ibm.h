@@ -318,7 +318,7 @@ enum
         ROM_ACER386,
         ROM_MEGAPC,
         ROM_AMI386,
-	ROM_HP200LX,
+	ROM_DESKPRO_386,
         ROM_AMI486,
         ROM_WIN486,
         ROM_PCI486,
