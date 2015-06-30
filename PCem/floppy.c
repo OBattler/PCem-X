@@ -853,7 +853,15 @@ int guess_geometry(FILE *f, int d)
 		}
 		else
 		{
-			if ((tempdiv % 60) == 0)
+			if ((tempdiv % 80) == 0)
+			{
+				fdd[d].TRACKS = 80;
+				fdd[d].SECTORS = fdd[d].TOTAL / (fdd[d].TRACKS * fdd[d].SIDES);
+				fdd[d].MID = 0xf0;
+				if (fdd[d].SECTORS <= 15)  fdd[d].MID = 0xf9;
+				result = 1;
+			}
+			else if ((tempdiv % 60) == 0)
 			{
 				fdd[d].TRACKS = 60;
 				fdd[d].SECTORS = fdd[d].TOTAL / (fdd[d].TRACKS * fdd[d].SIDES);
@@ -876,15 +884,7 @@ int guess_geometry(FILE *f, int d)
 			}
 			else
 			{
-				if ((tempdiv % 80) == 0)
-				{
-					fdd[d].TRACKS = 80;
-					fdd[d].SECTORS = fdd[d].TOTAL / (fdd[d].TRACKS * fdd[d].SIDES);
-					fdd[d].MID = 0xf0;
-					if (fdd[d].SECTORS <= 15)  fdd[d].MID = 0xf9;
-					result = 1;
-				}
-				else if ((tempdiv % 81) == 0)
+				if ((tempdiv % 81) == 0)
 				{
 					fdd[d].TRACKS = 81;
 					fdd[d].SECTORS = fdd[d].TOTAL / (fdd[d].TRACKS * fdd[d].SIDES);
