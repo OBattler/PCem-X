@@ -370,6 +370,9 @@ enum
 	GFX_CL_GD5446,
 	GFX_SUPEREGA,
 	GFX_RIVA128,
+	GFX_CPQVDU,
+	GFX_CPQEGA,
+	GFX_CPQVGA,
         
         GFX_MAX
 };

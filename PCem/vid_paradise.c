@@ -351,6 +351,16 @@ static void *paradise_wd90c11_megapc_init()
         return paradise;
 }
 
+static void *cpqvga_init()
+{
+        paradise_t *paradise = paradise_pvga1a_init();
+        
+        if (paradise)
+                rom_init(&paradise->bios_rom, "roms/1988-05-18.rom", 0xc0000, 0x8000, 0x7fff, 0, MEM_MAPPING_EXTERNAL);
+        
+        return paradise;
+}
+
 void paradise_close(void *p)
 {
         paradise_t *paradise = (paradise_t *)p;
@@ -408,6 +418,17 @@ device_t paradise_wd90c11_megapc_device =
         "Paradise WD90C11 (Amstrad MegaPC)",
         0,
         paradise_wd90c11_megapc_init,
+        paradise_close,
+        NULL,
+        paradise_speed_changed,
+        paradise_force_redraw,
+        paradise_add_status_info
+};
+device_t cpqvga_device =
+{
+        "Compaq/Paradise VGA",
+        0,
+        cpqvga_init,
         paradise_close,
         NULL,
         paradise_speed_changed,

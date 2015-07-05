@@ -869,6 +869,42 @@ void *ega_standalone_init()
         return ega;
 }
 
+void *cpqega_standalone_init()
+{
+        int c, d, e;
+        ega_t *ega = malloc(sizeof(ega_t));
+        memset(ega, 0, sizeof(ega_t));
+        
+        rom_init(&ega->bios_rom, "roms/108281-001.bin", 0xc0000, 0x8000, 0x7fff, 0, MEM_MAPPING_EXTERNAL);
+
+        if (ega->bios_rom.rom[0x3ffe] == 0xaa && ega->bios_rom.rom[0x3fff] == 0x55)
+        {
+                int c;
+                pclog("Read EGA ROM in reverse\n");
+
+                for (c = 0; c < 0x2000; c++)
+                {
+                        uint8_t temp = ega->bios_rom.rom[c];
+                        ega->bios_rom.rom[c] = ega->bios_rom.rom[0x3fff - c];
+                        ega->bios_rom.rom[0x3fff - c] = temp;
+                }
+        }
+
+        ega->crtc[0] = 63;
+        // ega->crtc[6] = 255;
+        ega->dispontime = 1000 * (1 << TIMER_SHIFT);
+        ega->dispofftime = 1000 * (1 << TIMER_SHIFT);
+
+        ega_init(ega);        
+	// ega->attrregs[0x10] |= 0xF7;
+
+        mem_mapping_add(&ega->mapping, 0xa0000, 0x20000, ega_read, NULL, NULL, ega_write, NULL, NULL, NULL, 0, ega);
+        timer_add(ega_poll, &ega->vidtime, TIMER_ALWAYS_ENABLED, ega);
+        vramp = ega->vram;
+        io_sethandler(0x03a0, 0x0040, ega_in, NULL, NULL, ega_out, NULL, NULL, ega);
+        return ega;
+}
+
 void *sega_standalone_init()
 {
         int c, d, e;
@@ -910,6 +946,11 @@ static int ega_standalone_available()
         return rom_present("roms/ibm_6277356_ega_card_u44_27128.bin");
 }
 
+static int cpqega_standalone_available()
+{
+        return rom_present("roms/108281-001.bin");
+}
+
 static int sega_standalone_available()
 {
         return rom_present("roms/lega.vbi");
@@ -937,6 +978,18 @@ device_t ega_device =
         ega_standalone_init,
         ega_close,
         ega_standalone_available,
+        ega_speed_changed,
+        NULL,
+        NULL
+};
+
+device_t cpqega_device =
+{
+        "Compaq EGA",
+        0,
+        cpqega_standalone_init,
+        ega_close,
+        cpqega_standalone_available,
         ega_speed_changed,
         NULL,
         NULL

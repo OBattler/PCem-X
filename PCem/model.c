@@ -7,6 +7,7 @@
 #include "ali1429.h"
 #include "amstrad.h"
 #include "compaq.h"
+#include "cpqio.h"
 #include "device.h"
 #include "dma.h"
 #include "fdc.h"
@@ -26,6 +27,7 @@
 #include "keyboard_pcjr.h"
 #include "keyboard_xt.h"
 #include "lpt.h"
+#include "memregs.h"
 #include "mouse_ps2.h"
 #include "mouse_serial.h"
 #include "neat.h"
@@ -40,6 +42,7 @@
 #include "ps1.h"
 #include "serial.h"
 #include "sis496.h"
+#include "sis85c471.h"
 #include "sound_sn76489.h"
 #include "um8669f.h"
 #include "um8881f.h"
@@ -61,6 +64,7 @@ void    at_wd76c10_init();
 void    at_ali1429_init();
 void   at_headland_init();
 void    at_um8881f_init();
+void     at_sis471_init();
 void     at_sis496_init();
 void     at_i430fx_init();
 void     at_i430vx_init();
@@ -102,7 +106,7 @@ MODEL models[] =
         {"AMI 486 clone",       ROM_AMI486,    { "Intel", cpus_i486,    "AMD", cpus_Am486,   "Cyrix", cpus_Cx486},   0,   at_ali1429_init},
         {"AMI WinBIOS 486",     ROM_WIN486,    { "Intel", cpus_i486,    "AMD", cpus_Am486,   "Cyrix", cpus_Cx486},   0,   at_ali1429_init},
 /*        {"AMI WinBIOS 486 PCI", ROM_PCI486,    { "Intel", cpus_i486,    "AMD", cpus_Am486, "Cyrix", cpus_Cx486},   0,   at_um8881f_init},*/
-        {"Award SiS 471",       ROM_SIS471,    { "Intel", cpus_i486,    "AMD", cpus_Am486,   "Cyrix", cpus_Cx486},   0,    at_sis496_init},
+        {"Award SiS 471",       ROM_SIS471,    { "Intel", cpus_i486,    "AMD", cpus_Am486,   "Cyrix", cpus_Cx486},   0,    at_sis471_init},
         {"Award SiS 496/497",   ROM_SIS496,    { "Intel", cpus_i486,    "AMD", cpus_Am486,   "Cyrix", cpus_Cx486},   0,    at_sis496_init},
 #ifdef DYNAREC
         {"Intel Premiere/PCI",  ROM_REVENGE,   { "Intel", cpus_Pentium5V, "",  NULL,         "",      NULL},         0,    at_batman_init},
@@ -155,6 +159,7 @@ void common_init()
         pit_init();
         serial1_init(0x3f8, 4);
         serial2_init(0x2f8, 3);
+	memregs_init();
         device_add(&gameport_device);
 	machine_class = MC_PCAT;
 	has_pc87306 = 0;
@@ -180,6 +185,7 @@ void pcjr_init()
         pit_set_out_func(0, pit_irq0_timer_pcjr);
         serial1_init(0x2f8, 3);
         keyboard_pcjr_init();
+	memregs_init();
         device_add(&sn76489_device);
 	nmi_mask = 0x80;
 	machine_class = MC_PCJR;
@@ -245,6 +251,7 @@ void deskpro386_init()
         at_init();
         mouse_serial_init();
         compaq_init();
+	cpqio_init();
 }
 
 void ps1_init()
