@@ -320,6 +320,7 @@ enum
         ROM_AMI386,
 	ROM_DESKPRO_386,
         ROM_AMI486,
+	ROM_CBSX486,
         ROM_WIN486,
 	ROM_SIS471,
         ROM_PCI486,
@@ -360,6 +361,7 @@ enum
         GFX_OTI067,     /*Oak OTI-067*/
         GFX_MACH64GX,   /*ATI Graphics Pro Turbo (Mach64)*/
         GFX_CL_GD5429,  /*Cirrus Logic CL-GD5429*/
+        GFX_CL_GD6235,  /*Cirrus Logic CL-GD6235*/
         GFX_VIRGEDX,    /*S3 Virge/DX*/
         GFX_PHOENIX_TRIO32, /*S3 732/Trio32 (Phoenix)*/
         GFX_PHOENIX_TRIO64, /*S3 764/Trio64 (Phoenix)*/
