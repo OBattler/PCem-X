@@ -19,6 +19,7 @@ void sis85c471_write(uint16_t port, uint8_t val, void *priv)
 {
 	uint8_t index = (port & 1) ? 0 : 1;
         int temp;
+	uint8_t x;
         pclog("sis85c471_write : port=%04x reg %02X = %02X\n", port, sis85c471_curreg, val);
 
 	if (index)
@@ -29,6 +30,7 @@ void sis85c471_write(uint16_t port, uint8_t val, void *priv)
 	else
 	{
 		if ((sis85c471_curreg < 0x50) || (sis85c471_curreg > 0x76))  return;
+		x = val ^ sis85c471_regs[sis85c471_curreg - 0x50];
 		sis85c471_regs[sis85c471_curreg - 0x50] = val;
 		goto process_value;
 	}
@@ -38,27 +40,36 @@ process_value:
 	switch(sis85c471_curreg)
 	{
 		case 0x73:
-			if (val & 0x40)
-				ide_pri_enable();
-			else
-				ide_pri_disable();
-
-			if (val & 0x20)
+			if (x & 0x40)
 			{
-				serial1_init(0x3f8, 4);
-				serial2_init(0x2f8, 3);
-				mouse_serial_init();
-			}
-			else
-			{
-				serial1_remove();
-				serial2_remove();
+				if (val & 0x40)
+					ide_pri_enable();
+				else
+					ide_pri_disable();
 			}
 
-			if (val & 0x10)
-				lpt1_init(0x378);
-			else
-				lpt1_remove();
+			if (x & 0x20)
+			{
+				if (val & 0x20)
+				{
+					serial1_init(0x3f8, 4);
+					serial2_init(0x2f8, 3);
+					mouse_serial_init();
+				}
+				else
+				{
+					serial1_remove();
+					serial2_remove();
+				}
+			}
+
+			if (x & 0x10)
+			{
+				if (val & 0x10)
+					lpt1_init(0x378);
+				else
+					lpt1_remove();
+			}
 
 			break;
 	}
@@ -77,8 +88,9 @@ uint8_t sis85c471_read(uint16_t port, void *priv)
 		if ((sis85c471_curreg >= 0x50) && (sis85c471_curreg <= 0x76))
 		{
 			temp = sis85c471_regs[sis85c471_curreg - 0x50];
+			if (sis85c471_curreg & 0xf0 == 0x70)  temp = 0xFF;
 			sis85c471_curreg = 0;
-			return 0;
+			return temp;
 		}
 		else
 			return 0xFF;
@@ -90,13 +102,12 @@ void sis85c471_init()
 
 	pclog("SiS 85c471 Init\n");
 
-	ide_sec_disable();
 	lpt2_remove();
 
 	sis85c471_curreg = 0;
 	for (i = 0; i < 0x27; i++)
 	{
-		sis85c471_regs[i] = 0;
+		sis85c471_regs[i] = 0xFF;
 	}
 	sis85c471_regs[9] = 0x40;
 	switch (mem_size)
@@ -202,6 +213,7 @@ void sis85c471_init()
 
 	sis85c471_regs[0x11] = 9;
 	sis85c471_regs[0x12] = 0xFF;
+	sis85c471_regs[0x19] = 0xFF;
 	sis85c471_regs[0x23] = 0xF0;
 	sis85c471_regs[0x26] = 1;
 

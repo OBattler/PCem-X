@@ -314,8 +314,8 @@ void at_um8881f_init()
 void at_sis471_init()
 {
         at_init();
-	sis85c471_init();
         mouse_serial_init();
+	sis85c471_init();
 }
 
 void at_sis496_init()
