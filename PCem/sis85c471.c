@@ -1,5 +1,5 @@
 /*
-	SMSC SMC sis85c471 Super I/O Chip
+	SiS sis85c471 Super I/O Chip
 	Used by Batman's Revenge
 */
 
@@ -31,7 +31,8 @@ void sis85c471_write(uint16_t port, uint8_t val, void *priv)
 	{
 		if ((sis85c471_curreg < 0x50) || (sis85c471_curreg > 0x76))  return;
 		x = val ^ sis85c471_regs[sis85c471_curreg - 0x50];
-		sis85c471_regs[sis85c471_curreg - 0x50] = val;
+		/* Writes to 0x52 are blocked as otherwise, large hard disks don't read correctly. */
+		if (sis85c471_curreg != 0x52)  sis85c471_regs[sis85c471_curreg - 0x50] = val;
 		goto process_value;
 	}
 	return;
@@ -88,7 +89,6 @@ uint8_t sis85c471_read(uint16_t port, void *priv)
 		if ((sis85c471_curreg >= 0x50) && (sis85c471_curreg <= 0x76))
 		{
 			temp = sis85c471_regs[sis85c471_curreg - 0x50];
-			if (sis85c471_curreg & 0xf0 == 0x70)  temp = 0xFF;
 			sis85c471_curreg = 0;
 			return temp;
 		}
@@ -102,12 +102,13 @@ void sis85c471_init()
 
 	pclog("SiS 85c471 Init\n");
 
+	ide_sec_disable();
 	lpt2_remove();
 
 	sis85c471_curreg = 0;
 	for (i = 0; i < 0x27; i++)
 	{
-		sis85c471_regs[i] = 0xFF;
+		sis85c471_regs[i] = 0;
 	}
 	sis85c471_regs[9] = 0x40;
 	switch (mem_size)
@@ -213,7 +214,6 @@ void sis85c471_init()
 
 	sis85c471_regs[0x11] = 9;
 	sis85c471_regs[0x12] = 0xFF;
-	sis85c471_regs[0x19] = 0xFF;
 	sis85c471_regs[0x23] = 0xF0;
 	sis85c471_regs[0x26] = 1;
 
