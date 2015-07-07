@@ -320,7 +320,6 @@ enum
         ROM_AMI386,
 	ROM_DESKPRO_386,
         ROM_AMI486,
-	ROM_CBSX486,
         ROM_WIN486,
 	ROM_SIS471,
         ROM_PCI486,
