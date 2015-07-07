@@ -15,6 +15,7 @@
 #include "vid_ati28800.h"
 #include "vid_ati_mach64.h"
 #include "vid_cga.h"
+#include "vid_cl6235.h"
 #include "vid_cl5429.h"
 #include "vid_cl_ramdac.h"
 #include "vid_cl5446.h"
@@ -54,6 +55,7 @@ static VIDEO_CARD video_cards[] =
         {"ATI VGA Edge-16 (ATI-18800)",            &ati18800_device,            GFX_VGAEDGE16},
         {"CGA",                                    &cga_device,                 GFX_CGA},
         {"Cirrus Logic CL-GD5429",                 &gd5429_device,              GFX_CL_GD5429},
+        {"Cirrus Logic CL-GD6235",                 &gd6235_device,              GFX_CL_GD6235},
         {"Cirrus Logic CL-GD5436",                 &gd5436_device,              GFX_CL_GD5436},
         {"Cirrus Logic CL-GD5446",                 &gd5446_device,              GFX_CL_GD5446},
         {"Compaq VDU",                             &cpqvdu_device,              GFX_CPQVDU},
