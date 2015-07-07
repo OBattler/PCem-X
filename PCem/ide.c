@@ -327,43 +327,21 @@ static void ide_identify(IDE *ide)
         ide->buffer[48] = 1;   /*Dword transfers supported*/
 	ide->buffer[51] = 2 << 8; /*PIO timing mode*/
 	ide->buffer[59] = ide->blocksize ? (ide->blocksize | 0x100) : 0;
-	if (romset > ROM_SIS471)
-	{
-		ide->buffer[49] = (1 << 9) | (1 << 8); /* LBA and DMA supported */
-		ide->buffer[50] = 0x4000; /* Capabilities */
-		ide->buffer[52] = 2 << 8; /*DMA timing mode*/
-	}
-	else
-	{
-		ide->buffer[49] = 0;	/* No LBA or DMA on SIS 471 and earlier. */
-		ide->buffer[50] = 0; /* Capabilities */
-		ide->buffer[52] = 0;
-	}
+	ide->buffer[49] = (1 << 9) | (1 << 8); /* LBA and DMA supported */
+	ide->buffer[50] = 0x4000; /* Capabilities */
+	ide->buffer[52] = 2 << 8; /*DMA timing mode*/
 #ifdef RPCEMU_IDE
 	ide->buffer[60] = (65535 * 16 * 63) & 0xFFFF; /* Total addressable sectors (LBA) */
 	ide->buffer[61] = (65535 * 16 * 63) >> 16;
 #else
-	if ((romset > ROM_SIS471) && (ide_map[cur_ide[cur_board]] != -1))
+	if (ide_map[cur_ide[cur_board]] != -1)
 	{
 		ide->buffer[60] = (hdc[ide_map[cur_ide[cur_board]]].tracks * hdc[ide_map[cur_ide[cur_board]]].hpc * hdc[ide_map[cur_ide[cur_board]]].spt) & 0xFFFF; /* Total addressable sectors (LBA) */
 		ide->buffer[61] = (hdc[ide_map[cur_ide[cur_board]]].tracks * hdc[ide_map[cur_ide[cur_board]]].hpc * hdc[ide_map[cur_ide[cur_board]]].spt) >> 16;
 	}
-	else
-	{
-		ide->buffer[60] = 0;
-		ide->buffer[61] = 0;
-	}
 #endif
-	if (romset > ROM_SIS471)
-	{
-		ide->buffer[63] = 7; /*Multiword DMA*/
-		ide->buffer[80] = 0xe; /*ATA-1 to ATA-3 supported*/
-	}
-	else
-	{
-		ide->buffer[63] = 0; /*No multiword DMA*/
-		ide->buffer[80] = 0;
-	}
+	ide->buffer[63] = 7; /*Multiword DMA*/
+	ide->buffer[80] = 0xe; /*ATA-1 to ATA-3 supported*/
 }
 
 /**
@@ -381,14 +359,7 @@ static void ide_atapi_identify(IDE *ide)
 #else
 	ide_padstr((char *) (ide->buffer + 27), "PCemCD", 40); /* Model */
 #endif
-	if (romset > ROM_SIS471)
-	{
-		ide->buffer[49] = 0x200; /* LBA supported */
-	}
-	else
-	{
-		ide->buffer[49] = 0; /* LBA supported */
-	}
+	ide->buffer[49] = 0x200; /* LBA supported */
 }
 
 /**

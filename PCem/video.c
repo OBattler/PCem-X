@@ -18,6 +18,7 @@
 #include "vid_cl5429.h"
 #include "vid_cl_ramdac.h"
 #include "vid_cl5446.h"
+#include "vid_cpqvdu.h"
 #include "vid_ega.h"
 #include "vid_et4000.h"
 #include "vid_et4000w32.h"
@@ -55,6 +56,9 @@ static VIDEO_CARD video_cards[] =
         {"Cirrus Logic CL-GD5429",                 &gd5429_device,              GFX_CL_GD5429},
         {"Cirrus Logic CL-GD5436",                 &gd5436_device,              GFX_CL_GD5436},
         {"Cirrus Logic CL-GD5446",                 &gd5446_device,              GFX_CL_GD5446},
+        {"Compaq VDU",                             &cpqvdu_device,              GFX_CPQVDU},
+        {"Compaq EGA",                             &cpqega_device,              GFX_CPQEGA},
+        {"Compaq/Paradise VGA",                    &cpqvga_device,              GFX_CPQVGA},
         {"Diamond Stealth 32 (Tseng ET4000/w32p)", &et4000w32p_device,          GFX_ET4000W32},
         {"Diamond Stealth 3D 2000 (S3 ViRGE)",     &s3_virge_device,            GFX_VIRGE},
         {"EGA",                                    &ega_device,                 GFX_EGA},

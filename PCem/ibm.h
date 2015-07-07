@@ -318,11 +318,11 @@ enum
         ROM_ACER386,
         ROM_MEGAPC,
         ROM_AMI386,
-	ROM_HP200LX,
+	ROM_DESKPRO_386,
         ROM_AMI486,
         ROM_WIN486,
-        ROM_PCI486,
 	ROM_SIS471,
+        ROM_PCI486,
         ROM_SIS496,
         ROM_430VX,
         ROM_ENDEAVOR,
@@ -370,6 +370,9 @@ enum
 	GFX_CL_GD5446,
 	GFX_SUPEREGA,
 	GFX_RIVA128,
+	GFX_CPQVDU,
+	GFX_CPQEGA,
+	GFX_CPQVGA,
         
         GFX_MAX
 };

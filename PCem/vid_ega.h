@@ -73,4 +73,5 @@ void    ega_write(uint32_t addr, uint8_t val, void *p);
 uint8_t ega_read(uint32_t addr, void *p);
 
 extern device_t ega_device;
+extern device_t cpqega_device;
 extern device_t sega_device;

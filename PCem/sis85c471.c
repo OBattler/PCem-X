@@ -1,5 +1,5 @@
 /*
-	SMSC SMC sis85c471 Super I/O Chip
+	SiS sis85c471 Super I/O Chip
 	Used by Batman's Revenge
 */
 
@@ -19,16 +19,20 @@ void sis85c471_write(uint16_t port, uint8_t val, void *priv)
 {
 	uint8_t index = (port & 1) ? 0 : 1;
         int temp;
+	uint8_t x;
         pclog("sis85c471_write : port=%04x reg %02X = %02X\n", port, sis85c471_curreg, val);
 
 	if (index)
 	{
-		if (val & 0xF0 == 0x50)  sis85c471_curreg = val;
+		if ((val >= 0x50) && (val <= 0x76))  sis85c471_curreg = val;
+		return;
 	}
 	else
 	{
-		if (sis85c471_curreg & 0xF0 != 0x50)  return;
-		sis85c471_regs[sis85c471_curreg - 0x50] = val;
+		if ((sis85c471_curreg < 0x50) || (sis85c471_curreg > 0x76))  return;
+		x = val ^ sis85c471_regs[sis85c471_curreg - 0x50];
+		/* Writes to 0x52 are blocked as otherwise, large hard disks don't read correctly. */
+		if (sis85c471_curreg != 0x52)  sis85c471_regs[sis85c471_curreg - 0x50] = val;
 		goto process_value;
 	}
 	return;
@@ -37,27 +41,36 @@ process_value:
 	switch(sis85c471_curreg)
 	{
 		case 0x73:
-			if (val & 0x40)
-				ide_pri_enable();
-			else
-				ide_pri_disable();
-
-			if (val & 0x20)
+			if (x & 0x40)
 			{
-				serial1_init(0x3f8, 4);
-				serial2_init(0x2f8, 3);
-				mouse_serial_init();
-			}
-			else
-			{
-				serial1_remove();
-				serial2_remove();
+				if (val & 0x40)
+					ide_pri_enable();
+				else
+					ide_pri_disable();
 			}
 
-			if (val & 0x10)
-				lpt1_init(0x378);
-			else
-				lpt1_remove();
+			if (x & 0x20)
+			{
+				if (val & 0x20)
+				{
+					serial1_init(0x3f8, 4);
+					serial2_init(0x2f8, 3);
+					mouse_serial_init();
+				}
+				else
+				{
+					serial1_remove();
+					serial2_remove();
+				}
+			}
+
+			if (x & 0x10)
+			{
+				if (val & 0x10)
+					lpt1_init(0x378);
+				else
+					lpt1_remove();
+			}
 
 			break;
 	}
@@ -68,12 +81,17 @@ uint8_t sis85c471_read(uint16_t port, void *priv)
 {
         pclog("sis85c471_read : port=%04x reg %02X\n", port, sis85c471_curreg);
 	uint8_t index = (port & 1) ? 0 : 1;
+	uint8_t temp;
 
 	if (index)
 		return sis85c471_curreg;
 	else
-		if (sis85c471_curreg & 0xF0 == 0x50)
-			return sis85c471_regs[sis85c471_curreg - 0x50];
+		if ((sis85c471_curreg >= 0x50) && (sis85c471_curreg <= 0x76))
+		{
+			temp = sis85c471_regs[sis85c471_curreg - 0x50];
+			sis85c471_curreg = 0;
+			return temp;
+		}
 		else
 			return 0xFF;
 }
@@ -82,9 +100,12 @@ void sis85c471_init()
 {
 	int i = 0;
 
+	pclog("SiS 85c471 Init\n");
+
 	ide_sec_disable();
 	lpt2_remove();
 
+	sis85c471_curreg = 0;
 	for (i = 0; i < 0x27; i++)
 	{
 		sis85c471_regs[i] = 0;
