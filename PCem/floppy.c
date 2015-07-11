@@ -344,7 +344,13 @@ void freetracksectors(int d, int h, int t)
 
 	for (s=0;s<255;s++)
 	{
-		if (!(fdd[d].scid[h][t][s][4] & 0xC0))  fdd[d].disc[h][t][s] = NULL;
+		// if (!(fdd[d].scid[h][t][s][4] & 0xC0))  fdd[d].disc[h][t][s] = NULL;
+		fdd[d].disc[h][t][s] = NULL;
+		fdd[d].scid[h][t][s][0] = 255;
+		fdd[d].scid[h][t][s][1] = 255;
+		fdd[d].scid[h][t][s][2] = 255;
+		fdd[d].scid[h][t][s][3] = 255;
+		fdd[d].scid[h][t][s][4] = 3;
 	}
 }
 

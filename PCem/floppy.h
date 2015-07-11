@@ -392,6 +392,8 @@ typedef struct FDD
 	uint8_t *disc[2][86][255];
 	/* Actual track buffers, the "sectors" will be mere pointers to that */
 	uint8_t trackbufs[2][86][25500];
+	/* Sectors per track, data rate (0 = 500, 1 = 300, 2 = 250, 3 = 1000), RPM (0 = 300, 1 = 360), encoding (0 = FM, 1 = MFM) */
+	uint8_t trackparams[2][86][4];
 	// Sector ID fields
 	uint8_t scid[2][86][255][5];
 	uint8_t spt[85];
