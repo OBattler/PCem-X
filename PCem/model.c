@@ -330,7 +330,8 @@ void at_sis496_init()
 void at_batman_init()
 {
         at_init();
-        mouse_serial_init();
+        // mouse_serial_init();
+	mouse_ps2_init();
         pci_init(PCI_CONFIG_TYPE_2, 0xd, 0x10);
         i430lx_init();
 	fdc37c665_init();
@@ -340,7 +341,8 @@ void at_batman_init()
 void at_endeavor_init()
 {
         at_init();
-        mouse_serial_init();
+        // mouse_serial_init();
+	mouse_ps2_init();
         pci_init(PCI_CONFIG_TYPE_1, 0xd, 0x10);
         i430fx_init();
         piix_init(7);

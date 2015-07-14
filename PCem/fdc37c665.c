@@ -129,7 +129,7 @@ process_value:
 					}
 					break;
                         }                        
-                        mouse_serial_init();
+                        // mouse_serial_init();
 			break;
 		case 3:
 			fdc_os2 = (val & 2) ? 1 : 0;
