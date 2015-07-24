@@ -499,7 +499,8 @@ int loadbios()
                 case ROM_430FX:
                 // f = romfopen("roms/430fx/031396S.BIN", "rb");	/* Works */
 		// f = romfopen("roms/430fx/P54CE_FX.bin", "rb");	/* Does NOT work */
-		f = romfopen("roms/430fx/Vca20old.bin", "rb");	/* Works */
+		f = romfopen("roms/430fx/541WSQ13.BIN", "rb");	/* Works */
+		// f = romfopen("roms/430fx/Vca20old.bin", "rb");	/* Works */
 		// f = romfopen("roms/430fx/031396U.BIN", "rb");	/* Works */
                 if (!f) break;
                 fread(rom,           0x20000, 1, f);                
