@@ -12,6 +12,7 @@
 #include "dma.h"
 #include "fdc.h"
 #include "fdc37c665.h"
+#include "fdc37c932fr.h"
 #include "gameport.h"
 #include "headland.h"
 #include "i430fx.h"
@@ -356,20 +357,27 @@ void at_i430fx_init()
 {
         at_init();
         mouse_serial_init();
+	// mouse_ps2_init();
         pci_init(PCI_CONFIG_TYPE_1, 0, 31);
         i430fx_init();
         piix_init(7);
-        um8669f_init();
+        // um8669f_init();
+	fdc37c665_init();
+        intel_endeavor_init();
+        device_add(&intel_flash_device);
 }
 
 void at_i430vx_init()
 {
         at_init();
         mouse_serial_init();
+	// mouse_ps2_init();
         pci_init(PCI_CONFIG_TYPE_1, 0, 31);
         i430vx_init();
         piix_init(7);
-        um8669f_init();
+        // um8669f_init();
+	/* Note by OBattler: Switched to a BIOS using that Super I/O chip because it's better than UMC. */
+	fdc37c932fr_init();
 }
 
 void model_init()

@@ -23,9 +23,13 @@ void fdc_setmodel(int val);
 
 extern int discint;
 extern int densel_polarity;
+extern int densel_polarity_mid0;
+extern int densel_polarity_mid1;
 extern int densel_force;
 extern int fdc_os2;
 extern int drive_swap;
 
 void configure_drt();
 void fdc_setswap(int val);
+
+uint8_t fdc_read(uint16_t addr, void *priv);

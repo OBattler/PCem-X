@@ -31,6 +31,8 @@ int tempdiv = 0;
 int m3 = 0;
 
 int densel_polarity = 0;
+int densel_polarity_mid0 = 0;
+int densel_polarity_mid1 = 0;
 int densel_force = 0;
 
 int fdc_os2 = 0;
@@ -1514,6 +1516,7 @@ void fdc_poll()
 			fdc.head[fdc.drive] = (fdc.params[0] & 4) ? 1 : 0;
 			if (fdc.sector[fdc.drive] <= 0)  fdc.sector[fdc.drive] = 1;
 			fdc.res[4]=(fdc.head[fdc.drive]?4:0)|fdc.drive;
+			pclog("RSID: C:%02X H:%02X R:%02X\n", fdc.track[fdc.drive], fdc.head[fdc.drive], fdc.sector[fdc.drive]);
 			/* fdd[vfdd[fdc.drive]].sstates = sector_state(3);
 			if (fdd[vfdd[fdc.drive]].sstates)  fdc.res[4] |= 0x40;
 			if (fdd[vfdd[fdc.drive]].sstates)  fatal("%c: ID not found\n", 0x41 + fdc.drive); */

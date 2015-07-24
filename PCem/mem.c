@@ -511,7 +511,9 @@ int loadbios()
                 case ROM_430VX:
 //                f = romfopen("roms/430vx/Ga586atv.bin", "rb");
 //                f = fopen("roms/430vx/vx29.BIN", "rb");
-                f = romfopen("roms/430vx/55XWUQ0E.BIN", "rb");
+//                f = romfopen("roms/430vx/55XWSQ0F.BIN", "rb");
+		f = romfopen("roms/430vx/VA021297.BIN", "rb");
+//                f = romfopen("roms/430vx/55XWUQ0E.BIN", "rb");
 //                f=romfopen("roms/430vx/430vx","rb");               
                 if (!f) break;
                 fread(rom,           0x20000, 1, f);                

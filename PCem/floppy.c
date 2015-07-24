@@ -408,12 +408,12 @@ void ejectdisc(int d)
 	fdd[d].IMGTYPE = IMGT_NONE;
 	fdc.format_started[0] = 0;
 	fdc.format_started[1] = 0;
-	fdc.track[d] = 0;
-	fdc.head[d] = 0;
-	fdc.sector[d] = 1;
-	fdc.pos[d] = 0;
+	fdc.track[vfdd[d]] = 0;
+	fdc.head[vfdd[d]] = 0;
+	fdc.sector[vfdd[d]] = 1;
+	fdc.pos[vfdd[d]] = 0;
 	fdc.deldata = 0;
-	fdc.gotdata[d] = 0;
+	fdc.gotdata[vfdd[d]] = 0;
 	fdd[d].XDF = 0;
 	fdd[d].CLASS = 0;
 	fdd[d].LITE = 0;
@@ -1560,12 +1560,12 @@ drive_disabled:
         fdd[d].discmodified=0;
         strcpy(discfns[d],fn);
         fdd[d].discchanged=1;
-	fdc.format_started[d] = 0;
-	fdc.track[d] = 0;
-	fdc.head[d] = 0;
-	fdc.sector[d] = 1;
-	fdc.pos[d] = 0;
-	fdc.gotdata[d] = 0;
+	fdc.format_started[vfdd[d]] = 0;
+	fdc.track[vfdd[d]] = 0;
+	fdc.head[vfdd[d]] = 0;
+	fdc.sector[vfdd[d]] = 1;
+	fdc.pos[vfdd[d]] = 0;
+	fdc.gotdata[vfdd[d]] = 0;
 }
 
 void fdd_init()
