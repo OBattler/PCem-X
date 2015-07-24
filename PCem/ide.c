@@ -2204,6 +2204,12 @@ void ide_pri_enable()
         io_sethandler(0x03f6, 0x0001, ide_read_pri, NULL,           NULL,           ide_write_pri, NULL,            NULL           , NULL);
 }
 
+void ide_pri_enable_custom(uint16_t port1, uint16_t port2)
+{
+        if (port1)  io_sethandler(port1, 0x0008, ide_read_pri, ide_read_pri_w, ide_read_pri_l, ide_write_pri, ide_write_pri_w, ide_write_pri_l, NULL);
+        if (port2)  io_sethandler(port2, 0x0001, ide_read_pri, NULL,           NULL,           ide_write_pri, NULL,            NULL           , NULL);
+}
+
 void ide_pri_disable()
 {
         io_removehandler(0x01f0, 0x0008, ide_read_pri, ide_read_pri_w, ide_read_pri_l, ide_write_pri, ide_write_pri_w, ide_write_pri_l, NULL);
@@ -2214,6 +2220,12 @@ void ide_sec_enable()
 {
         io_sethandler(0x0170, 0x0008, ide_read_sec, ide_read_sec_w, ide_read_sec_l, ide_write_sec, ide_write_sec_w, ide_write_sec_l, NULL);
         io_sethandler(0x0376, 0x0001, ide_read_sec, NULL,           NULL,           ide_write_sec, NULL,            NULL           , NULL);
+}
+
+void ide_sec_enable_custom(uint16_t port1, uint16_t port2)
+{
+        if (port1)  io_sethandler(port1, 0x0008, ide_read_sec, ide_read_sec_w, ide_read_sec_l, ide_write_sec, ide_write_sec_w, ide_write_sec_l, NULL);
+        if (port2)  io_sethandler(port2, 0x0001, ide_read_sec, NULL,           NULL,           ide_write_sec, NULL,            NULL           , NULL);
 }
 
 void ide_sec_disable()
