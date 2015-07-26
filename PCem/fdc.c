@@ -887,6 +887,9 @@ void fdc_write(uint16_t addr, uint8_t val, void *priv)
                                         	        fdc.params[5]=fdc.sector[fdc.drive];
 	                                        }
 	                                        if (fdc.params[5]>fdd[vfdd[fdc.drive]].spt[fdc.track[fdc.drive]]) fdc.params[5]=fdd[vfdd[fdc.drive]].spt[fdc.track[fdc.drive]];
+					}
+					if (CMD_RW || discint==10 || discint==13)
+					{
 	                                        if (fdd[vfdd[fdc.drive]].driveempty)
         	                                {
                 	                                pclog("Drive empty\n");
@@ -945,7 +948,8 @@ uint8_t fdc_read(uint16_t addr, void *priv)
         switch (addr&7)
         {
 		case 0: /*Configuration, index, and status register A*/
-			return 0xFF;
+			temp = 0xFF;
+			break;
 		case 1:	/*Data, and status register B*/
 			temp = 0x70;
 			if (fdc.dor & 1)
@@ -1449,8 +1453,11 @@ void fdc_poll()
                 case 4: /*Sense drive status*/
 			fdc.res[10] = fdc.params[0] & 7;
 	                fdc.res[10] |= 0x28;
-	                if (fdc.track[fdc.drive] == 0) fdc.res[10] |= 0x10;
-			if (fdd[vfdd[fdc.drive]].WP) fdc.res[10] |= 0x40;
+			if (!fdd[vfdd[fdc.drive]].driveempty)
+			{
+				if (fdd[vfdd[fdc.drive]].WP) fdc.res[10] |= 0x40;
+			}
+                	if (fdc.track[fdc.drive] == 0) fdc.res[10] |= 0x10;
 
 	                fdc.stat = (fdc.stat & 0xf) | 0xd0;
 	                paramstogo = 1;
@@ -1479,7 +1486,7 @@ void fdc_poll()
 				fdc.st0 |= 0x10;
 			}
 			// fdc.sector[fdc.drive] = 1;
-	                if (!fdd[vfdd[fdc.drive]].driveempty)  fdd[vfdd[fdc.drive]].discchanged = 0;
+	                // if (!fdd[vfdd[fdc.drive]].driveempty)  fdd[vfdd[fdc.drive]].discchanged = 0;
 			fdc.st0=(fdc.head[fdc.drive]?4:0)|fdc.drive;
 			fdc.st0 |= 0x20;
 			discint=-3;
@@ -1685,17 +1692,17 @@ format_result_phase_after_statuses:
 			// pclog("Seek (rel=%02X) %02X\n", fdc.relative, fdc.params[1]);
 	                if (!fdc.relative)
 			{
-				if (IS_BIG && VF_DEN && (VF_CLS < CLASS_800))
+				if (IS_BIG && VF_DEN && (VF_CLS < CLASS_800) && (VF_CLS != -1))
 					fdc.track[fdc.drive]=fdc.params[1] >> 1;
 				else
 					fdc.track[fdc.drive]=fdc.params[1];
 			}
-	                if (!fdd[vfdd[fdc.drive]].driveempty)  fdd[vfdd[fdc.drive]].discchanged = 0;
+	                // if (!fdd[vfdd[fdc.drive]].driveempty)  fdd[vfdd[fdc.drive]].discchanged = 0;
 			fdc.head[fdc.drive] = (fdc.params[0] & 4) >> 2;
 	               	fdc.st0=0x20|fdc.drive|(fdc.head[fdc.drive]?4:0);
 			if (fdc.relative)
 			{
-				if (IS_BIG && VF_DEN && (VF_CLS < CLASS_800))
+				if (IS_BIG && VF_DEN && (VF_CLS < CLASS_800) && (VF_CLS != -1))
 				{
 					if (fdc.direction)  fdc.track[fdc.drive] -= (fdc.params[1] >> 1);
 					if (!fdc.direction)  fdc.track[fdc.drive] += (fdc.params[1] >> 1);
@@ -1724,7 +1731,7 @@ format_result_phase_after_statuses:
 	                timer_process();
 			disctime = 2048 * (1 << TIMER_SHIFT);
 	                timer_update_outstanding();
-	                fdc.stat = 0x80 | (1 << fdc.drive);
+        	        fdc.stat = 0x80 | (1 << fdc.drive);
 	                return;
 		case 0x11:
 			fdc_readwrite(3);

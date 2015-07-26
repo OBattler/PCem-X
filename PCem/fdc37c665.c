@@ -187,7 +187,9 @@ uint8_t fdc37c665_read(uint16_t port, void *priv)
 void fdc37c665_init()
 {
 	fdc_remove_stab();
-	fdc37c665_regs[0] = 0x3B;
+	/* Parallel port should be LPT 1, not LPT 2. */
+	// fdc37c665_regs[0] = 0x3B;
+	fdc37c665_regs[0] = 0x3A;
 	fdc37c665_regs[1] = 0x9F;
 	fdc37c665_regs[2] = 0xDC;
 	fdc37c665_regs[3] = 0x78;
@@ -206,6 +208,8 @@ void fdc37c665_init()
 	densel_polarity = 1;
 	densel_force = 0;
 	fdc_setswap(0);
+	serial1_set(0x3f8, 4);
+	serial2_set(0x2f8, 3);
         io_sethandler(0x3f0, 0x0002, fdc37c665_read, NULL, NULL, fdc37c665_write, NULL, NULL,  NULL);
         fdc37c665_locked = 0;
 }

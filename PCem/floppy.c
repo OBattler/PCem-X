@@ -404,10 +404,10 @@ void ejectdisc(int d)
         discfns[d][0]=0;
         fdd[d].SECTORS=9; fdd[d].SIDES=1;
         fdd[d].driveempty=1;
+        fdd[d].discchanged=1;
 	fdd[d].CLASS = -1;
 	fdd[d].IMGTYPE = IMGT_NONE;
-	fdc.format_started[0] = 0;
-	fdc.format_started[1] = 0;
+	fdc.format_started[vfdd[d]] = 0;
 	fdc.track[vfdd[d]] = 0;
 	fdc.head[vfdd[d]] = 0;
 	fdc.sector[vfdd[d]] = 1;
@@ -415,7 +415,7 @@ void ejectdisc(int d)
 	fdc.deldata = 0;
 	fdc.gotdata[vfdd[d]] = 0;
 	fdd[d].XDF = 0;
-	fdd[d].CLASS = 0;
+	// fdd[d].CLASS = 0;
 	fdd[d].LITE = 0;
 	fdd[d].discmodified=0;
 }
@@ -1471,6 +1471,8 @@ void floppy_load_image(int d, char *fn)
 	if (strlen(fn) == 0)
 	{
 		pclog("%c: No file specified, aborting load...\n", 0x41 + d);
+		ejectdisc(d);
+		fdd[d].WP = 1;
 		return;
 	}
 
