@@ -117,6 +117,8 @@ void savedisc(int d)
         FILE *f;
         int h,t,s,b;
 	int dw;
+	/* Temporarily while fixing the format stuff. */
+	return;
         if (!fdd[d].discmodified) return;
         if (fdd[d].WP) return;
 	if (fdd[d].XDF)  return;
@@ -614,9 +616,120 @@ int fdc_format()
 	fdd[vfdd[fdc.drive]].ltpos += (128 << fdc.params[8]);
 
 	fdd[vfdd[fdc.drive]].sectors_formatted++;
-	// pclog("FDCFMT: %02X %02X %02X %02X | %02X %02X %02X %02X\n", fdc.params[5], fdc.params[6], fdc.params[7], fdc.params[8], fdd[vfdd[fdc.drive]].scid[fdc.head[fdc.drive]][fdc.track[fdc.drive]][fdc.sector[fdc.drive] - 1][4], fdd[vfdd[fdc.drive]].sstates, fdc.st1, fdc.st2);
+	pclog("FDCFMT: %02X %02X %02X %02X | %02X %02X %02X %02X\n", fdc.params[5], fdc.params[6], fdc.params[7], fdc.params[8], fdd[vfdd[fdc.drive]].scid[fdc.head[fdc.drive]][fdc.track[fdc.drive]][fdc.sector[fdc.drive] - 1][4], fdd[vfdd[fdc.drive]].sstates, fdc.st1, fdc.st2);
 	if (fdc.sector[fdc.drive] < fdd[vfdd[fdc.drive]].temp_spt)  fdc.sector[fdc.drive]++;
 	return 0;
+}
+
+int paramstogo=0;
+
+void fdc_format_command()
+{
+	int i = 0;
+	int quantity = 1;
+	int mfm = (fdc.command & 0x40);
+	int maxs = 0;
+	int sc = 0;
+	int temp = 0;
+	int rbps = 0;
+	uint8_t internal_in = 0;
+	uint8_t rt = 0;
+	uint8_t sr = 0;
+
+	if (fdc.fifo)  quantity = fdc.tfifo;
+
+	// Find real sector position in the array by ID
+	if (!fdc.format_started[fdc.drive])
+	{
+		fdd[vfdd[fdc.drive]].temp_bps = fdc.params[1];
+		fdd[vfdd[fdc.drive]].temp_spt = fdc.params[2];
+		fdd[vfdd[fdc.drive]].spt[fdc.track[fdc.drive]] = 0;
+		fdc.eot[fdc.drive] = fdc.params[2];
+		fdc.sector[fdc.drive] = 1;
+		fdc.pos[fdc.drive] = 0;
+		fdc.head[fdc.drive] = (fdc.params[0] & 4) >> 2;
+		fdd[vfdd[fdc.drive]].sectors_formatted = 0;
+		fdc.fillbyte[fdc.drive] = fdc.params[4];
+		fdc.format_started[fdc.drive] = 1;
+		fdc.fdmaread[fdc.drive] = 0;
+		fdd[vfdd[fdc.drive]].sstates = 0;
+		fdd[vfdd[fdc.drive]].ltpos = 0;
+		freetracksectors(fdc.drive, fdc.head[fdc.drive], fdc.track[fdc.drive]);
+	}
+
+	if (fdd[vfdd[fdc.drive]].WP)
+	{
+		discint = 0x100;
+		fdc_poll();
+		return;
+	}
+	fdd[vfdd[fdc.drive]].discmodified = 1;
+
+	if (fdd[vfdd[fdc.drive]].sectors_formatted<fdd[vfdd[fdc.drive]].temp_spt)
+	{
+		for(i = 0; i < quantity; i++)
+		{
+			if (fdc.pcjr || !fdc.dma)
+			{
+				fdc.stat = 0xb0;
+				fdc.dat = fifo_buf_read();
+			}
+			else
+			{
+				fdc.stat = 0x90;
+				temp = dma_channel_read(2);
+				fdc.dat = temp;
+				if (temp & DMA_OVER)
+					fdc.abort[fdc.drive] = 1;
+				if (temp == DMA_NODATA)
+				{
+					fdc.abort[fdc.drive] = 1;
+				}
+			}
+
+			if (temp != DMA_NODATA)
+			{
+				if (i < 4)  fdc.params[5 + fdc.fdmaread[fdc.drive]] = fdc.dat;
+			}
+
+                       	timer_process();
+			disctime = 600 * (1 << TIMER_SHIFT);
+                       	timer_update_outstanding();
+
+			fdc.fdmaread[fdc.drive]++;
+			if(fdc.fdmaread[fdc.drive] >= 4)
+			{
+				fdc.fdmaread[fdc.drive] = 0;
+				fdc.sector[fdc.drive] = fdd[vfdd[fdc.drive]].sectors_formatted + 1;
+				fdc_format();
+			}
+		}
+		return;
+	}
+	else
+	{
+		/* Format is finished! */
+		pclog("Format finished, track %u with %u sectors!\n", fdc.track[fdc.drive], fdd[vfdd[fdc.drive]].spt[fdc.track[fdc.drive]]);
+		disctime=0;
+		discint=-2;
+		fdc_int();
+		fdc.stat=0xd0;
+		fdc.res[4]=(fdc.head[fdc.drive]?4:0)|fdc.drive;
+		if (fdd[vfdd[fdc.drive]].sstates)  fdc.res[4] |= 0x40;
+		fdc.res[4] |= 0x20;
+		fdc.st0=fdc.res[4];
+		fdc.res[5]=fdc.st1;
+		fdc.res[6]=fdc.st2;
+		fdc.st1=0;
+		fdc.st2=0;
+		fdc.res[7]=0;
+		fdc.res[8]=0;
+		fdc.res[9]=0;
+		fdc.res[10]=0;
+		paramstogo=7;
+		fdc.format_started[fdc.drive] = 0;
+		return;
+	}
 }
 
 int act = 0;
@@ -641,11 +754,12 @@ int fifo_buf_read()
 	return temp;
 }
 
-int paramstogo=0;
+static int fdc_reset_stat = 0;
+
 void fdc_write(uint16_t addr, uint8_t val, void *priv)
 {
 	// printf("Write FDC %04X %02X %04X:%04X %i %02X %i rate=%i\n",addr,val,cs>>4,pc,ins,fdc.st0,ins,fdc.rate);
-	// printf("OUT 0x%04X, %02X\n", addr, val);
+	printf("OUT 0x%04X, %02X\n", addr, val);
         switch (addr&7)
         {
 		case 0: /*Configuration*/
@@ -791,6 +905,7 @@ void fdc_write(uint16_t addr, uint8_t val, void *priv)
 		                                readflash=1;
 		                                break;
 	                                case 7: /*Recalibrate*/
+						// if (fdc_reset_stat)  goto bad_fdc_command;
 		                                fdc.pnum=0;
 		                                fdc.ptot=1;
 		                                fdc.stat=0x90;
@@ -812,6 +927,7 @@ void fdc_write(uint16_t addr, uint8_t val, void *priv)
 		                                readflash=1;
 		                                break;
 	                                case 15: /*Seek*/
+						// if (fdc_reset_stat)  goto bad_fdc_command;
 						fdc.relative=fdc.command & 0x80;
 						fdc.direction=fdc.command & 0x40;
         		                        fdc.pnum=0;
@@ -850,6 +966,7 @@ void fdc_write(uint16_t addr, uint8_t val, void *priv)
 	                	                fdc_poll();
         	                	        break;
 	                                default:
+bad_fdc_command:
 		                                pclog("Bad FDC command %02X\n",val);
 	        	                        fdc.stat=0x10;
 		                                discint=0xfc;
@@ -875,6 +992,11 @@ void fdc_write(uint16_t addr, uint8_t val, void *priv)
 	                                	fdc.drive=fdc.params[0]&1;
 						fdc.abort[fdc.drive] = 0;
 						fdc.pos[fdc.drive] = 0;
+						if ((discint == 7) || (discint == 15))
+						{
+							/* Recalibrate and seek are invalid when drive is empty. */
+							if (fdd[vfdd[fdc.drive]].driveempty)  goto bad_fdc_command;
+						}
 					}
 	                                if (CMD_RW)
 	                                {
@@ -1023,11 +1145,9 @@ uint8_t fdc_read(uint16_t addr, void *priv)
 			// printf("Bad read FDC %04X\n",addr);
         }
 	// /*if (addr!=0x3f4) */printf("%02X rate=%i\n",temp,fdc.rate);
-	// printf("IN 0x%04X, %02X\n", addr, temp);
+	printf("IN 0x%04X, %02X\n", addr, temp);
         return temp;
 }
-
-static int fdc_reset_stat = 0;
 
 int return_sstate()
 {
@@ -1486,7 +1606,7 @@ void fdc_poll()
 				fdc.st0 |= 0x10;
 			}
 			// fdc.sector[fdc.drive] = 1;
-	                // if (!fdd[vfdd[fdc.drive]].driveempty)  fdd[vfdd[fdc.drive]].discchanged = 0;
+	                if (!fdd[vfdd[fdc.drive]].driveempty)  fdd[vfdd[fdc.drive]].discchanged = 0;
 			fdc.st0=(fdc.head[fdc.drive]?4:0)|fdc.drive;
 			fdc.st0 |= 0x20;
 			discint=-3;
@@ -1494,6 +1614,7 @@ void fdc_poll()
 	                disctime = 2048 * (1 << TIMER_SHIFT);
 	                timer_update_outstanding();
         	        fdc.stat = 0x80 | (1 << fdc.drive);
+			fdc_reset_stat = 0;
 	                return;
                 case 8: /*Sense interrupt status*/               
 	                fdc.dat = fdc.st0;
@@ -1501,11 +1622,16 @@ void fdc_poll()
 	                if (fdc_reset_stat)
         	        {
 				fdc.st0 &= 0xf8;
-				fdc.st0|=(fdc.head[4 - fdc_reset_stat]?4:0)|(4 - fdc_reset_stat);
+				/* Modified to avoid spurious values when non-existent 3rd and 4th drives are being reset. */
+				if ((4 - fdc_reset_stat) > 1)
+					fdc.st0|=(4 - fdc_reset_stat);
+				else
+					fdc.st0|=(fdc.head[4 - fdc_reset_stat]?4:0)|(4 - fdc_reset_stat);
 	                        fdc_reset_stat--;
 	                }
 
 	                fdc.stat    = (fdc.stat & 0xf) | 0xd0;
+			pclog("SIS: ST0: %02X\n", fdc.st0);
 	                fdc.res[9]  = fdc.st0;
 	                fdc.res[10] = fdc.track[fdc.drive];
 	                if (!fdc_reset_stat) fdc.st0 = 0x80;
@@ -1539,157 +1665,15 @@ void fdc_poll()
 			pclog("RSID: %02X %02X %02X %02X %02X %02X %02X\n", fdc.res[4], fdc.res[5], fdc.res[6], fdc.res[7], fdc.res[8], fdc.res[9], fdc.res[10]);
 	                paramstogo=7;
 	                return;
+
 		case 13: /*Format*/
-			if (fdd[vfdd[fdc.drive]].WP)
-			{
-				discint = 0x100;
-				fdc_poll();
-				return;
-			}
-			else
-			{
-        	        	fdd[vfdd[fdc.drive]].discmodified=1;
-			}
+			fdc_format_command();
+			return;
 
-			if (!fdc.format_started[fdc.drive])
-			{
-				// pclog("FMTSTT (%02X): %02X %02X %02X %02X %02X\n", fdc.dma, fdc.params[0], fdc.params[1], fdc.params[2], fdc.params[3], fdc.params[4]);
-				fdd[vfdd[fdc.drive]].temp_bps = fdc.params[1];
-				fdd[vfdd[fdc.drive]].temp_spt = fdc.params[2];
-				fdd[vfdd[fdc.drive]].spt[fdc.track[fdc.drive]] = 0;
-				fdc.eot[fdc.drive] = fdc.params[2];
-				fdc.sector[fdc.drive] = 1;
-				fdc.pos[fdc.drive] = 0;
-				fdc.head[fdc.drive] = (fdc.params[0] & 4) >> 2;
-				fdd[vfdd[fdc.drive]].sectors_formatted = 0;
-				OLD_BPS = fdc.params[1];
-				OLD_SPC = fdc.params[2];
-				OLD_C = -1;
-				fdc.fillbyte[fdc.drive] = fdc.params[4];
-				fdc.format_started[fdc.drive] = 1;
-				timer_process();
-				disctime = 600 * (1 << TIMER_SHIFT);
-				timer_update_outstanding();
-				fdc.fdmaread[fdc.drive] = 0;
-				fdd[vfdd[fdc.drive]].sstates = 0;
-				fdd[vfdd[fdc.drive]].ltpos = 0;
-				freetracksectors(fdc.drive, fdc.head[fdc.drive], fdc.track[fdc.drive]);
-
-				timer_process();
-				disctime = 600 * (1 << TIMER_SHIFT);
-				timer_update_outstanding();
-				if ((fdc.pcjr || !fdc.dma) && (fdc.pos[fdc.drive] <= fdd[vfdd[fdc.drive]].BPS))  fdc.stat = 0xb0;
-				if ((!fdc.pcjr && fdc.dma) && (fdc.pos[fdc.drive] <= fdd[vfdd[fdc.drive]].BPS))  fdc.stat = 0x90;
-				return;
-			}
-			else
-			{
-				if (fdd[vfdd[fdc.drive]].sectors_formatted < fdd[vfdd[fdc.drive]].temp_spt)
-				{
-					if (fdc.fifo)
-					{
-						for (a = 0; a < fdc.tfifo; a++)
-						{
-							if (a < 4)
-							{
-								// if (fdc.fdmaread[fdc.drive] == 0)  pclog("SST %02X %02X %02X\n", fdd[vfdd[fdc.drive]].sstates, fdc.sector[fdc.drive], fdc.dma);
-	                        				if (fdc.pcjr || !fdc.dma)
-								{
-									fdc.stat = 0xb0;
-	                                				fdc.params[5 + a + fdc.fdmaread[fdc.drive]] = fifo_buf_read();
-								}
-	                        				else
-								{
-									fdc.stat = 0x90;
-	                                				fdc.params[5 + a + fdc.fdmaread[fdc.drive]] = dma_channel_read(2);
-								}
-							}
-						}
-					}
-					else
-					{
-	                        		if (fdc.pcjr || !fdc.dma || (romset == ROM_SIS471))
-        	                        		if (fdc.fdmaread[fdc.drive] < 4)  fdc.params[5 + fdc.fdmaread[fdc.drive]] = fdc.dat;
-	                        		else
-	                                		if (fdc.fdmaread[fdc.drive] < 4)  fdc.params[5 + fdc.fdmaread[fdc.drive]] = dma_channel_read(2);
-					}
-
-	                        	if (fdc.params[5 + fdc.fdmaread[fdc.drive]] == DMA_NODATA)
-	                        	{
-						// pclog("DMAND\n");
-	                                	discint=0xFD;
-	                                	timer_process();
-        	                        	disctime = 50 * (1 << TIMER_SHIFT);
-                	                	timer_update_outstanding();
-	                                	return;
-        	                	}
-					else
-					{
-						if (fdc.fifo)
-						{
-							fdc.fdmaread[fdc.drive]+=fdc.tfifo;
-						}
-						else
-						{
-							fdc.fdmaread[fdc.drive]++;
-						}
-						if (fdc.fdmaread[fdc.drive] < 4)
-						{
-							timer_process();
-							disctime = 600 * (1 << TIMER_SHIFT);
-	                               			timer_update_outstanding();
-	                               			if ((fdc.pcjr || !fdc.dma) && fdc.fdmaread[fdc.drive] != 4)  fdc.stat = 0xb0;
-	                               			if ((!fdc.pcjr && fdc.dma) && fdc.fdmaread[fdc.drive] != 4)  fdc.stat = 0x90;
-						}
-						else
-						{
-							timer_process();
-							disctime = 128 * (1 << TIMER_SHIFT);
-	                               			timer_update_outstanding();
-							fdc.sector[fdc.drive] = fdd[vfdd[fdc.drive]].sectors_formatted + 1;
-							fdc_format();
-							if (fdd[vfdd[fdc.drive]].sectors_formatted < fdd[vfdd[fdc.drive]].temp_spt)
-							{
-								timer_process();
-								disctime = 128 * (1 << TIMER_SHIFT);
-	                               				timer_update_outstanding();
-								fdc.fdmaread[fdc.drive] = 0;
-								if ((fdc.pcjr || !fdc.dma) && (fdd[vfdd[fdc.drive]].sectors_formatted < fdd[vfdd[fdc.drive]].temp_spt))  fdc.stat = 0xb0;
-								if ((!fdc.pcjr && fdc.dma) && (fdd[vfdd[fdc.drive]].sectors_formatted < fdd[vfdd[fdc.drive]].temp_spt))  fdc.stat = 0x90;
-							}
-						}
-					}
-				}
-				else
-				{
-					/* Format is finished! */
-					pclog("Format finished, track %u with %u sectors!\n", fdc.track[fdc.drive], fdd[vfdd[fdc.drive]].spt[fdc.track[fdc.drive]]);
-	                        	disctime=0;
-	                        	discint=-2;
-	                        	fdc_int();
-	                        	fdc.stat=0xd0;
-					fdc.res[4]=(fdc.head[fdc.drive]?4:0)|fdc.drive;
-					if (fdd[vfdd[fdc.drive]].sstates)  fdc.res[4] |= 0x40;
-					fdc.res[4] |= 0x20;
-					fdc.st0=fdc.res[4];
-	                        	fdc.res[5]=fdc.st1;
-	                        	fdc.res[6]=fdc.st2;
-format_result_phase_after_statuses:
-					fdc.st1=0;
-					fdc.st2=0;
-					fdc.res[7]=0;
-					fdc.res[8]=0;
-					fdc.res[9]=0;
-					fdc.res[10]=0;
-	                        	paramstogo=7;
-					fdc.format_started[fdc.drive] = 0;
-	                        	return;
-				}
-			}
-	                return;
                 case 15: /*Seek*/
 			/* Correctly implemented double-stepping. */
 			// pclog("Seek (rel=%02X) %02X\n", fdc.relative, fdc.params[1]);
+			fdc.drive = (fdc.params[0] & 1);
 	                if (!fdc.relative)
 			{
 				if (IS_BIG && VF_DEN && (VF_CLS < CLASS_800) && (VF_CLS != -1))
@@ -1697,9 +1681,10 @@ format_result_phase_after_statuses:
 				else
 					fdc.track[fdc.drive]=fdc.params[1];
 			}
-	                // if (!fdd[vfdd[fdc.drive]].driveempty)  fdd[vfdd[fdc.drive]].discchanged = 0;
+	                if (!fdd[vfdd[fdc.drive]].driveempty)  fdd[vfdd[fdc.drive]].discchanged = 0;
 			fdc.head[fdc.drive] = (fdc.params[0] & 4) >> 2;
-	               	fdc.st0=0x20|fdc.drive|(fdc.head[fdc.drive]?4:0);
+	               	// fdc.st0=0x20|fdc.drive|(fdc.head[fdc.drive]?4:0);
+			fdc.st0=0x20|(fdc.params[0] & 7);
 			if (fdc.relative)
 			{
 				if (IS_BIG && VF_DEN && (VF_CLS < CLASS_800) && (VF_CLS != -1))
@@ -1732,6 +1717,8 @@ format_result_phase_after_statuses:
 			disctime = 2048 * (1 << TIMER_SHIFT);
 	                timer_update_outstanding();
         	        fdc.stat = 0x80 | (1 << fdc.drive);
+			fdc_reset_stat = 0;
+			pclog("SEEK: ST0: %02X\n", fdc.st0);
 	                return;
 		case 0x11:
 			fdc_readwrite(3);
