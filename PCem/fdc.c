@@ -687,7 +687,7 @@ void fdc_format_command()
 
 			if (temp != DMA_NODATA)
 			{
-				if (i < 4)  fdc.params[5 + fdc.fdmaread[fdc.drive]] = fdc.dat;
+				fdc.params[5 + fdc.fdmaread[fdc.drive]] = fdc.dat;
 			}
 
                        	timer_process();
