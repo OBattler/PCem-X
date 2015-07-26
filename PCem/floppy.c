@@ -1519,6 +1519,7 @@ drive_disabled:
 			fdi_set_info(f, d);
 			fseek(f, fdd[d].RAWOFFS, SEEK_SET);
 			read_raw_or_fdi(f, d);
+			fdd[d].WP = 0;
 			break;
 		case IMGT_PEF:
 			pef_read_header(f, d);
@@ -1551,6 +1552,7 @@ drive_disabled:
 				goto fli_on_error;
 			}
 			read_raw_or_fdi(f, d);
+			fdd[d].WP = 0;
 			break;
 	}
         printf("Drive %c: %i sect./track, %i tracks, %i B/sect., %i shift, %i total sectors, %i sides, class %i, and image type %i\n",'A'+d,fdd[d].SECTORS,fdd[d].TRACKS,fdd[d].BPS,fdd[d].BPSCODE,fdd[d].TOTAL, fdd[d].SIDES, fdd[d].CLASS, fdd[d].IMGTYPE);
