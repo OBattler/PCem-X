@@ -117,8 +117,6 @@ void savedisc(int d)
         FILE *f;
         int h,t,s,b;
 	int dw;
-	/* Temporarily while fixing the format stuff. */
-	return;
         if (!fdd[d].discmodified) return;
         if (fdd[d].WP) return;
 	if (fdd[d].XDF)  return;
@@ -759,7 +757,7 @@ static int fdc_reset_stat = 0;
 void fdc_write(uint16_t addr, uint8_t val, void *priv)
 {
 	// printf("Write FDC %04X %02X %04X:%04X %i %02X %i rate=%i\n",addr,val,cs>>4,pc,ins,fdc.st0,ins,fdc.rate);
-	printf("OUT 0x%04X, %02X\n", addr, val);
+	// printf("OUT 0x%04X, %02X\n", addr, val);
         switch (addr&7)
         {
 		case 0: /*Configuration*/
@@ -1145,7 +1143,7 @@ uint8_t fdc_read(uint16_t addr, void *priv)
 			// printf("Bad read FDC %04X\n",addr);
         }
 	// /*if (addr!=0x3f4) */printf("%02X rate=%i\n",temp,fdc.rate);
-	printf("IN 0x%04X, %02X\n", addr, temp);
+	// printf("IN 0x%04X, %02X\n", addr, temp);
         return temp;
 }
 
