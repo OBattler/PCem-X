@@ -1206,6 +1206,7 @@ void fdc_readwrite(int mode)
 	uint8_t internal_in = 0;
 	uint8_t rt = 0;
 	uint8_t sr = 0;
+	uint8_t xd = 0;
 
 	if ((fdc.command & 0x1F) == 2)
 	{
@@ -1230,6 +1231,7 @@ void fdc_readwrite(int mode)
 		sr = fdc_seek_by_id(*(uint32_t *) &(fdc.params[1]), &(fdc.track[fdc.drive]), &(fdc.head[fdc.drive]), &(fdc.sector[fdc.drive]));
 		if (!sr)
 		{
+			pclog("Seek by ID failed\n");
 			discint = 0xFF;
 			fdc_poll();
 			return;
@@ -1238,6 +1240,7 @@ void fdc_readwrite(int mode)
 		satisfying_sectors = 0;
 		if (fdc.sector[fdc.drive] == 0)
 		{
+			pclog("Sector is zero\n");
 			discint = 0xFF;
 			fdc_poll();
 			return;
@@ -1517,10 +1520,37 @@ rw_result_phase:
 rw_result_phase_after_statuses:
 		fdc.st1 = 0;
 		fdc.st2 = 0;
-		fdc.res[7]=fdd[vfdd[fdc.drive]].scid[fdc.head[fdc.drive]][fdc.track[fdc.drive]][fdc.sector[fdc.drive]-1][0];
-		fdc.res[8]=fdd[vfdd[fdc.drive]].scid[fdc.head[fdc.drive]][fdc.track[fdc.drive]][fdc.sector[fdc.drive]-1][1];
-		fdc.res[9]=fdd[vfdd[fdc.drive]].scid[fdc.head[fdc.drive]][fdc.track[fdc.drive]][fdc.sector[fdc.drive]-1][2];
-		fdc.res[10]=fdd[vfdd[fdc.drive]].scid[fdc.head[fdc.drive]][fdc.track[fdc.drive]][fdc.sector[fdc.drive]-1][3];
+		if (fdd[vfdd[fdc.drive]].XDF && (fdc.track[fdc.drive] >= 1))
+		{
+			xd = fdd[vfdd[fdc.drive]].XDF;
+			for (i = 0; i < xdf_spt[xd]; i++)
+			{
+				if ((xdf_map[xd][i][0] == fdc.params[2]) && (xdf_map[xd][i][2] == fdc.params[4]))
+				{
+					if ((i + 1) < xdf_spt[xd])
+					{
+						fdc.res[8] = xdf_map[xd][i + 1][0];
+						fdc.res[10] = xdf_map[xd][i + 1][2];
+					}
+					else
+					{
+						fdc.res[8] = xdf_map[xd][i][0];
+						fdc.res[10] = xdf_map[xd][i][2];
+					}
+					fdc.res[7] = fdc.track[fdc.drive];
+					fdc.res[10] &= 0x7F;
+					fdc.res[9] = fdc.res[10] | 0x80;
+					break;
+				}
+			}
+		}
+		else
+		{
+			fdc.res[7]=fdd[vfdd[fdc.drive]].scid[fdc.head[fdc.drive]][fdc.track[fdc.drive]][fdc.sector[fdc.drive]-1][0];
+			fdc.res[8]=fdd[vfdd[fdc.drive]].scid[fdc.head[fdc.drive]][fdc.track[fdc.drive]][fdc.sector[fdc.drive]-1][1];
+			fdc.res[9]=fdd[vfdd[fdc.drive]].scid[fdc.head[fdc.drive]][fdc.track[fdc.drive]][fdc.sector[fdc.drive]-1][2];
+			fdc.res[10]=fdd[vfdd[fdc.drive]].scid[fdc.head[fdc.drive]][fdc.track[fdc.drive]][fdc.sector[fdc.drive]-1][3];
+		}
 		paramstogo=7;
 		fdd[vfdd[fdc.drive]].rws=0;
 		return;

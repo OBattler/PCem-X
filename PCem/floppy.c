@@ -693,9 +693,8 @@ void read_xdf(FILE *f, int d, int xdft)
 			set_sector_id(d, t, xdf_map[xdft][s2][0], xdf_map[xdft][s2][1], xdf_map[xdft][s2][2] + 128, xdf_map[xdft][s2][2]);
 		}
 		/* Doing it twice so sector ID's are known when reading. */
-		p0 = 0;
-		p1 = 1;
-		for(s2=0;s2<(xdf_spt[xdft]*2);s2++)
+		p0 = p1 = 0;
+		for(s2=0;s2<(xdf_spt[xdft]);s2++)
 		{
 			fdd[d].disc[0][t][s2] = fdd[d].trackbufs[0][t] + p0;
 			p0 += (128 << fdd[d].scid[0][t][s2][3]);
@@ -706,6 +705,7 @@ void read_xdf(FILE *f, int d, int xdft)
 		{
 			read_raw_sectors(f, d, t, 1, xdf_map[xdft][s2][0], 1, xdf_map[xdft][s2][1], 1, xdf_map[xdft][s2][2], 0);
 		}
+		fdd[d].spt[t] = xdf_spt[xdft];
 	}
 
 	// Saving not implemented yet, so write-protect in order to prevent changes and corruption
