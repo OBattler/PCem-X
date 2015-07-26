@@ -990,11 +990,6 @@ bad_fdc_command:
 	                                	fdc.drive=fdc.params[0]&1;
 						fdc.abort[fdc.drive] = 0;
 						fdc.pos[fdc.drive] = 0;
-						if ((discint == 7) || (discint == 15))
-						{
-							/* Recalibrate and seek are invalid when drive is empty. */
-							if (fdd[vfdd[fdc.drive]].driveempty)  goto bad_fdc_command;
-						}
 					}
 	                                if (CMD_RW)
 	                                {
