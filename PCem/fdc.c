@@ -419,7 +419,7 @@ int fdc_checkrate()
 			}
 			break;
 		case RATE_300K:
-			if (!VF_DEN)  x += fdc_fail(0xFF);
+			if (VF_DEN == DEN_DD)  x += fdc_fail(0xFF);
 			switch(VF_CLS)
 			{
 				case CLASS_500:
@@ -636,7 +636,14 @@ void fdc_format_command()
 
 	if (fdc.fifo)  quantity = fdc.tfifo;
 
-	// Find real sector position in the array by ID
+	if (fdd[vfdd[fdc.drive]].WP)
+	{
+		discint = 0x100;
+		fdc_poll();
+		return;
+	}
+	fdd[vfdd[fdc.drive]].discmodified = 1;
+
 	if (!fdc.format_started[fdc.drive])
 	{
 		fdd[vfdd[fdc.drive]].temp_bps = fdc.params[1];
@@ -654,14 +661,6 @@ void fdc_format_command()
 		fdd[vfdd[fdc.drive]].ltpos = 0;
 		freetracksectors(fdc.drive, fdc.head[fdc.drive], fdc.track[fdc.drive]);
 	}
-
-	if (fdd[vfdd[fdc.drive]].WP)
-	{
-		discint = 0x100;
-		fdc_poll();
-		return;
-	}
-	fdd[vfdd[fdc.drive]].discmodified = 1;
 
 	if (fdd[vfdd[fdc.drive]].sectors_formatted<fdd[vfdd[fdc.drive]].temp_spt)
 	{
