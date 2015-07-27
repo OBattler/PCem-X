@@ -51,7 +51,8 @@ int ps2 = 0;
 #define RPS_360	(VF_DEN && (IS_BIG || (!IS_BIG && IS_3M)))
 #define RPS_300	((!VF_DEN) || (IS_BIG && VF_DEN && IS_3M) || (!IS_BIG))
 #define EMPTYF	{ x += fdc_fail(0xFE); return 0; }
-#define CMD_RW	discint==2 || discint==5 || discint==6 || discint==9 || discint==12 || discint==0x16 || discint==0x11 || discint==0x19 || discint==0x1D
+#define	CMD_RW	discint==2 || discint==5 || discint==6 || discint==9 || discint==12 || discint==0x16 || discint==0x11 || discint==0x19 || discint==0x1D
+#define IS_FR	(fdd[vfdd[fdc.drive]].IMGTYPE == IMGT_FDI) || (fdd[vfdd[fdc.drive]].IMGTYPE == IMGT_RAW)
 
 void configure_from_int(int d, int val)
 {
@@ -1010,24 +1011,64 @@ bad_fdc_command:
                         	                        discint=0xFE;
 							goto end_of_dwrite;
 	                                        }
-	                                }
-	                                if (CMD_RW || discint==10 || discint==13)
-	                                {
+
 						if ((discint == 13) && (!fdc.format_started[fdc.drive]))
 						{
-							if (fdc.track[fdc.drive] < 0)  fdc_fail(0x101);
-							if (fdc.track[fdc.drive] >= fdd[vfdd[fdc.drive]].TRACKS)
+							/* Prevent formatting an XDF-formatted image and bail out early if write protection is on. */
+							if ((fdd[vfdd[fdc.drive]].WP) || (fdd[vfdd[fdc.drive]].XDF))
 							{
-								if (!samediskclass(fdc.drive, fdc.track[fdc.drive] + 1, fdc.params[2], fdc.params[1]))
+								discint=0x100;
+								goto end_of_dwrite;
+							}
+							else
+							{
+								if (fdc.track[fdc.drive] < fdd[vfdd[fdc.drive]].TRACKS)
+								{
+									if (fdc.params[2] != fdd[vfdd[fdc.drive]].SECTORS)
+									{
+										/* All tracks must have the same sector count on FDI or RAW image. */
+										if (IS_FR)
+										{
+											discint=0x100;
+											goto end_of_dwrite;
+										}
+									}
+								}
+								if (fdc.track[fdc.drive] < 0)
 								{
 									fdc_fail(0x101);
+									goto end_of_dwrite;
 								}
-								else
+								if (fdc.track[fdc.drive] >= fdd[vfdd[fdc.drive]].TRACKS)
 								{
-									fdd[vfdd[fdc.drive]].TRACKS++;
+									if (VF_CLS < CLASS_800)
+									{
+										if (fdc.track[fdc.drive] < 43)
+											fdd[vfdd[fdc.drive]].TRACKS++;
+										else
+										{
+											fdc_fail(0x101);
+											goto end_of_dwrite;
+										}
+									}
+									else
+									{
+										if (fdc.track[fdc.drive] < 86)
+											fdd[vfdd[fdc.drive]].TRACKS++;
+										else
+										{
+											fdc_fail(0x101);
+											goto end_of_dwrite;
+										}
+									}
 								}
+								fdd[vfdd[fdc.drive]].spt[fdc.track[fdc.drive]] = fdc.params[2];
 							}
 						}
+	                                }
+					/* Only make sure the data rate and RPM match on formatting in case of FDI or RAW image. */
+	                                if (CMD_RW || discint==10 || (discint==13 && (IS_FR)))
+	                                {
 						// Check rate after the format stuff
 	                                        pclog("Rate (di = %08X) %i %i %i at %i RPM (dp %i, df %i, ds %i)\n", discint, fdc.rate, VF_CLS, fdd[vfdd[fdc.drive]].driveempty, (M3_E ? 360 : 300), densel_polarity, densel_force, densel_pin());
 						if (discint < 0xFC)  fdc_checkrate();
