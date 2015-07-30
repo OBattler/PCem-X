@@ -650,8 +650,8 @@ static int fdc_reset_stat = 0;
 
 uint8_t get_step()
 {
-	if (IS_BIG && VF_DEN && (VF_CLS < CLASS_800))  return 2;
-	if (IS_BIG && !VF_DEN && IS_3M && (VF_CLS < CLASS_800))  return 2;
+	if (IS_BIG && VF_DEN && (VF_CLS < CLASS_800) && (VF_CLS != -1))  return 2;
+	if (IS_BIG && !VF_DEN && IS_3M && (VF_CLS < CLASS_800) && (VF_CLS != -1))  return 2;
 
 	return 1;
 }
@@ -665,6 +665,7 @@ void fdc_seek(uint8_t during_rw)
 	uint8_t max = 0;
 	uint8_t eos = 0;
 	uint8_t p1 = 0;
+	uint8_t vt = 80;
 
 	step = get_step();
 
@@ -672,7 +673,12 @@ void fdc_seek(uint8_t during_rw)
 	if (step == 2)  pclog("Step is 2\n");
 
 	max = 85;
-	if ((VF_CLS < CLASS_800) && (step == 1))  max = 42;
+	// if (((VF_CLS < CLASS_800) && (VF_CLS != -1)) && (step == 1))  max = 42;
+	if (IS_BIG && !VF_DEN && !IS_3M)
+	{
+		max = 42;
+		vt = 40;
+	}
 
 	fdc_reset_stat = 0;
 
@@ -687,7 +693,7 @@ void fdc_seek(uint8_t during_rw)
 		if (romset != ROM_ENDEAVOR)
 		{
 			max = 79;
-			if ((VF_CLS < CLASS_800) && (step == 1))  max = 39;
+			if (IS_BIG && !VF_DEN && !IS_3M)  max = 39;
 		}
 
 		/* Seek outwards by as many steps as current tracks is. */
@@ -709,7 +715,8 @@ void fdc_seek(uint8_t during_rw)
 		if (fdc.track[fdc.drive] != 0)
 			fdc.st0 |= 0x10;
 
-		fdc.st0=(fdc.head[fdc.drive]?4:0)|fdc.drive;
+		// fdc.st0=(fdc.head[fdc.drive]?4:0)|fdc.drive;
+		fdc.st0 = fdc.drive;
 		fdc.st0 |= 0x20;
 		// pclog("RECALIBRATE END: ST0 %02X\n", fdc.st0);
 
@@ -847,15 +854,26 @@ non_relative_seek:
 					// pclog("SEEK OUT: PCN %02X, TRK %02X\n", fdc.pcn[fdc.drive], fdc.track[fdc.drive]);
 				}
 			}
-			if (fdc.track[fdc.drive] > (fdd[vfdd[fdc.drive]].TRACKS - 1))
+			if (!fdd[vfdd[fdc.drive]].driveempty)
 			{
-				fdc.track[fdc.drive] = fdd[vfdd[fdc.drive]].TRACKS - 1;
+				if (fdc.track[fdc.drive] > (fdd[vfdd[fdc.drive]].TRACKS - 1))
+				{
+					fdc.track[fdc.drive] = fdd[vfdd[fdc.drive]].TRACKS - 1;
+				}
+			}
+			else
+			{
+				if (fdc.track[fdc.drive] > (vt - 1))
+				{
+					fdc.track[fdc.drive] = vt - 1;
+				}
 			}
 		}
 end_of_seek:
 		// pclog("SEEK END: ST0 %02X\n", fdc.st0);
 		if (!fdd[vfdd[fdc.drive]].driveempty)  fdd[vfdd[fdc.drive]].discchanged = 0;
-		fdc.st0|=(fdc.head[fdc.drive]?4:0)|fdc.drive;
+		// fdc.st0|=(fdc.head[fdc.drive]?4:0)|fdc.drive;
+		fdc.st0 |= fdc.drive;
 		if (!during_rw)  discint=-3;
                 timer_process();
                 disctime = 2048 * (1 << TIMER_SHIFT);
@@ -1959,7 +1977,7 @@ void fdc_poll()
 
 	                fdc.stat    = (fdc.stat & 0xf) | 0xd0;
 			pclog("SIS: ST0: %02X\n", fdc.st0);
-	                fdc.res[9]  = fdc.st0 & 0xfb;
+	                fdc.res[9]  = fdc.st0;
 	                // fdc.res[10] = fdc.pcn[fdc.drive];
 			fdc.res[10] = fdc.track[fdc.drive];
 	                if (!fdc_reset_stat) fdc.st0 = 0x80;
