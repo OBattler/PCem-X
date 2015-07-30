@@ -30,10 +30,10 @@ int curoffset = 0;
 int tempdiv = 0;
 int m3 = 0;
 
-int densel_polarity = 0;
-int densel_polarity_mid0 = 0;
-int densel_polarity_mid1 = 0;
+int densel_polarity = {-1};
+int densel_polarity_mid[2] = {-1, -1};
 int densel_force = 0;
+int drt[2] = {0, 0};
 
 int fdc_os2 = 0;
 int drive_swap = 0;
@@ -223,13 +223,41 @@ void savedisc(int d)
 	0	0		1	1.6 MB (360 rpm) (Only for 3-mode)
 	0	0		0	1.0 MB (300 rpm)
 
+
+	In short:
+	DenSel	Drive			Description
+	Any	5.25" DD, QD		300 rpm
+	Any	5.25" HD single-RPM	360 rpm
+	1	5.25" HD dual-RPM	360 rpm
+	0	5.25" HD dual-RPM	300 rpm
+	Any	3.5" DD			300 rpm
+	Any	3.5" HD 2-mode		300 rpm
+	0	3.5" HD 3-mode with	360 rpm
+		rate 0 or 3
+	1	3.5" HD 3-mode with	300 rpm
+		rate 0 or 3
+	Any	3.5" HD 3-mode with	300 rpm
+		rate 1 or 2
+	
+
 	PS/2 Inverts DENSEL
 */
 
 int get_media_density()
 {
 	/* So that DENSEL will always be 360 rpm on 5.25" 1.2M drives with only 360 rpm support. */
-	switch (VF_DEN)
+	/* For 5.25" drives, DENSEL 1 means 360 rpm, for 3.5" any DENSEL is 300 rpm except for DENSEL 0 with 500k or 1M rate. */
+	switch (fdc.rate)
+	{
+		case 0:
+		case 3:
+			return 1;
+		case 1:
+		case 2:
+			return 0;
+	}
+
+	/* switch (VF_DEN)
 	{
 		case 0:
 			return 1;
@@ -237,19 +265,21 @@ int get_media_density()
 			if (IS_BIG && !IS_3M)  return 0;
 			if (VF_CLS < CLASS_1600)  return 1;
 			return 0;
-	}
+	} */
 }
 
-int densel_by_class()
+/* int densel_by_class()
 {
 	return (get_media_density()) ? (ps2 ? 1 : 0) : (ps2 ? 0 : 1);
-}
+} */
 
 int densel_pin()
 {
 	uint8_t dsel;
 
-	dsel = densel_by_class();
+	dsel = get_media_density();
+
+	if (ps2)  dsel = (dsel ? 0 : 1);
 
 	/* If polarity is set to 1, invert it. */
 	if (densel_polarity == 0)  dsel = (dsel ? 0 : 1);
@@ -276,21 +306,25 @@ int mode3_enabled()
 {
 	if (fdd[vfdd[fdc.drive]].BIGFLOPPY)
 	{
+		/* Always 300 rpm for low-density drives. */
+		if (fdd[vfdd[fdc.drive]].DENSITY == DEN_DD)  return 0;
+		/* Always 360 rpm for single-RPM drives. */
+		if (!fdd[vfdd[fdc.drive]].THREEMODE)  return 1;
 		/* 360 RPM if DenSel is 1. */
 		return densel_pin() ? (!ps2 ? 1 : 0) : (!ps2 ? 0 : 1);
 	}
 	else
 	{
-		if (fdd[vfdd[fdc.drive]].CLASS < CLASS_1600)
-		{
-			/* 360 RPM if DenSel is 1. */
-			return densel_pin() ? (!ps2 ? 1 : 0) : (!ps2 ? 0 : 1);
-		}
-		else
-		{
-			/* 360 RPM if DenSel is 0. */
-			return densel_pin() ? (!ps2 ? 0 : 1) : (!ps2 ? 1 : 0);
-		}
+		/* Always 300 rpm for low-density drives. */
+		if (fdd[vfdd[fdc.drive]].DENSITY == DEN_DD)  return 0;
+		/* Always 300 rpm for non-3-mode drives. */
+		if (!fdd[vfdd[fdc.drive]].THREEMODE)  return 0;
+		/* For 3-mode drives if DRT is 1 and rate is 1, that means 500k @ 360 rpm unless DENSEL is inverted or forced to 1. */
+		if (drt[vfdd[fdc.drive]] == 1)  if (fdc.rate == 1)  return densel_pin() ? (!ps2 ? 0 : 1) : (!ps2 ? 1 : 0);
+		/* Always 300 rpm for 250k rate. */
+		if (fdc.rate == 2)  return 0;
+		/* 360 RPM if DenSel is 0. */
+		return densel_pin() ? (!ps2 ? 0 : 1) : (!ps2 ? 1 : 0);
 	}
 }
 
@@ -336,6 +370,8 @@ void fdc_reset()
         fdc.pnum=fdc.ptot=0;
         fdc.st0=0xC0;
         fdc.lock = 0;
+        fdc.pcn[0] = 0;
+        fdc.pcn[1] = 0;
         fdc.head[0] = 0;
         fdc.head[1] = 0;
         fdc.abort[0] = 0;
@@ -404,6 +440,7 @@ int fdc_checkrate()
 	switch(fdc.rate)
 	{
 		case RATE_500K:
+rate_500k:
 			if (VF_DEN == DEN_DD)  x += fdc_fail(0xFF);
 			switch(VF_CLS)
 			{
@@ -420,6 +457,8 @@ int fdc_checkrate()
 			}
 			break;
 		case RATE_300K:
+			if (drt[vfdd[fdc.drive]] == 1)  goto rate_500k;
+			if (drt[vfdd[fdc.drive]] == 2)  goto rate_2meg;
 			if (VF_DEN == DEN_DD)  x += fdc_fail(0xFF);
 			switch(VF_CLS)
 			{
@@ -479,6 +518,23 @@ int fdc_checkrate()
 					if (!RPS_360) x += fdc_fail(0xFF);
 					break;
 				case CLASS_4000:
+					if (M3_E)  x += fdc_fail(0xFF);
+					if (!RPS_300) x += fdc_fail(0xFF);
+					break;
+				default:
+					x += fdc_fail(0xFF);
+			}
+			break;
+		case (RATE_1M + 1):
+rate_2meg:
+			if (VF_DEN != DEN_ED)  x += fdc_fail(0xFF);
+			switch(VF_CLS)
+			{
+				case CLASS_6400:
+					if (M3_D)  x += fdc_fail(0xFF);
+					if (!RPS_360) x += fdc_fail(0xFF);
+					break;
+				case CLASS_8000:
 					if (M3_E)  x += fdc_fail(0xFF);
 					if (!RPS_300) x += fdc_fail(0xFF);
 					break;
@@ -590,6 +646,224 @@ int sector_state(int read)
 	return 1;
 }
 
+static int fdc_reset_stat = 0;
+
+uint8_t get_step()
+{
+	if (IS_BIG && VF_DEN && (VF_CLS < CLASS_800))  return 2;
+	if (IS_BIG && !VF_DEN && IS_3M && (VF_CLS < CLASS_800))  return 2;
+
+	return 1;
+}
+
+void fdc_seek(uint8_t during_rw)
+{
+	uint8_t rel = (fdc.command & 0x80);
+	uint8_t dir = (fdc.command & 0x40);
+	uint8_t step = 1;
+	uint8_t i = 0;
+	uint8_t max = 0;
+	uint8_t eos = 0;
+	uint8_t p1 = 0;
+
+	step = get_step();
+
+	// pclog("fdc_seek with IS_BIG=%02X, VF_DEN=%02X, and VF_CLS=%02X\n", IS_BIG, VF_DEN, VF_CLS);
+	if (step == 2)  pclog("Step is 2\n");
+
+	max = 85;
+	if ((VF_CLS < CLASS_800) && (step == 1))  max = 42;
+
+	fdc_reset_stat = 0;
+
+	fdc.head[fdc.drive] = (fdc.params[0] & 4) >> 2;
+
+	if (during_rw)  goto non_relative_seek;
+
+	if (fdc.command == 7)
+	{
+		/* Recalibrate */
+		// pclog("RECALIBRATE START: PCN %02X, TRK %02X\n", fdc.pcn[fdc.drive], fdc.track[fdc.drive]);
+		if (romset != ROM_ENDEAVOR)
+		{
+			max = 79;
+			if ((VF_CLS < CLASS_800) && (step == 1))  max = 39;
+		}
+
+		/* Seek outwards by as many steps as current tracks is. */
+		for (i = 0; i < max; i ++)
+		{
+			if (fdc.pcn[fdc.drive] == 0)  break;
+			if (step == 1)  if (fdc.track[fdc.drive] == 0)  break;
+			fdc.pcn[fdc.drive]--;
+			if (step == 2)
+			{
+				fdc.track[fdc.drive] = fdc.pcn[fdc.drive] >> 1;
+			}
+			else
+			{
+				fdc.track[fdc.drive]--;
+			}
+			// pclog("SEEK OUT: PCN %02X, TRK %02X\n", fdc.pcn[fdc.drive], fdc.track[fdc.drive]);
+		}
+		if (fdc.track[fdc.drive] != 0)
+			fdc.st0 |= 0x10;
+
+		fdc.st0=(fdc.head[fdc.drive]?4:0)|fdc.drive;
+		fdc.st0 |= 0x20;
+		// pclog("RECALIBRATE END: ST0 %02X\n", fdc.st0);
+
+		if (!fdd[vfdd[fdc.drive]].driveempty)  fdd[vfdd[fdc.drive]].discchanged = 0;
+		discint=-3;
+                timer_process();
+                disctime = 2048 * (1 << TIMER_SHIFT);
+                timer_update_outstanding();
+       	        fdc.stat = 0x80 | (1 << fdc.drive);
+	}
+	else
+	{
+		p1 = fdc.params[1];
+		// if (step == 2)  p1 &= 0xFE;
+		/* Seek */
+		if (rel)
+		{
+			if (dir)
+			{
+				/* Step inwards. */
+				eos = fdc.pcn[fdc.drive] + p1;
+				for (i = 0; i < p1; i++)
+				{
+					if (fdc.pcn[fdc.drive] == eos)
+					{
+						fdc.st0 = 0x20;
+						break;
+					}
+					fdc.pcn[fdc.drive]++;
+					if (step == 2)
+					{
+						fdc.track[fdc.drive] = fdc.pcn[fdc.drive] >> 1;
+					}
+					else
+					{
+						fdc.track[fdc.drive]++;
+					}
+				}
+			}
+			else
+			{
+				/* Step outwards. */
+				eos = fdc.pcn[fdc.drive] - p1;
+				for (i = 0; i < p1; i+= step)
+				{
+					if (step == 2)
+					{
+						if ((fdc.pcn[fdc.drive] == eos) || (fdc.pcn[fdc.drive] == 0))
+						{
+							fdc.st0 = 0x20;
+							break;
+						}
+					}
+					else
+					{
+						if ((fdc.pcn[fdc.drive] == eos) || (fdc.track[fdc.drive] == 0))
+						{
+							fdc.st0 = 0x20;
+							break;
+						}
+					}
+					fdc.pcn[fdc.drive]--;
+					if (step == 2)
+					{
+						fdc.track[fdc.drive] = fdc.pcn[fdc.drive] >> 1;
+					}
+					else
+					{
+						fdc.track[fdc.drive]--;
+					}
+				}
+			}
+		}
+		else
+		{
+non_relative_seek:
+			// pclog("TRACKS: %02X\n", fdd[vfdd[fdc.drive]].TRACKS);
+			// pclog("SEEK START: PCN %02X, TRK %02X\n", fdc.pcn[fdc.drive], fdc.track[fdc.drive]);
+			if (fdc.pcn[fdc.drive] < p1)
+			{
+				/* Step inwards. */
+				while(1)
+				{
+					if (fdc.pcn[fdc.drive] == p1)
+					{
+						fdc.st0 = 0x20;
+						break;
+					}
+					fdc.pcn[fdc.drive]++;
+					if (step == 2)
+					{
+						fdc.track[fdc.drive] = fdc.pcn[fdc.drive] >> 1;
+					}
+					else
+					{
+						fdc.track[fdc.drive]++;
+					}
+					// pclog("SEEK IN: PCN %02X, TRK %02X\n", fdc.pcn[fdc.drive], fdc.track[fdc.drive]);
+				}
+			}
+			else if (fdc.pcn[fdc.drive] == p1)
+			{
+				fdc.st0 = 0x20;
+			}
+			else if (fdc.pcn[fdc.drive] > p1)
+			{
+				/* Step outwards. */
+				while(1)
+				{
+					if (step == 2)
+					{
+						if ((fdc.pcn[fdc.drive] == p1) || (fdc.pcn[fdc.drive] == 0))
+						{
+							fdc.st0 = 0x20;
+							break;
+						}
+					}
+					else
+					{
+						if ((fdc.pcn[fdc.drive] == p1) || (fdc.track[fdc.drive] == 0))
+						{
+							fdc.st0 = 0x20;
+							break;
+						}
+					}
+					fdc.pcn[fdc.drive]--;
+					if (step == 2)
+					{
+						fdc.track[fdc.drive] = fdc.pcn[fdc.drive] >> 1;
+					}
+					else
+					{
+						fdc.track[fdc.drive]--;
+					}
+					// pclog("SEEK OUT: PCN %02X, TRK %02X\n", fdc.pcn[fdc.drive], fdc.track[fdc.drive]);
+				}
+			}
+			if (fdc.track[fdc.drive] > (fdd[vfdd[fdc.drive]].TRACKS - 1))
+			{
+				fdc.track[fdc.drive] = fdd[vfdd[fdc.drive]].TRACKS - 1;
+			}
+		}
+end_of_seek:
+		// pclog("SEEK END: ST0 %02X\n", fdc.st0);
+		if (!fdd[vfdd[fdc.drive]].driveempty)  fdd[vfdd[fdc.drive]].discchanged = 0;
+		fdc.st0|=(fdc.head[fdc.drive]?4:0)|fdc.drive;
+		if (!during_rw)  discint=-3;
+                timer_process();
+                disctime = 2048 * (1 << TIMER_SHIFT);
+                timer_update_outstanding();
+       	        fdc.stat = 0x80 | (1 << fdc.drive);
+	}
+}
+
 int fdc_format()
 {
 	int b = 0;
@@ -615,7 +889,7 @@ int fdc_format()
 	fdd[vfdd[fdc.drive]].ltpos += (128 << fdc.params[8]);
 
 	fdd[vfdd[fdc.drive]].sectors_formatted++;
-	pclog("FDCFMT: %02X %02X %02X %02X | %02X %02X %02X %02X\n", fdc.params[5], fdc.params[6], fdc.params[7], fdc.params[8], fdd[vfdd[fdc.drive]].scid[fdc.head[fdc.drive]][fdc.track[fdc.drive]][fdc.sector[fdc.drive] - 1][4], fdd[vfdd[fdc.drive]].sstates, fdc.st1, fdc.st2);
+	// pclog("FDCFMT: %02X %02X %02X %02X | %02X %02X %02X %02X\n", fdc.params[5], fdc.params[6], fdc.params[7], fdc.params[8], fdd[vfdd[fdc.drive]].scid[fdc.head[fdc.drive]][fdc.track[fdc.drive]][fdc.sector[fdc.drive] - 1][4], fdd[vfdd[fdc.drive]].sstates, fdc.st1, fdc.st2);
 	if (fdc.sector[fdc.drive] < fdd[vfdd[fdc.drive]].temp_spt)  fdc.sector[fdc.drive]++;
 	return 0;
 }
@@ -700,6 +974,7 @@ void fdc_format_command()
 				fdc.fdmaread[fdc.drive] = 0;
 				fdc.sector[fdc.drive] = fdd[vfdd[fdc.drive]].sectors_formatted + 1;
 				fdc_format();
+				if (fdd[vfdd[fdc.drive]].sectors_formatted == fdd[vfdd[fdc.drive]].temp_spt)  return;
 			}
 		}
 		return;
@@ -751,8 +1026,6 @@ int fifo_buf_read()
 	}
 	return temp;
 }
-
-static int fdc_reset_stat = 0;
 
 void fdc_write(uint16_t addr, uint8_t val, void *priv)
 {
@@ -1070,7 +1343,7 @@ bad_fdc_command:
 	                                if (CMD_RW || discint==10 || (discint==13 && (IS_FR)))
 	                                {
 						// Check rate after the format stuff
-	                                        pclog("Rate (di = %08X) %i %i %i at %i RPM (dp %i, df %i, ds %i)\n", discint, fdc.rate, VF_CLS, fdd[vfdd[fdc.drive]].driveempty, (M3_E ? 360 : 300), densel_polarity, densel_force, densel_pin());
+	                                        pclog("Rate (di = %08X) %i %i %i at %i RPM (dp %i, drt %i, df %i, ds %i)\n", discint, fdc.rate, VF_CLS, fdd[vfdd[fdc.drive]].driveempty, (M3_E ? 360 : 300), densel_polarity, drt[vfdd[fdc.drive]], densel_force, densel_pin());
 						if (discint < 0xFC)  fdc_checkrate();
 						if (discint == 0xFE)  pclog("Not ready\n");
 						if (discint == 0xFF)  pclog("Wrong rate\n");
@@ -1640,7 +1913,15 @@ void fdc_poll()
 			{
 				if (fdd[vfdd[fdc.drive]].WP) fdc.res[10] |= 0x40;
 			}
-                	if (fdc.track[fdc.drive] == 0) fdc.res[10] |= 0x10;
+			if (get_step() == 2)
+			{
+	                	if (fdc.pcn[fdc.drive] == 0) fdc.res[10] |= 0x10;
+			}
+			else
+			{
+	                	if (fdc.track[fdc.drive] == 0) fdc.res[10] |= 0x10;
+			}
+			// if (IS_BIG && !VF_DEN)  if (fdc.pcn[fdc.drive] == 1) fdc.res[10] |= 0x10;
 
 	                fdc.stat = (fdc.stat & 0xf) | 0xd0;
 	                paramstogo = 1;
@@ -1659,26 +1940,9 @@ void fdc_poll()
 			fdc_readwrite(2);
 			return;
                 case 7: /*Recalibrate*/
-			if (fdc.track[fdc.drive] <= maxsteps)
-			{
-				fdc.track[fdc.drive] = 0;
-			}
-			else
-			{
-				fdc.track[fdc.drive] -= maxsteps;
-				fdc.st0 |= 0x10;
-			}
-			// fdc.sector[fdc.drive] = 1;
-	                if (!fdd[vfdd[fdc.drive]].driveempty)  fdd[vfdd[fdc.drive]].discchanged = 0;
-			fdc.st0=(fdc.head[fdc.drive]?4:0)|fdc.drive;
-			fdc.st0 |= 0x20;
-			discint=-3;
-	                timer_process();
-	                disctime = 2048 * (1 << TIMER_SHIFT);
-	                timer_update_outstanding();
-        	        fdc.stat = 0x80 | (1 << fdc.drive);
-			fdc_reset_stat = 0;
-	                return;
+			fdc_seek(0);
+			return;
+
                 case 8: /*Sense interrupt status*/               
 	                fdc.dat = fdc.st0;
 
@@ -1695,8 +1959,9 @@ void fdc_poll()
 
 	                fdc.stat    = (fdc.stat & 0xf) | 0xd0;
 			pclog("SIS: ST0: %02X\n", fdc.st0);
-	                fdc.res[9]  = fdc.st0;
-	                fdc.res[10] = fdc.track[fdc.drive];
+	                fdc.res[9]  = fdc.st0 & 0xfb;
+	                // fdc.res[10] = fdc.pcn[fdc.drive];
+			fdc.res[10] = fdc.track[fdc.drive];
 	                if (!fdc_reset_stat) fdc.st0 = 0x80;
 
 	                paramstogo = 2;
@@ -1734,55 +1999,9 @@ void fdc_poll()
 			return;
 
                 case 15: /*Seek*/
-			/* Correctly implemented double-stepping. */
-			// pclog("Seek (rel=%02X) %02X\n", fdc.relative, fdc.params[1]);
-			fdc.drive = (fdc.params[0] & 1);
-	                if (!fdc.relative)
-			{
-				if (IS_BIG && VF_DEN && (VF_CLS < CLASS_800) && (VF_CLS != -1))
-					fdc.track[fdc.drive]=fdc.params[1] >> 1;
-				else
-					fdc.track[fdc.drive]=fdc.params[1];
-			}
-	                if (!fdd[vfdd[fdc.drive]].driveempty)  fdd[vfdd[fdc.drive]].discchanged = 0;
-			fdc.head[fdc.drive] = (fdc.params[0] & 4) >> 2;
-	               	// fdc.st0=0x20|fdc.drive|(fdc.head[fdc.drive]?4:0);
-			fdc.st0=0x20|(fdc.params[0] & 7);
-			if (fdc.relative)
-			{
-				if (IS_BIG && VF_DEN && (VF_CLS < CLASS_800) && (VF_CLS != -1))
-				{
-					if (fdc.direction)  fdc.track[fdc.drive] -= (fdc.params[1] >> 1);
-					if (!fdc.direction)  fdc.track[fdc.drive] += (fdc.params[1] >> 1);
-				}
-				else
-				{
-					if (fdc.direction)  fdc.track[fdc.drive] -= fdc.params[1];
-					if (!fdc.direction)  fdc.track[fdc.drive] += fdc.params[1];
-				}
+			fdc_seek(0);
+			return;
 
-				if (fdc.track[fdc.drive] < 0)
-				{
-					fdc.st0 |= 0x50;
-					fdc.track[fdc.drive] += 256;
-				}
-				fdc.track[fdc.drive] &= 0xFF;
-			}
-			// Invalidate any other seeks beyond track limit for the current disk
-			if (fdc.track[fdc.drive] >= fdd[vfdd[fdc.drive]].TRACKS)
-			{
-				fdc.track[fdc.drive] = fdd[vfdd[fdc.drive]].TRACKS - 1;
-			}
-			// fdc.sector[fdc.drive] = 1;
-			// No result phase = no interrupt
-			discint=-3;
-	                timer_process();
-			disctime = 2048 * (1 << TIMER_SHIFT);
-	                timer_update_outstanding();
-        	        fdc.stat = 0x80 | (1 << fdc.drive);
-			fdc_reset_stat = 0;
-			pclog("SEEK: ST0: %02X\n", fdc.st0);
-	                return;
 		case 0x11:
 			fdc_readwrite(3);
 			return;
@@ -1794,8 +2013,8 @@ void fdc_poll()
 			return;
                 case 0x0e: /*Dump registers*/
 	                fdc.stat = (fdc.stat & 0xf) | 0xd0;
-	                fdc.res[1] = fdc.track[0];
-	                fdc.res[2] = fdc.track[1];
+	                fdc.res[1] = fdc.pcn[0];
+	                fdc.res[2] = fdc.pcn[1];
 	                fdc.res[3] = 0;
 	                fdc.res[4] = 0;
 	                fdc.res[5] = fdc.specify[0];
@@ -1958,6 +2177,8 @@ void fdc_init()
 	*/
 	// densel_polarity = -1;
 	densel_polarity = 1;
+	densel_polarity_mid[0] = -1;
+	densel_polarity_mid[1] = -1;
 	fdc_setswap(0);
 }
 
@@ -1966,6 +2187,8 @@ void fdc_hard_reset()
 	timer_add(fdc_poll, &disctime, &disctime, NULL);
 	config_default();
 	densel_polarity = 1;
+	densel_polarity_mid[0] = -1;
+	densel_polarity_mid[1] = -1;
 	fdc_setswap(0);
 }
 

@@ -65,7 +65,7 @@
 typedef struct FDC
 {
         uint8_t dor,stat,command,dat,st0,st1,st2;
-        uint8_t head[2],track[2],sector[2],drive,lastdrive;
+        uint8_t head[2],track[2],pcn[2],sector[2],drive,lastdrive;
         int pos[2];
         uint8_t params[64];
         uint8_t res[64];

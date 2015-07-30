@@ -159,7 +159,7 @@ serial_set:
 				fdc_remove();
 				if ((fdc37c665_regs[0] & 0x18) == 0x18)  fdc_add_ex((val & 1) ? 0x370 : 0x3f0, 1);
 			}
-			if (valxor & 0x18)  densel_force = (val & 0x18) >> 4;
+			if (valxor & 0x18)  densel_force = (val & 0x18) >> 3;
 			if (valxor & 0x20)  fdc_setswap((val & 0x20) >> 5);
 			break;
 	}

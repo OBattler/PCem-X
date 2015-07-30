@@ -120,8 +120,14 @@ process_value:
 					break;
 				case 0xF1:
 					if (valxor & 0xC)  densel_force = (val & 0xC) >> 2;
-					if (valxor & 0x10)  densel_polarity_mid0 = (val & 0x10) ? 1 : 0;
-					if (valxor & 0x20)  densel_polarity_mid1 = (val & 0x20) ? 1 : 0;
+					if (valxor & 0x10)  densel_polarity_mid[0] = (val & 0x10) ? 0 : 1;
+					if (valxor & 0x20)  densel_polarity_mid[1] = (val & 0x20) ? 0 : 1;
+					break;
+				case 0xF4:
+					if (valxor & 0x18)  drt[0] = (val & 0x18) >> 3;
+					break;
+				case 0xF5:
+					if (valxor & 0x18)  drt[1] = (val & 0x18) >> 3;
 					break;
 			}
 			break;
@@ -389,7 +395,8 @@ void fdc37c932fr_init()
 
 	/* Logical device 9: ACCESS.bus */
 
-	densel_polarity = 1;
+	densel_polarity_mid[0] = 1;
+	densel_polarity_mid[1] = 1;
 	densel_force = 0;
 	fdc_setswap(0);
         io_sethandler(0x3f0, 0x0002, fdc37c932fr_read, NULL, NULL, fdc37c932fr_write, NULL, NULL,  NULL);
