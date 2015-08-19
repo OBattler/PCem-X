@@ -19,8 +19,13 @@
 // #include "adlib.h"
 // #include "dosbox.h"
 #include <stdint.h>
+#ifndef __MINGW64__
 typedef signed int Bits;
 typedef unsigned int Bitu;
+#else
+typedef int64_t Bits;
+typedef uint64_t Bitu;
+#endif
 typedef int8_t   Bit8s;
 typedef uint8_t  Bit8u;
 typedef int16_t  Bit16s;
