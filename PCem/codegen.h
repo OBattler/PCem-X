@@ -1,6 +1,8 @@
 #ifdef DYNAREC
 
-#if defined i386 || defined __i386 || defined __i386__ || defined _X86_ || defined WIN32 || defined _WIN32 || defined _WIN32
+#ifdef __amd64__
+#include "codegen_x86-64.h"
+#elif defined i386 || defined __i386 || defined __i386__ || defined _X86_ || defined WIN32 || defined _WIN32 || defined _WIN32
 #include "codegen_x86.h"
 #else
 #error Dynamic recompiler not implemented on your platform
@@ -138,6 +140,16 @@ static inline void addlong(uint32_t val)
         }
 }
 
+static inline void addquad(uint64_t val)
+{
+        *(uint64_t *)&codeblock[block_current].data[block_pos] = val;
+        block_pos += 8;
+        if (block_pos >= 1760)
+        {
+                CPU_BLOCK_END();
+        }
+}
+
 /*Current physical page of block being recompiled. -1 if no recompilation taking place */
 extern uint32_t recomp_page;
 
@@ -152,5 +164,6 @@ extern int codegen_flags_changed;
 extern int codegen_fpu_entered;
 
 extern int codegen_fpu_loaded_iq[8];
+extern int codegen_reg_loaded[8];
 
 #endif

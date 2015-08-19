@@ -1,3 +1,5 @@
+// #define LEGACY_CGACOMP
+
 /*CGA emulation*/
 #include <stdlib.h>
 #include <math.h>
@@ -8,6 +10,7 @@
 #include "timer.h"
 #include "video.h"
 #include "vid_cga.h"
+#include "vid_cga_comp.h"
 
 static int i_filt[8],q_filt[8];
 
@@ -46,6 +49,7 @@ void cga_out(uint16_t addr, uint8_t val, void *p)
                 return;
                 case 0x3D9:
                 cga->cgacol = val;
+		update_cga16_color(cga);
                 return;
         }
 }
@@ -110,8 +114,10 @@ void cga_recalctimings(cga_t *cga)
 //        printf("Timings - on %f off %f frame %f second %f\n",dispontime,dispofftime,(dispontime+dispofftime)*262.0,(dispontime+dispofftime)*262.0*59.92);
 	cga->dispontime = (int)(_dispontime * (1 << TIMER_SHIFT));
 	cga->dispofftime = (int)(_dispofftime * (1 << TIMER_SHIFT));
+	pclog("Recalc end\n");
 }
 
+#ifdef LEGACY_CGACOMP
 static int ntsc_col[8][8]=
 {
         {0,0,0,0,0,0,0,0}, /*Black*/
@@ -123,16 +129,17 @@ static int ntsc_col[8][8]=
         {1,1,0,0,0,0,1,1}, /*Yellow*/
         {1,1,1,1,1,1,1,1}  /*White*/
 };
+#endif
 
 void cga_poll(void *p)
 {
         cga_t *cga = (cga_t *)p;
         uint16_t ca = (cga->crtc[15] | (cga->crtc[14] << 8)) & 0x3fff;
         int drawcursor;
-        int x, c;
+        int x, c, c2;
         int oldvc;
         uint8_t chr, attr;
-        uint16_t dat;
+        uint16_t dat, dat2, dat3, dat4;
         int cols[4];
         int col;
         int oldsc;
@@ -140,6 +147,7 @@ void cga_poll(void *p)
         int i_buf[8] = {0, 0, 0, 0, 0, 0, 0, 0}, i_val, i_tot;
         int q_buf[8] = {0, 0, 0, 0, 0, 0, 0, 0}, q_val, q_tot;
         int r, g, b;
+	// pclog("Poll start\n");
         if (!cga->linepos)
         {
                 cga->vidtime += cga->dispofftime;
@@ -193,12 +201,30 @@ void cga_poll(void *p)
                                         if (drawcursor)
                                         {
                                                 for (c = 0; c < 8; c++)
-                                                    buffer->line[cga->displine][(x << 3) + c + 8] = cols[(fontdat[chr][cga->sc & 7] & (1 << (c ^ 7))) ? 1 : 0] ^ 15;
+						{
+							if (romset == ROM_PC200)
+							{
+								buffer->line[cga->displine][(x << 3) + c + 8] = cols[(pc200_fontdat[chr][cga->sc & 7] & (1 << (c ^ 7))) ? 1 : 0] ^ 15;
+							}
+							else
+							{
+								buffer->line[cga->displine][(x << 3) + c + 8] = cols[(cga_fontdat[chr][cga->sc & 7] & (1 << (c ^ 7))) ? 1 : 0] ^ 15;
+							}
+						}
                                         }
                                         else
                                         {
                                                 for (c = 0; c < 8; c++)
-                                                    buffer->line[cga->displine][(x << 3) + c + 8] = cols[(fontdat[chr][cga->sc & 7] & (1 << (c ^ 7))) ? 1 : 0];
+						{
+							if (romset == ROM_PC200)
+							{
+								buffer->line[cga->displine][(x << 3) + c + 8] = cols[(pc200_fontdat[chr][cga->sc & 7] & (1 << (c ^ 7))) ? 1 : 0];
+							}
+							else
+							{
+								buffer->line[cga->displine][(x << 3) + c + 8] = cols[(cga_fontdat[chr][cga->sc & 7] & (1 << (c ^ 7))) ? 1 : 0];
+							}
+						}
                                         }
                                         cga->ma++;
                                 }
@@ -225,12 +251,30 @@ void cga_poll(void *p)
                                         if (drawcursor)
                                         {
                                                 for (c = 0; c < 8; c++)
-                                                    buffer->line[cga->displine][(x << 4)+(c << 1) + 8] = buffer->line[cga->displine][(x << 4) + (c << 1) + 1 + 8] = cols[(fontdat[chr][cga->sc & 7] & (1 << (c ^ 7))) ? 1 : 0] ^ 15;
+						{
+							if (romset == ROM_PC200)
+							{
+								buffer->line[cga->displine][(x << 4)+(c << 1) + 8] = buffer->line[cga->displine][(x << 4) + (c << 1) + 1 + 8] = cols[(pc200_fontdat[chr][cga->sc & 7] & (1 << (c ^ 7))) ? 1 : 0] ^ 15;
+							}
+							else
+							{
+								buffer->line[cga->displine][(x << 4)+(c << 1) + 8] = buffer->line[cga->displine][(x << 4) + (c << 1) + 1 + 8] = cols[(cga_fontdat[chr][cga->sc & 7] & (1 << (c ^ 7))) ? 1 : 0] ^ 15;
+							}
+						}
                                         }
                                         else
                                         {
                                                 for (c = 0; c < 8; c++)
-                                                    buffer->line[cga->displine][(x << 4) + (c << 1) + 8] = buffer->line[cga->displine][(x << 4) + (c << 1) + 1 + 8] = cols[(fontdat[chr][cga->sc & 7] & (1 << (c ^ 7))) ? 1 : 0];
+						{
+							if (romset == ROM_PC200)
+							{
+								buffer->line[cga->displine][(x << 4) + (c << 1) + 8] = buffer->line[cga->displine][(x << 4) + (c << 1) + 1 + 8] = cols[(pc200_fontdat[chr][cga->sc & 7] & (1 << (c ^ 7))) ? 1 : 0];
+							}
+							else
+							{
+								buffer->line[cga->displine][(x << 4) + (c << 1) + 8] = buffer->line[cga->displine][(x << 4) + (c << 1) + 1 + 8] = cols[(cga_fontdat[chr][cga->sc & 7] & (1 << (c ^ 7))) ? 1 : 0];
+							}
+						}
                                         }
                                 }
                         }
@@ -270,6 +314,7 @@ void cga_poll(void *p)
                         }
                         else
                         {
+#ifdef CGA_DIFF
                                 cols[0] = 0; cols[1] = (cga->cgacol & 15) + 16;
                                 for (x = 0; x < cga->crtc[1]; x++)
                                 {
@@ -281,6 +326,26 @@ void cga_poll(void *p)
                                                 dat <<= 1;
                                         }
                                 }
+#else
+                                for (x = 0; x < 40; x++)
+                                {
+                                        ca = ((cga->ma << 1) & 0x1fff) + ((cga->sc & 1) * 0x2000);
+                                        dat  = (cga->vram[ca]          << 8) | cga->vram[ca + 1];
+                                        dat2 = (cga->vram[ca + 0x4000] << 8) | cga->vram[ca + 0x4001];
+                                        dat3 = (cga->vram[ca + 0x8000] << 8) | cga->vram[ca + 0x8001];
+                                        dat4 = (cga->vram[ca + 0xc000] << 8) | cga->vram[ca + 0xc001];
+
+                                        cga->ma++;
+                                        for (c = 0; c < 16; c++)
+                                        {
+                                                buffer->line[cga->displine][(x << 4) + c + 8] = (((dat >> 15) | ((dat2 >> 15) << 1) | ((dat3 >> 15) << 2) | ((dat4 >> 15) << 3)) & (cga->cgacol & 15)) + 16;
+                                                dat  <<= 1;
+                                                dat2 <<= 1;
+                                                dat3 <<= 1;
+                                                dat4 <<= 1;
+                                        }
+                                }
+#endif
                         }
                 }
                 else
@@ -296,6 +361,7 @@ void cga_poll(void *p)
                 {
                         for (c = 0; c < x; c++)
                         {
+#ifdef LEGACY_CGACOMP
                                 y_buf[(c << 1) & 6] = ntsc_col[buffer->line[cga->displine][c] & 7][(c << 1) & 6] ? 0x6000 : 0;
                                 y_buf[(c << 1) & 6] += (buffer->line[cga->displine][c] & 8) ? 0x3000 : 0;
                                 i_buf[(c << 1) & 6] = y_buf[(c << 1) & 6] * i_filt[(c << 1) & 6];
@@ -343,7 +409,19 @@ void cga_poll(void *p)
                                 if (g > 511) g = 511;
                                 if (b > 511) b = 511;
 
-                                ((uint32_t *)buffer32->line[cga->displine])[c] = makecol32(r / 2, g / 2, b / 2);
+                                // ((uint32_t *)buffer32->line[cga->displine])[c] = makecol32(r / 2, g / 2, b / 2);
+                                ((uint32_t *)buffer32->line[cga->displine])[c] = makecol32(r, g, b);
+#else
+				r = 0; g = 0; b = 0;
+				c2 = buffer->line[cga->displine][c];
+				if ((c & 1) != 0)  c2 <<= 2;
+				if ((c & 1) == 0)  c2 &= 0xF;
+				r = get_color(c2, c, 0);
+				g = get_color(c2, c, 1);
+				b = get_color(c2, c, 2);
+				// update_cga16_color(buffer->line[cga->displine][c], &r, &g, &b);
+                                ((uint32_t *)buffer32->line[cga->displine])[c] = makecol32(r, g, b);
+#endif
                         }
                 }
 
@@ -357,6 +435,8 @@ void cga_poll(void *p)
         else
         {
                 cga->vidtime += cga->dispontime;
+		if ((cga->lastline - cga->firstline) == 199)
+			cga->cgadispon = 0;
                 if (cga->cgadispon) cga->cgastat &= ~1;
                 cga->linepos = 0;
                 if (cga->vsynctime)
@@ -476,11 +556,12 @@ endblit();
                             cga->charbuffer[x] = cga->vram[(((cga->ma << 1) + x) & 0x3fff)];
                 }
         }
+	// pclog("Poll end\n");
 }
 
 void cga_init(cga_t *cga)
 {
-	loadfont("mda.rom", 0);
+	// loadfont("mda.rom", 0);
 }
 
 void *cga_standalone_init()
@@ -488,19 +569,32 @@ void *cga_standalone_init()
         int c;
         int cga_tint = -2;
         cga_t *cga = malloc(sizeof(cga_t));
+	pclog("Allocating type memory...\n");
         memset(cga, 0, sizeof(cga_t));
 
-	loadfont("mda.rom", 0);
-
+	pclog("Allocating VRAM...\n");
         cga->vram = malloc(0x4000);
                 
+#ifdef LEGACY_CGACOMP
+	pclog("Setting NTSC colors...\n");
         for (c = 0; c < 8; c++)
         {
                 i_filt[c] = 512.0 * cos((3.14 * (cga_tint + c * 4) / 16.0) - 33.0 / 180.0);
                 q_filt[c] = 512.0 * sin((3.14 * (cga_tint + c * 4) / 16.0) - 33.0 / 180.0);
         }
-        timer_add(cga_poll, &cga->vidtime, TIMER_ALWAYS_ENABLED, cga);
+#else
+	pclog("Configuring composite CGA\n");
+	configure_comp(180.0, 0, 0, 0);
+	update_cga16_color(cga);
+#endif
+
+	pclog("Adding memory mapping...\n");
         mem_mapping_add(&cga->mapping, 0xb8000, 0x08000, cga_read, NULL, NULL, cga_write, NULL, NULL,  NULL, 0, cga);
+
+	pclog("Adding timer...\n");
+        timer_add(cga_poll, &cga->vidtime, TIMER_ALWAYS_ENABLED, cga);
+
+	pclog("Setting handler...\n");
         io_sethandler(0x03d0, 0x0010, cga_in, NULL, NULL, cga_out, NULL, NULL, cga);
         return cga;
 }

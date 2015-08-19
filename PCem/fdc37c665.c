@@ -21,6 +21,7 @@ void fdc37c665_write(uint16_t port, uint8_t val, void *priv)
 {
 	uint8_t index = (port & 1) ? 0 : 1;
 	uint8_t valxor = 0;
+	uint8_t max = 16;
         int temp;
         pclog("fdc37c665_write : port=%04x reg %02X = %02X locked=%i\n", port, fdc37c665_curreg, val, fdc37c665_locked);
 
@@ -42,7 +43,7 @@ void fdc37c665_write(uint16_t port, uint8_t val, void *priv)
 		{
 			if (fdc37c665_locked)
 			{
-				if (val < 16)  fdc37c665_curreg = val;
+				if (val < max)  fdc37c665_curreg = val;
 				if (val == 0xaa)  fdc37c665_locked = 0;
 			}
 			else
@@ -202,9 +203,15 @@ void fdc37c665_init()
 	fdc37c665_regs[0xA] = 0;
 	fdc37c665_regs[0xB] = 0;
 	fdc37c665_regs[0xC] = 0;
-	fdc37c665_regs[0xD] = 0x65;
+	if (romset == ROM_COLORBOOK)
+		fdc37c665_regs[0xD] = 0x63;
+	else
+		fdc37c665_regs[0xD] = 0x65;
+
 	fdc37c665_regs[0xE] = 1;
+
 	fdc37c665_regs[0xF] = 0;
+
 	densel_polarity = 1;
 	densel_force = 0;
 	fdc_setswap(0);

@@ -103,7 +103,6 @@ void s3_accel_write_w(uint32_t addr, uint16_t val, void *p);
 void s3_accel_write_l(uint32_t addr, uint32_t val, void *p);
 uint8_t s3_accel_read(uint32_t addr, void *p);
 
-
 void s3_out(uint16_t addr, uint8_t val, void *p)
 {
         s3_t *s3 = (s3_t *)p;
@@ -144,12 +143,15 @@ void s3_out(uint16_t addr, uint8_t val, void *p)
                 svga->crtcreg = val & 0x7f;
                 return;
                 case 0x3D5:
+		if (svga->crtcreg <= 0x18)
+			val &= mask_crtc[svga->crtcreg];
                 if ((svga->crtcreg < 7) && (svga->crtc[0x11] & 0x80))
                         return;
                 if ((svga->crtcreg == 7) && (svga->crtc[0x11] & 0x80))
                         val = (svga->crtc[7] & ~0x10) | (val & 0x10);
                 if (svga->crtcreg >= 0x20 && svga->crtcreg != 0x38 && (svga->crtc[0x38] & 0xcc) != 0x48) return;
                 old = svga->crtc[svga->crtcreg];
+
                 svga->crtc[svga->crtcreg] = val;
                 switch (svga->crtcreg)
                 {
@@ -2041,6 +2043,7 @@ int s3_phoenix_trio32_available()
 void *s3_phoenix_trio64_init()
 {
         s3_t *s3 = s3_init("roms/86c764x1.bin", S3_TRIO64);
+        // s3_t *s3 = s3_init("roms/STB64.ROM", S3_TRIO64);
         svga_t *svga = &s3->svga;
 
         s3->id = 0xe1; /*Trio64*/
@@ -2056,6 +2059,7 @@ void *s3_phoenix_trio64_init()
 int s3_phoenix_trio64_available()
 {
         return rom_present("roms/86c764x1.bin");
+        // return rom_present("roms/STB64.ROM");
 }
 
 void *s3_phoenix_vision964_init()

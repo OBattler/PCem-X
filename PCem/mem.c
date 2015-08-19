@@ -107,11 +107,7 @@ int loadbios()
         FILE *f=NULL,*ff=NULL;
         int c;
 
-        if (!GMDA)
-	{
-		loadfont("mda.rom", 0);
-	}
-	else
+	if (GMDA)
 	{
 		if (GHERC)
 		{
@@ -144,7 +140,7 @@ int loadbios()
                 fclose(ff);
                 fclose(f);
                 mem_load_xtide_bios();
-                loadfont("roms/pc1512/40078.ic127", 2);
+                // loadfont("roms/pc1512/40078.ic127", 2);
                 return 1;
                 case ROM_PC1640:
                 f=romfopen("roms/pc1640/40044.v3","rb");
@@ -174,7 +170,7 @@ int loadbios()
                 fclose(ff);
                 fclose(f);
                 mem_load_xtide_bios();
-                loadfont("roms/pc200/40109.bin", 1);
+                // loadfont("roms/pc200/40109.bin", 1);
                 return 1;
                 case ROM_TANDY:
                 f=romfopen("roms/tandy/tandy1t1.020","rb");
@@ -487,8 +483,18 @@ int loadbios()
                 // pclog("Load SIS496 %x %x\n", rom[0x1fff0], rom[0xfff0]);
                 return 1;
                 
+                case ROM_COLORBOOK:
+                f = romfopen("roms/colorbook/bios_scu.ROM", "rb");
+                if (!f) break;
+                fread(rom,           0x10000, 1, f);                
+                fclose(f);
+                // biosmask = 0x1ffff;
+                // pclog("Load SIS496 %x %x\n", rom[0x1fff0], rom[0xfff0]);
+                return 1;
+                
                 case ROM_SIS496:
-                f = romfopen("roms/sis496/SIS496-1.AWA", "rb");
+                // f = romfopen("roms/sis496/SIS496-1.AWA", "rb");
+                f = romfopen("roms/sis496/r418i.bin", "rb");
                 if (!f) break;
                 fread(rom,           0x20000, 1, f);                
                 fclose(f);
@@ -523,6 +529,16 @@ int loadbios()
                 //is486=1;
                 return 1;
 
+                case ROM_430TX:
+		// f = romfopen("roms/430tx/tx73w106.bin", "rb");
+		f = romfopen("roms/430tx/TX73J106.BIN", "rb");
+                if (!f) break;
+                fread(rom,           0x20000, 1, f);                
+                fclose(f);
+                biosmask = 0x1ffff;
+                //is486=1;
+                return 1;
+
                 case ROM_REVENGE:
                 f = romfopen("roms/revenge/1009AF2_.BIO", "rb");
                 if (!f) break;
@@ -550,6 +566,38 @@ int loadbios()
                 fclose(f);
                 biosmask = 0x1ffff;
                 //is486=1;
+                return 1;
+
+                case ROM_AMIXT:
+                f = romfopen("roms/amixt/AMI_8088_BIOS_31JAN89.BIN", "rb");
+                if (!f) break;
+                fread(rom + 0xE000, 8192, 1, f);
+                fclose(f);
+                mem_load_xtide_bios();
+                return 1;
+
+                case ROM_LTXT:
+                f = romfopen("roms/ltxt/27C64.bin", "rb");
+                if (!f) break;
+                fread(rom + 0xE000, 8192, 1, f);
+                fclose(f);
+                mem_load_xtide_bios();
+                return 1;
+
+                case ROM_LXT3:
+                f = romfopen("roms/lxt3/27C64D.bin", "rb");
+                if (!f) break;
+                fread(rom + 0xE000, 8192, 1, f);
+                fclose(f);
+                mem_load_xtide_bios();
+                return 1;
+
+		case ROM_PX386: /*Phoenix 80386 BIOS*/
+		f = romfopen("roms/px386/3iip001.bin", "rb");
+                if (!f) break;
+                fread(rom,65536,1,f);
+                fclose(f);
+		// mem_load_atide_bios();
                 return 1;
         }
         printf("Failed to load ROM!\n");
@@ -737,7 +785,7 @@ uint32_t mmutranslatereal(uint32_t addr, int rw)
                 if (addr==0x77f61000) output = 3;
                 if (addr==0x77f62000) { dumpregs(); exit(-1); }
                 if (addr==0x77f9a000) { dumpregs(); exit(-1); }*/
-        addr2=(cr3+((addr>>20)&0xFFC));
+        addr2 = ((cr3 & ~0xfff) + ((addr >> 20) & 0xffc));
         temp=temp2=((uint32_t *)ram)[addr2>>2];
 //        if (output == 3) pclog("Do translate %08X %i %08X\n", addr, rw, temp);
         if (!(temp&1))// || (CPL==3 && !(temp&4) && !cpl_override) || (rw && !(temp&2) && (CPL==3 || cr0&WP_FLAG)))
@@ -799,7 +847,7 @@ uint32_t mmutranslate_noabrt(uint32_t addr, int rw)
         if (abrt) 
                 return -1;
 
-        addr2=(cr3+((addr>>20)&0xFFC));
+        addr2 = ((cr3 & ~0xfff) + ((addr >> 20) & 0xffc));
         temp=temp2=((uint32_t *)ram)[addr2>>2];
 
         if (!(temp&1))
@@ -923,6 +971,8 @@ void addwritelookup(uint32_t virt, uint32_t phys)
 }
 
 #undef printf
+uint32_t empty = 0xFFFFFFFF;
+
 uint8_t *getpccache(uint32_t a)
 {
         uint32_t a2=a;
@@ -949,7 +999,9 @@ uint8_t *getpccache(uint32_t a)
                 return &_mem_exec[a >> 14][(uintptr_t)(a & 0x3000) - (uintptr_t)(a2 & ~0xFFF)];
         }
 
-        fatal("Bad getpccache %08X\n", a);
+	pclog("Bad getpccache %08X, resetting...\n", a);
+	return (uint8_t *) &empty;
+        // fatal("Bad getpccache %08X\n", a);
 }
 #define printf pclog
 
@@ -957,6 +1009,7 @@ uint32_t mem_logical_addr;
 uint8_t readmembl(uint32_t addr)
 {
         mem_logical_addr = addr;
+
         if (cr0 >> 31)
         {
                 addr = mmutranslate_read(addr);
@@ -997,6 +1050,7 @@ uint8_t readmemb386l(uint32_t seg, uint32_t addr)
                 printf("NULL segment! rb %04X(%08X):%08X %02X %08X\n",CS,cs,pc,opcode,addr);
                 return -1;
         }
+
         mem_logical_addr = addr = addr + seg;
 /*        if (readlookup2[mem_logical_addr >> 12] != 0xFFFFFFFF)
         {
@@ -1026,6 +1080,7 @@ void writememb386l(uint32_t seg, uint32_t addr, uint8_t val)
         }
         
         mem_logical_addr = addr = addr + seg;
+
         if (page_lookup[addr>>12])
         {
                 page_lookup[addr>>12]->write_b(addr, val, page_lookup[addr>>12]);
@@ -1738,6 +1793,8 @@ void mem_init()
 {
         int c;
 
+	if (mem_size > 256)  mem_size = 256;
+
         ram = malloc(mem_size * 1024 * 1024);
         rom = malloc(0x20000);
         vram = malloc(0x800000);
@@ -1790,13 +1847,16 @@ void mem_init()
         mem_mapping_add(&ram_mid_mapping,   0xc0000, 0x40000, mem_read_ram,    mem_read_ramw,    mem_read_raml,    mem_write_ram, mem_write_ramw, mem_write_raml,   ram + 0xc0000,  MEM_MAPPING_INTERNAL, NULL);
 
         mem_mapping_add(&romext_mapping,  0xc8000, 0x08000, mem_read_romext, mem_read_romextw, mem_read_romextl, NULL, NULL, NULL,   romext, 0, NULL);
+
 //        pclog("Mem resize %i %i\n",mem_size,c);
 }
 
 void mem_resize()
 {
         int c;
-        
+
+	if (mem_size > 256)  mem_size = 256;
+
         free(ram);
         ram = malloc(mem_size * 1024 * 1024);
         memset(ram, 0, mem_size * 1024 * 1024);

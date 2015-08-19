@@ -244,9 +244,9 @@ void cpqvdu_poll(void *p)
                                                 for (c = 0; c < 9; c++)
 						{
 							if (cpqvdu->crtc[9] > 7)
-								buffer->line[cpqvdu->displine][(x * 9) + c + 9] = cols[(fontdatm[chr][cpqvdu->sc] & (1 << (c ^ 7))) ? 1 : 0] ^ 15;
+								buffer->line[cpqvdu->displine][(x * 9) + c + 9] = cols[(cga_fontdatm[chr][cpqvdu->sc] & (1 << (c ^ 7))) ? 1 : 0] ^ 15;
 							else
-								buffer->line[cpqvdu->displine][(x * 9) + c + 9] = cols[(fontdat[chr][cpqvdu->sc] & (1 << (c ^ 7))) ? 1 : 0] ^ 15;
+								buffer->line[cpqvdu->displine][(x * 9) + c + 9] = cols[(cga_fontdat[chr][cpqvdu->sc] & (1 << (c ^ 7))) ? 1 : 0] ^ 15;
 						}
                                         }
                                         else
@@ -261,15 +261,15 @@ void cpqvdu_poll(void *p)
 							if (cpqvdu->crtc[9] > 7)
 							{
 	                                                	for (c = 0; c < 8; c++)
-									buffer->line[cpqvdu->displine][(x * 9) + c + 9] = cols[(fontdatm[chr][cpqvdu->sc] & (1 << (c ^ 7))) ? 1 : 0];
-	                		                        if ((chr & ~0x1f) == 0xc0) buffer->line[cpqvdu->displine][(x * 9) + 17] = cols[(fontdatm[chr][cpqvdu->sc] & (1 << (7 ^ 7))) ? 1 : 0];
+									buffer->line[cpqvdu->displine][(x * 9) + c + 9] = cols[(cga_fontdatm[chr][cpqvdu->sc] & (1 << (c ^ 7))) ? 1 : 0];
+	                		                        if ((chr & ~0x1f) == 0xc0) buffer->line[cpqvdu->displine][(x * 9) + 17] = cols[(cga_fontdatm[chr][cpqvdu->sc] & (1 << (7 ^ 7))) ? 1 : 0];
 			                                        else                       buffer->line[cpqvdu->displine][(x * 9) + 17] = cols[0];
 							}
 							else
 							{
 	                                                	for (c = 0; c < 8; c++)
-									buffer->line[cpqvdu->displine][(x * 9) + c + 9] = cols[(fontdat[chr][cpqvdu->sc] & (1 << (c ^ 7))) ? 1 : 0];
-	                		                        if ((chr & ~0x1f) == 0xc0) buffer->line[cpqvdu->displine][(x * 9) + 17] = cols[(fontdat[chr][cpqvdu->sc] & (1 << (7 ^ 7))) ? 1 : 0];
+									buffer->line[cpqvdu->displine][(x * 9) + c + 9] = cols[(cga_fontdat[chr][cpqvdu->sc] & (1 << (c ^ 7))) ? 1 : 0];
+	                		                        if ((chr & ~0x1f) == 0xc0) buffer->line[cpqvdu->displine][(x * 9) + 17] = cols[(cga_fontdat[chr][cpqvdu->sc] & (1 << (7 ^ 7))) ? 1 : 0];
 			                                        else                       buffer->line[cpqvdu->displine][(x * 9) + 17] = cols[0];
 							}
 						}
@@ -299,12 +299,12 @@ void cpqvdu_poll(void *p)
                                         if (drawcursor)
                                         {
                                                 for (c = 0; c < 8; c++)
-                                                    buffer->line[cpqvdu->displine][(x << 4)+(c << 1) + 8] = buffer->line[cpqvdu->displine][(x << 4) + (c << 1) + 1 + 8] = cols[(fontdat[chr][cpqvdu->sc & 7] & (1 << (c ^ 7))) ? 1 : 0] ^ 15;
+                                                    buffer->line[cpqvdu->displine][(x << 4)+(c << 1) + 8] = buffer->line[cpqvdu->displine][(x << 4) + (c << 1) + 1 + 8] = cols[(cga_fontdat[chr][cpqvdu->sc & 7] & (1 << (c ^ 7))) ? 1 : 0] ^ 15;
                                         }
                                         else
                                         {
                                                 for (c = 0; c < 8; c++)
-                                                    buffer->line[cpqvdu->displine][(x << 4) + (c << 1) + 8] = buffer->line[cpqvdu->displine][(x << 4) + (c << 1) + 1 + 8] = cols[(fontdat[chr][cpqvdu->sc & 7] & (1 << (c ^ 7))) ? 1 : 0];
+                                                    buffer->line[cpqvdu->displine][(x << 4) + (c << 1) + 8] = buffer->line[cpqvdu->displine][(x << 4) + (c << 1) + 1 + 8] = cols[(cga_fontdat[chr][cpqvdu->sc & 7] & (1 << (c ^ 7))) ? 1 : 0];
                                         }
                                 }
                         }
@@ -592,7 +592,7 @@ endblit();
 
 void cpqvdu_init(cpqvdu_t *cpqvdu)
 {
-	loadfont("mda.rom", 0);
+	// loadfont("mda.rom", 0);
 }
 
 void *cpqvdu_standalone_init()
@@ -602,7 +602,7 @@ void *cpqvdu_standalone_init()
         cpqvdu_t *cpqvdu = malloc(sizeof(cpqvdu_t));
         memset(cpqvdu, 0, sizeof(cpqvdu_t));
 
-	loadfont("mda.rom", 0);
+	// loadfont("mda.rom", 0);
 
         cpqvdu->vram = malloc(0x4000);
                 

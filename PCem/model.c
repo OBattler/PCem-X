@@ -6,17 +6,20 @@
 #include "acer386sx.h"
 #include "ali1429.h"
 #include "amstrad.h"
+#include "colorbook_io.h"
 #include "compaq.h"
 #include "cpqio.h"
 #include "device.h"
 #include "dma.h"
 #include "fdc.h"
 #include "fdc37c665.h"
+#include "fdc37c669.h"
 #include "fdc37c932fr.h"
 #include "gameport.h"
 #include "headland.h"
 #include "i430fx.h"
 #include "i430lx.h"
+#include "i430tx.h"
 #include "i430vx.h"
 #include "ide.h"
 #include "intel.h"
@@ -45,7 +48,7 @@
 #include "sis496.h"
 #include "sis85c471.h"
 #include "sound_sn76489.h"
-#include "um8669f.h"
+// #include "um8669f.h"
 #include "um8881f.h"
 #include "wd76c10.h"
 #include "xtide.h"
@@ -58,6 +61,7 @@ void        europc_init();
 void        olim24_init();
 void            at_init();
 void    deskpro386_init();
+void         px386_init();
 void           ps1_init();
 void       at_neat_init();
 void  at_acer386sx_init();
@@ -66,11 +70,13 @@ void    at_ali1429_init();
 void   at_headland_init();
 void    at_um8881f_init();
 void     at_sis471_init();
+void  at_colorbook_init();
 void     at_sis496_init();
 void     at_i430fx_init();
 void     at_i430vx_init();
 void     at_batman_init();
 void   at_endeavor_init();
+void     at_i430tx_init();
 
 int model;
 
@@ -85,7 +91,10 @@ MODEL models[] =
         {"IBM XT",              ROM_IBMXT,     { "Stock", cpus_8088,	"286 card",  cpus_286,   "",  NULL},         0,      xt_init},
         {"IBM PCjr",            ROM_IBMPCJR,   { "",      cpus_pcjr,    "",    NULL,         "",      NULL},         1,    pcjr_init},
         {"Generic XT clone",    ROM_GENXT,     { "Stock", cpus_8088,	"286 card",  cpus_286,   "",  NULL},         0,      xt_init},
-        {"DTK XT clone",        ROM_DTKXT,     { "Stock", cpus_8088,	"286 card",  cpus_286,   "",  NULL},         0,      xt_init},        
+	{"AMI XT clone",        ROM_AMIXT,     { "Stock", cpus_8088,	"286 card",  cpus_286,   "",  NULL},         0,      xt_init},
+        {"DTK XT clone",        ROM_DTKXT,     { "Stock", cpus_8088,	"286 card",  cpus_286,   "",  NULL},         0,      xt_init},
+        {"VTech Laser Turbo XT",ROM_LTXT,      { "Stock", cpus_8088,	"286 card",  cpus_286,   "",  NULL},         0,      xt_init},
+        {"VTech Laser XT3",	ROM_LXT3,      { "Stock", cpus_8088,	"286 card",  cpus_286,   "",  NULL},         0,      xt_init},
         {"Tandy 1000",          ROM_TANDY,     { "Stock", cpus_8088,	"286 card",  cpus_286,   "",  NULL},         1, tandy1k_init},
         {"Amstrad PC1512",      ROM_PC1512,    { "",      cpus_pc1512,  "",    NULL,         "",      NULL},         1,     ams_init},
         {"Sinclair PC200",      ROM_PC200,     { "",      cpus_8086,    "",    NULL,         "",      NULL},         1,     ams_init},
@@ -101,19 +110,21 @@ MODEL models[] =
         {"IBM PS/1 model 2011", ROM_IBMPS1_2011, { "",      cpus_286,     "",    NULL,         "",      NULL},         1,          ps1_init},
         {"Acer 386SX25/N",      ROM_ACER386,   { "Intel", cpus_acer,    "",    NULL,         "",      NULL},         1, at_acer386sx_init},
         {"Amstrad MegaPC",      ROM_MEGAPC,    { "Intel", cpus_i386,    "AMD", cpus_Am386,   "Cyrix", cpus_486SDLC}, 1,   at_wd76c10_init},
-        {"Amstrad PC7286",      ROM_MEGAPC,    { "Intel", cpus_286,     "",    NULL,         "",      NULL},         1,   at_wd76c10_init},
         {"AMI 386 clone",       ROM_AMI386,    { "Intel", cpus_i386,    "AMD", cpus_Am386,   "Cyrix", cpus_486SDLC}, 0,  at_headland_init},
         {"Compaq Deskpro 386",  ROM_DESKPRO_386, { "Intel", cpus_i386,    "AMD", cpus_Am386,   "Cyrix", cpus_486SDLC}, 0,   deskpro386_init},
+        {"Phoenix 386 clone",   ROM_PX386,     { "Intel", cpus_i386,    "AMD", cpus_Am386,   "Cyrix", cpus_486SDLC}, 0,   at_wd76c10_init},
         {"AMI 486 clone",       ROM_AMI486,    { "Intel", cpus_i486,    "AMD", cpus_Am486,   "Cyrix", cpus_Cx486},   0,   at_ali1429_init},
         {"AMI WinBIOS 486",     ROM_WIN486,    { "Intel", cpus_i486,    "AMD", cpus_Am486,   "Cyrix", cpus_Cx486},   0,   at_ali1429_init},
-/*        {"AMI WinBIOS 486 PCI", ROM_PCI486,    { "Intel", cpus_i486,    "AMD", cpus_Am486, "Cyrix", cpus_Cx486},   0,   at_um8881f_init},*/
+        {"AMI WinBIOS 486 PCI", ROM_PCI486,    { "Intel", cpus_i486,    "AMD", cpus_Am486, "Cyrix", cpus_Cx486},   0,   at_um8881f_init},
         {"Award SiS 471",       ROM_SIS471,    { "Intel", cpus_i486,    "AMD", cpus_Am486,   "Cyrix", cpus_Cx486},   0,    at_sis471_init},
+        {"Gateway 2000 Colorbook",ROM_COLORBOOK, { "Intel", cpus_i486,    "AMD", cpus_Am486,   "Cyrix", cpus_Cx486},   0, at_colorbook_init},
         {"Award SiS 496/497",   ROM_SIS496,    { "Intel", cpus_i486,    "AMD", cpus_Am486,   "Cyrix", cpus_Cx486},   0,    at_sis496_init},
 #ifdef DYNAREC
         {"Intel Premiere/PCI",  ROM_REVENGE,   { "Intel", cpus_Pentium5V, "",  NULL,         "",      NULL},         0,    at_batman_init},
         {"Intel Advanced/EV",   ROM_ENDEAVOR,  { "Intel", cpus_PentiumS5,"IDT", cpus_WinChip, "",      NULL},         0,  at_endeavor_init},
         {"Award 430FX PCI",     ROM_430FX,     { "Intel", cpus_PentiumS5,"IDT", cpus_WinChip, "",      NULL},         0,    at_i430fx_init},
         {"Award 430VX PCI",     ROM_430VX,     { "Intel", cpus_Pentium, "IDT", cpus_WinChip, "",      NULL},         0,    at_i430vx_init},
+        {"Award 430TX PCI",     ROM_430TX,     { "Intel", cpus_Pentium, "IDT", cpus_WinChip, "",      NULL},         0,    at_i430tx_init},
 #else
         {"Intel Advanced/EV",   ROM_ENDEAVOR,  { "IDT", cpus_WinChip,   "",    NULL,         "",      NULL},         0,  at_endeavor_init},
         {"Award 430FX PCI",     ROM_430FX,     { "IDT", cpus_WinChip,   "",    NULL,         "",      NULL},         0,  at_i430fx_init},
@@ -151,6 +162,15 @@ char *model_getname()
         return models[model].name;
 }
 
+void fdc_polarity_reset()
+{
+	densel_polarity = -1;
+	densel_polarity_mid[0] = -1;
+	densel_polarity_mid[1] = -1;
+	drt[0] = 0;
+	drt[1] = 0;
+}
+
 void common_init()
 {
         dma_init();
@@ -166,10 +186,15 @@ void common_init()
 	has_pc87306 = 0;
 	/* It then gets set for the models that do need it. */
 	fdc_clear_dskchg_activelow();
+	fdc_polarity_reset();
 }
 
 void xt_init()
 {
+	PCI = 0;
+	maxide = 2;
+	AT = 0;
+	is386 = 0;
         common_init();
         pit_set_out_func(1, pit_refresh_timer_xt);
         keyboard_xt_init();
@@ -180,6 +205,10 @@ void xt_init()
 
 void pcjr_init()
 {
+	PCI = 0;
+	maxide = 2;
+	AT = 0;
+	is386 = 0;
         fdc_add_pcjr();
         pic_init();
         pit_init();
@@ -190,20 +219,30 @@ void pcjr_init()
         device_add(&sn76489_device);
 	nmi_mask = 0x80;
 	machine_class = MC_PCJR;
+	fdc_polarity_reset();
 }
 
 void tandy1k_init()
 {
+	PCI = 0;
+	maxide = 2;
+	AT = 0;
+	is386 = 0;
         common_init();
         keyboard_xt_init();
         mouse_serial_init();
         device_add(&sn76489_device);
         xtide_init();
 	nmi_init();
+	fdc_polarity_reset();
 }
 
 void ams_init()
 {
+	PCI = 0;
+	maxide = 2;
+	AT = 0;
+	is386 = 0;
         common_init();
         amstrad_init();
         keyboard_amstrad_init();
@@ -216,6 +255,10 @@ void ams_init()
 
 void europc_init()
 {
+	PCI = 0;
+	maxide = 2;
+	AT = 0;
+	is386 = 0;
         common_init();
         jim_init();
         keyboard_xt_init();
@@ -226,6 +269,10 @@ void europc_init()
 
 void olim24_init()
 {
+	PCI = 0;
+	maxide = 2;
+	AT = 0;
+	is386 = 0;
         common_init();
         keyboard_olim24_init();
         nvr_init();
@@ -249,14 +296,34 @@ void at_init()
 
 void deskpro386_init()
 {
+	PCI = 0;
+	maxide = 2;
+	AT = 1;
+	is386 = 1;
         at_init();
         mouse_serial_init();
         compaq_init();
 	cpqio_init();
+	is386 = 1;
+}
+
+void px386_init()
+{
+	PCI = 0;
+	maxide = 2;
+	AT = 1;
+	is386 = 1;
+        at_init();
+        mouse_serial_init();
+	is386 = 1;
 }
 
 void ps1_init()
 {
+	PCI = 0;
+	maxide = 2;
+	AT = 1;
+	is386 = 0;
         common_init();
         pit_set_out_func(1, pit_refresh_timer_at);
         dma16_init();
@@ -271,6 +338,10 @@ void ps1_init()
 
 void at_neat_init()
 {
+	PCI = 0;
+	maxide = 2;
+	AT = 1;
+	is386 = 0;
         at_init();
         mouse_serial_init();
         neat_init();
@@ -278,20 +349,34 @@ void at_neat_init()
 
 void at_acer386sx_init()
 {
+	PCI = 0;
+	maxide = 2;
+	AT = 1;
+	is386 = 1;
         at_init();
         mouse_ps2_init();
         acer386sx_init();
+	is386 = 1;
 }
 
 void at_wd76c10_init()
 {
+	PCI = 0;
+	maxide = 2;
+	AT = 1;
+	is386 = 1;
         at_init();
         mouse_ps2_init();
         wd76c10_init();
+	is386 = 1;
 }
 
 void at_headland_init()
 {
+	PCI = 0;
+	maxide = 2;
+	AT = 1;
+	is386 = 1;
         at_init();
         headland_init();
         mouse_serial_init();
@@ -299,6 +384,10 @@ void at_headland_init()
 
 void at_ali1429_init()
 {
+	PCI = 0;
+	maxide = 2;
+	AT = 1;
+	is386 = 1;
         at_init();
         ali1429_init();
         mouse_serial_init();
@@ -306,6 +395,10 @@ void at_ali1429_init()
 
 void at_um8881f_init()
 {
+	PCI = 1;
+	maxide = 2;
+	AT = 1;
+	is386 = 1;
         at_init();
         mouse_serial_init();
         pci_init(PCI_CONFIG_TYPE_1, 0, 31);
@@ -314,22 +407,50 @@ void at_um8881f_init()
 
 void at_sis471_init()
 {
+	PCI = 0;
+	maxide = 2;
+	AT = 1;
+	is386 = 1;
         at_init();
         mouse_serial_init();
 	sis85c471_init();
 }
 
+void at_colorbook_init()
+{
+	PCI = 0;
+	maxide = 2;
+	AT = 1;
+	is386 = 1;
+        at_init();
+        mouse_ps2_init();
+	/* Really the FDC37C663 but we share the file as they are essentially identical except for the vendor ID. */
+	fdc37c665_init();
+	colorbook_io_init();
+}
+
 void at_sis496_init()
 {
+	PCI = 1;
+	maxide = 4;
+	AT = 1;
+	is386 = 1;
         at_init();
         mouse_serial_init();
         pci_init(PCI_CONFIG_TYPE_1, 0, 31);
-        um8663b_init();
+        // um8663b_init();
+	fdc37c665_init();
         device_add(&sis496_device);
+	maxide = 4;
+	is386 = 1;
 }
 
 void at_batman_init()
 {
+	PCI = 1;
+	maxide = 4;
+	AT = 1;
+	is386 = 1;
         at_init();
         // mouse_serial_init();
 	mouse_ps2_init();
@@ -341,6 +462,10 @@ void at_batman_init()
 
 void at_endeavor_init()
 {
+	PCI = 1;
+	maxide = 4;
+	AT = 1;
+	is386 = 1;
         at_init();
         // mouse_serial_init();
 	mouse_ps2_init();
@@ -355,6 +480,10 @@ void at_endeavor_init()
 
 void at_i430fx_init()
 {
+	PCI = 1;
+	maxide = 4;
+	AT = 1;
+	is386 = 1;
         at_init();
         mouse_serial_init();
 	// mouse_ps2_init();
@@ -369,6 +498,10 @@ void at_i430fx_init()
 
 void at_i430vx_init()
 {
+	PCI = 1;
+	maxide = 4;
+	AT = 1;
+	is386 = 1;
         at_init();
         mouse_serial_init();
 	// mouse_ps2_init();
@@ -380,10 +513,31 @@ void at_i430vx_init()
 	fdc37c932fr_init();
 }
 
+void at_i430tx_init()
+{
+	PCI = 1;
+	maxide = 4;
+	AT = 1;
+	is386 = 1;
+        at_init();
+        mouse_serial_init();
+	// mouse_ps2_init();
+        pci_init(PCI_CONFIG_TYPE_1, 0, 31);
+        i430tx_init();
+        piix_init(7);
+        // um8669f_init();
+	/* Note by OBattler: Switched to a BIOS using that Super I/O chip because it's better than UMC. */
+	// fdc37c932fr_init();
+	fdc37c669_init();
+        device_add(&intel_flash_device);
+}
+
 void model_init()
 {
         pclog("Initting as %s\n", model_getname());
         io_init();
         
         models[model].init();
+
+	pclog("PCI: %02X, Max IDE: %02X, 386: %02X\n", PCI, maxide, is386);
 }

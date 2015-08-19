@@ -47,3 +47,4 @@ enum
 {
         DEVICE_NOT_WORKING = 1 /*Device does not currently work correctly and will be disabled in a release build*/
 };
+

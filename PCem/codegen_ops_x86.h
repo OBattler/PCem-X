@@ -214,6 +214,8 @@ static void STORE_HOST_REG_ADDR(uintptr_t addr, int host_reg)
         addbyte(0x05 | (host_reg << 3));
         addlong(addr);
 }
+#define STORE_HOST_REG_ADDR_BL STORE_HOST_REG_ADDR
+#define STORE_HOST_REG_ADDR_WL STORE_HOST_REG_ADDR
 
 static void ADD_HOST_REG_B(int dst_reg, int src_reg)
 {
@@ -292,6 +294,30 @@ static void AND_HOST_REG_IMM(int host_reg, uint32_t imm)
                 addlong(imm);
         }
 }
+static int TEST_HOST_REG_B(int dst_reg, int src_reg)
+{
+        AND_HOST_REG_B(dst_reg, src_reg);
+        
+        return dst_reg;
+}
+static int TEST_HOST_REG_W(int dst_reg, int src_reg)
+{
+        AND_HOST_REG_W(dst_reg, src_reg);
+        
+        return dst_reg;
+}
+static int TEST_HOST_REG_L(int dst_reg, int src_reg)
+{
+        AND_HOST_REG_L(dst_reg, src_reg);
+        
+        return dst_reg;
+}
+static int TEST_HOST_REG_IMM(int host_reg, uint32_t imm)
+{
+        AND_HOST_REG_IMM(host_reg, imm);
+        
+        return host_reg;
+}
 
 #define OR_HOST_REG_B OR_HOST_REG_L
 #define OR_HOST_REG_W OR_HOST_REG_L
@@ -316,6 +342,22 @@ static void OR_HOST_REG_IMM(int host_reg, uint32_t imm)
         }
 }
 
+static void NEG_HOST_REG_B(int reg)
+{
+        addbyte(0xf6);
+        addbyte(0xd8 | reg);
+}
+static void NEG_HOST_REG_W(int reg)
+{
+        addbyte(0x66);
+        addbyte(0xf7);
+        addbyte(0xd8 | reg);
+}
+static void NEG_HOST_REG_L(int reg)
+{
+        addbyte(0xf7);
+        addbyte(0xd8 | reg);
+}
 
 static void SUB_HOST_REG_B(int dst_reg, int src_reg)
 {
@@ -370,6 +412,43 @@ static void SUB_HOST_REG_IMM(int host_reg, uint32_t imm)
                 addbyte(0xE8 | host_reg);
                 addlong(imm);
         }
+}
+
+static int CMP_HOST_REG_B(int dst_reg, int src_reg)
+{
+        SUB_HOST_REG_B(dst_reg, src_reg);
+        
+        return dst_reg;
+}
+static int CMP_HOST_REG_W(int dst_reg, int src_reg)
+{
+        SUB_HOST_REG_W(dst_reg, src_reg);
+        
+        return dst_reg;
+}
+static int CMP_HOST_REG_L(int dst_reg, int src_reg)
+{
+        SUB_HOST_REG_L(dst_reg, src_reg);
+        
+        return dst_reg;
+}
+static int CMP_HOST_REG_IMM_B(int host_reg, uint8_t imm)
+{
+        SUB_HOST_REG_IMM_B(host_reg, imm);
+        
+        return host_reg;
+}
+static int CMP_HOST_REG_IMM_W(int host_reg, uint16_t imm)
+{
+        SUB_HOST_REG_IMM_W(host_reg, imm);
+        
+        return host_reg;
+}
+static int CMP_HOST_REG_IMM_L(int host_reg, uint32_t imm)
+{
+        SUB_HOST_REG_IMM(host_reg, imm);
+        
+        return host_reg;
 }
 
 #define XOR_HOST_REG_B XOR_HOST_REG_L
@@ -2647,40 +2726,51 @@ static void FP_COMPARE_REG(int dst, int src)
         addlong(((uintptr_t)&npxs) + 1);
 }
 
-static void ZERO_EXTEND_W_B(int reg)
+static int ZERO_EXTEND_W_B(int reg)
 {
         addbyte(0x0f); /*MOVZX regl, regb*/
         addbyte(0xb6);
         addbyte(0xc0 | reg | (reg << 3));
+        return reg;
 }
-static void ZERO_EXTEND_L_B(int reg)
+static int ZERO_EXTEND_L_B(int reg)
 {
         addbyte(0x0f); /*MOVZX regl, regb*/
         addbyte(0xb6);
         addbyte(0xc0 | reg | (reg << 3));
+        return reg;
 }
-static void ZERO_EXTEND_L_W(int reg)
+static int ZERO_EXTEND_L_W(int reg)
 {
         addbyte(0x0f); /*MOVZX regl, regw*/
         addbyte(0xb7);
         addbyte(0xc0 | reg | (reg << 3));
+        return reg;
 }
 
-static void SIGN_EXTEND_W_B(int reg)
+static int SIGN_EXTEND_W_B(int reg)
 {
         addbyte(0x0f); /*MOVSX regl, regb*/
         addbyte(0xbe);
         addbyte(0xc0 | reg | (reg << 3));
+        return reg;
 }
-static void SIGN_EXTEND_L_B(int reg)
+static int SIGN_EXTEND_L_B(int reg)
 {
         addbyte(0x0f); /*MOVSX regl, regb*/
         addbyte(0xbe);
         addbyte(0xc0 | reg | (reg << 3));
+        return reg;
 }
-static void SIGN_EXTEND_L_W(int reg)
+static int SIGN_EXTEND_L_W(int reg)
 {
         addbyte(0x0f); /*MOVSX regl, regw*/
         addbyte(0xbf);
         addbyte(0xc0 | reg | (reg << 3));
+        return reg;
+}
+
+static int COPY_REG(int src_reg)
+{
+        return src_reg;
 }

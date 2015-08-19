@@ -1400,6 +1400,7 @@ void pmoderetf(int is32, uint16_t off)
                    segdat[2] = (segdat[2] & ~(3 << (5+8))) | ((seg & 3) << (5+8));
                 CS = seg;
                 do_seg_load(&_cs, segdat);
+                _cs.access = (_cs.access & ~(3 << 5)) | ((CS & 3) << 5);
                 if (CPL==3 && oldcpl!=3) flushmmucache_cr3();
                 use32=(segdat[3]&0x40)?0x300:0;
                 
@@ -1579,6 +1580,7 @@ void pmodeint(int num, int soft)
         uint32_t newsp;
         uint16_t seg;
         int stack_changed=0;
+        int new_cpl;
         
 //        if (!num) pclog("Pmode int 0 at %04X(%06X):%08X\n",CS,cs,pc);
 //        pclog("Pmode int %02X %i %04X:%08X %04X:%08X %i\n",num,soft,CS,pc, SS, ESP, abrt);
@@ -1649,6 +1651,7 @@ void pmodeint(int num, int soft)
                                 return;
                         }
                         seg=segdat[1];
+                        new_cpl = seg & 3;
 //                        pclog("Interrupt gate : %04X:%04X%04X\n",seg,segdat[3],segdat[0]);
                         
                         addr=seg&~7;
@@ -1867,6 +1870,7 @@ void pmodeint(int num, int soft)
 //                                        if (soft) pclog("Pushwc PC %04X\n", pc);
                                         PUSHW(pc); if (abrt) return;
                                 }
+                                new_cpl = CS & 3;
                                 break;
                                 default:
                                 pclog("Int gate CS not code segment - %04X %04X %04X %04X\n",segdat2[0],segdat2[1],segdat2[2],segdat2[3]);
@@ -1874,7 +1878,8 @@ void pmodeint(int num, int soft)
                                 return;
                         }
                 do_seg_load(&_cs, segdat2);
-                CS=(seg&~3)|CPL;
+                CS = (seg & ~3) | new_cpl;
+                _cs.access = (_cs.access & ~(3 << 5)) | (new_cpl << 5);
 //                pclog("New CS = %04X\n",CS);
                 if (CPL==3 && oldcpl!=3) flushmmucache_cr3();
                 if (type>0x800) pc=segdat[0]|(segdat[3]<<16);
@@ -1934,7 +1939,7 @@ void pmodeint(int num, int soft)
                                         x86np("Int task gate not present\n", segdat[1] & 0xfffc);
                                         return;
                                 }
-                optype=INT;
+                optype=OPTYPE_INT;
                 cpl_override=1;
                 taskswitch286(seg,segdat2,segdat2[2]&0x800);
                 cpl_override=0;
@@ -2187,6 +2192,7 @@ void pmodeiret(int is32)
 //                pclog("Same level\n");
                 CS=seg;
                 do_seg_load(&_cs, segdat);
+                _cs.access = (_cs.access & ~(3 << 5)) | ((CS & 3) << 5);
                 if (CPL==3 && oldcpl!=3) flushmmucache_cr3();
                 use32=(segdat[3]&0x40)?0x300:0;
 
@@ -2301,6 +2307,7 @@ void pmodeiret(int is32)
 
                 CS=seg;
                 do_seg_load(&_cs, segdat);
+                _cs.access = (_cs.access & ~(3 << 5)) | ((CS & 3) << 5);
                 if (CPL==3 && oldcpl!=3) flushmmucache_cr3();
                 use32=(segdat[3]&0x40)?0x300:0;
                         
@@ -2366,7 +2373,7 @@ void taskswitch286(uint16_t seg, uint16_t *segdat, int is32)
                 new_ldt=readmemw(base,0x60);
                 
                 if (abrt) return;
-                if (optype==JMP || optype==INT)
+                if (optype==JMP || optype==OPTYPE_INT)
                 {
                         if (tr.seg&4) tempw=readmemw(ldt.base,(tr.seg&~7)+4);
                         else          tempw=readmemw(gdt.base,(tr.seg&~7)+4);
@@ -2402,13 +2409,13 @@ void taskswitch286(uint16_t seg, uint16_t *segdat, int is32)
                 writememl(tr.base,0x5C,GS);
                 writememl(tr.base,0x60,ldt.seg);
                 
-                if (optype==INT)
+                if (optype==OPTYPE_INT)
                 {
                         writememl(base,0,tr.seg);
                         new_flags|=NT_FLAG;
                 }
                 if (abrt) return;
-                if (optype==JMP || optype==INT)
+                if (optype==JMP || optype==OPTYPE_INT)
                 {
                         if (tr.seg&4) tempw=readmemw(ldt.base,(seg&~7)+4);
                         else          tempw=readmemw(gdt.base,(seg&~7)+4);

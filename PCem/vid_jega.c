@@ -1,4 +1,4 @@
-/*EGA emulation*/
+/*JEGA emulation*/
 #include <stdio.h>
 #include <stdlib.h>
 #include "ibm.h"
@@ -405,6 +405,7 @@ void write_gdcreg(jega_t *jega, uint8_t addr, uint8_t val)
 		jega->readmode = val & 8; 
 		break;
 		case 6:
+		jega->chain2 = val & 2;
 		if (jega->cr[7] & 32)
 		{
 			if ((val & 0xc) >= 0x8)
@@ -1073,17 +1074,17 @@ void jega_render_text(jega_t *jega)
 			if (enable_kanji(jega))
 			{
 				nchr = 0;
-				nchrpos = 8;
-				if (jega->cr[4] & 1)  nchrpos = 4;
+				nchrpos = 2;
+				if (jega->cr[4] & 1)  nchrpos = 1;
 				if ((jega->hdisp - x) > 1)  nchr = jega->vram[((jega->vtma << 1) + nchrpos) & jega->vrammask];
 			}
 			if (jega->cr[4] & 1)
 			{
-				attr = jega->vram[((jega->vtma << 1) + 0x10000) & jega->vrammask];
+				attr = jega->vram[((jega->vtma << 1) + 0x2000) & jega->vrammask];
 			}
 			else
 			{
-				attr = jega->vram[((jega->vtma << 1) + 4) & jega->vrammask];
+				attr = jega->vram[((jega->vtma << 1) + 1) & jega->vrammask];
 			}
 
 			if (attr & 8) charaddr = jega->charsetb + (chr * 128);
@@ -1537,6 +1538,7 @@ void jega_write(uint32_t addr, uint8_t val, void *p)
 {
         jega_t *jega = (jega_t *)p;
         uint8_t vala, valb, valc, vald, vale, valf, valg, valh;
+	int writemask2 = jega->writemask;
 	uint32_t oa = addr;
 
 	// Ignore writes to B000-B7FF in AT-compatible superimpose mode
@@ -1556,11 +1558,21 @@ void jega_write(uint32_t addr, uint8_t val, void *p)
        	else if (addr >= 0xB0000) addr &= 0x7fff;
        	else                 addr &= 0xffff;
 
-        if (!(jega->gdcreg[6] & 1) || (jega->cr[7] & 32)) 
+        if (jega->chain2)
+        {
+                writemask2 &= ~0xa;
+                if (addr & 1)
+                        writemask2 <<= 1;
+                addr &= ~1;
+        }
+
+        addr <<= 2;
+
+	if (!(jega->gdcreg[6] & 1) || (jega->cr[7] & 32)) 
                 fullchange = 2;
         /* if (!(jega->gdcreg[6] & 1)) 
                 pclog ("Write mode is: %u\n", jega->writemode); */
-       	addr <<= 2;
+
 	if (jega->cr[5] & 8)
 	{
 		addr |= 0x40000;
@@ -1575,10 +1587,10 @@ void jega_write(uint32_t addr, uint8_t val, void *p)
         switch (jega->writemode)
         {
                 case 1:
-                if (jega->writemask & 1) jega->vram[addr]       = jega->la;
-                if (jega->writemask & 2) jega->vram[addr | 0x1] = jega->lb;
-                if (jega->writemask & 4) jega->vram[addr | 0x2] = jega->lc;
-                if (jega->writemask & 8) jega->vram[addr | 0x3] = jega->ld;
+                if (writemask2 & 1) jega->vram[addr]       = jega->la;
+                if (writemask2 & 2) jega->vram[addr | 0x1] = jega->lb;
+                if (writemask2 & 4) jega->vram[addr | 0x2] = jega->lc;
+                if (writemask2 & 8) jega->vram[addr | 0x3] = jega->ld;
                 break;
                 case 0:
                 if (jega->gdcreg[3] & 7) 
@@ -1586,10 +1598,10 @@ void jega_write(uint32_t addr, uint8_t val, void *p)
                         
                 if (jega->gdcreg[8] == 0xff && !(jega->gdcreg[3] & 0x18) && !jega->gdcreg[1])
                 {
-                        if (jega->writemask & 1) jega->vram[addr]       = val;
-                        if (jega->writemask & 2) jega->vram[addr | 0x1] = val;
-                        if (jega->writemask & 4) jega->vram[addr | 0x2] = val;
-                        if (jega->writemask & 8) jega->vram[addr | 0x3] = val;
+                        if (writemask2 & 1) jega->vram[addr]       = val;
+                        if (writemask2 & 2) jega->vram[addr | 0x1] = val;
+                        if (writemask2 & 4) jega->vram[addr | 0x2] = val;
+                        if (writemask2 & 8) jega->vram[addr | 0x3] = val;
                 }
                 else
                 {
@@ -1605,28 +1617,28 @@ void jega_write(uint32_t addr, uint8_t val, void *p)
                         switch (jega->gdcreg[3] & 0x18)
                         {
                                 case 0: /*Set*/
-                                if (jega->writemask & 1) jega->vram[addr]       = (vala & jega->gdcreg[8]) | (jega->la & ~jega->gdcreg[8]);
-                                if (jega->writemask & 2) jega->vram[addr | 0x1] = (valb & jega->gdcreg[8]) | (jega->lb & ~jega->gdcreg[8]);
-                                if (jega->writemask & 4) jega->vram[addr | 0x2] = (valc & jega->gdcreg[8]) | (jega->lc & ~jega->gdcreg[8]);
-                                if (jega->writemask & 8) jega->vram[addr | 0x3] = (vald & jega->gdcreg[8]) | (jega->ld & ~jega->gdcreg[8]);
+                                if (writemask2 & 1) jega->vram[addr]       = (vala & jega->gdcreg[8]) | (jega->la & ~jega->gdcreg[8]);
+                                if (writemask2 & 2) jega->vram[addr | 0x1] = (valb & jega->gdcreg[8]) | (jega->lb & ~jega->gdcreg[8]);
+                                if (writemask2 & 4) jega->vram[addr | 0x2] = (valc & jega->gdcreg[8]) | (jega->lc & ~jega->gdcreg[8]);
+                                if (writemask2 & 8) jega->vram[addr | 0x3] = (vald & jega->gdcreg[8]) | (jega->ld & ~jega->gdcreg[8]);
                                 break;
                                 case 8: /*AND*/
-                                if (jega->writemask & 1) jega->vram[addr]       = (vala | ~jega->gdcreg[8]) & jega->la;
-                                if (jega->writemask & 2) jega->vram[addr | 0x1] = (valb | ~jega->gdcreg[8]) & jega->lb;
-                                if (jega->writemask & 4) jega->vram[addr | 0x2] = (valc | ~jega->gdcreg[8]) & jega->lc;
-                                if (jega->writemask & 8) jega->vram[addr | 0x3] = (vald | ~jega->gdcreg[8]) & jega->ld;
+                                if (writemask2 & 1) jega->vram[addr]       = (vala | ~jega->gdcreg[8]) & jega->la;
+                                if (writemask2 & 2) jega->vram[addr | 0x1] = (valb | ~jega->gdcreg[8]) & jega->lb;
+                                if (writemask2 & 4) jega->vram[addr | 0x2] = (valc | ~jega->gdcreg[8]) & jega->lc;
+                                if (writemask2 & 8) jega->vram[addr | 0x3] = (vald | ~jega->gdcreg[8]) & jega->ld;
                                 break;
                                 case 0x10: /*OR*/
-                                if (jega->writemask & 1) jega->vram[addr]       = (vala & jega->gdcreg[8]) | jega->la;
-                                if (jega->writemask & 2) jega->vram[addr | 0x1] = (valb & jega->gdcreg[8]) | jega->lb;
-                                if (jega->writemask & 4) jega->vram[addr | 0x2] = (valc & jega->gdcreg[8]) | jega->lc;
-                                if (jega->writemask & 8) jega->vram[addr | 0x3] = (vald & jega->gdcreg[8]) | jega->ld;
+                                if (writemask2 & 1) jega->vram[addr]       = (vala & jega->gdcreg[8]) | jega->la;
+                                if (writemask2 & 2) jega->vram[addr | 0x1] = (valb & jega->gdcreg[8]) | jega->lb;
+                                if (writemask2 & 4) jega->vram[addr | 0x2] = (valc & jega->gdcreg[8]) | jega->lc;
+                                if (writemask2 & 8) jega->vram[addr | 0x3] = (vald & jega->gdcreg[8]) | jega->ld;
                                 break;
                                 case 0x18: /*XOR*/
-                                if (jega->writemask & 1) jega->vram[addr]       = (vala & jega->gdcreg[8]) ^ jega->la;
-                                if (jega->writemask & 2) jega->vram[addr | 0x1] = (valb & jega->gdcreg[8]) ^ jega->lb;
-                                if (jega->writemask & 4) jega->vram[addr | 0x2] = (valc & jega->gdcreg[8]) ^ jega->lc;
-                                if (jega->writemask & 8) jega->vram[addr | 0x3] = (vald & jega->gdcreg[8]) ^ jega->ld;
+                                if (writemask2 & 1) jega->vram[addr]       = (vala & jega->gdcreg[8]) ^ jega->la;
+                                if (writemask2 & 2) jega->vram[addr | 0x1] = (valb & jega->gdcreg[8]) ^ jega->lb;
+                                if (writemask2 & 4) jega->vram[addr | 0x2] = (valc & jega->gdcreg[8]) ^ jega->lc;
+                                if (writemask2 & 8) jega->vram[addr | 0x3] = (vald & jega->gdcreg[8]) ^ jega->ld;
                                 break;
                         }
 //                                pclog("- %02X %02X %02X %02X   %08X\n",vram[addr],vram[addr|0x1],vram[addr|0x2],vram[addr|0x3],addr);
@@ -1635,10 +1647,10 @@ void jega_write(uint32_t addr, uint8_t val, void *p)
                 case 2:
                 if (!(jega->gdcreg[3] & 0x18) && !jega->gdcreg[1])
                 {
-                        if (jega->writemask & 1) jega->vram[addr]       = (((val & 1) ? 0xff : 0) & jega->gdcreg[8]) | (jega->la & ~jega->gdcreg[8]);
-                        if (jega->writemask & 2) jega->vram[addr | 0x1] = (((val & 2) ? 0xff : 0) & jega->gdcreg[8]) | (jega->lb & ~jega->gdcreg[8]);
-                        if (jega->writemask & 4) jega->vram[addr | 0x2] = (((val & 4) ? 0xff : 0) & jega->gdcreg[8]) | (jega->lc & ~jega->gdcreg[8]);
-                        if (jega->writemask & 8) jega->vram[addr | 0x3] = (((val & 8) ? 0xff : 0) & jega->gdcreg[8]) | (jega->ld & ~jega->gdcreg[8]);
+                        if (writemask2 & 1) jega->vram[addr]       = (((val & 1) ? 0xff : 0) & jega->gdcreg[8]) | (jega->la & ~jega->gdcreg[8]);
+                        if (writemask2 & 2) jega->vram[addr | 0x1] = (((val & 2) ? 0xff : 0) & jega->gdcreg[8]) | (jega->lb & ~jega->gdcreg[8]);
+                        if (writemask2 & 4) jega->vram[addr | 0x2] = (((val & 4) ? 0xff : 0) & jega->gdcreg[8]) | (jega->lc & ~jega->gdcreg[8]);
+                        if (writemask2 & 8) jega->vram[addr | 0x3] = (((val & 8) ? 0xff : 0) & jega->gdcreg[8]) | (jega->ld & ~jega->gdcreg[8]);
                 }
                 else
                 {
@@ -1649,28 +1661,28 @@ void jega_write(uint32_t addr, uint8_t val, void *p)
                         switch (jega->gdcreg[3] & 0x18)
                         {
                                 case 0: /*Set*/
-                                if (jega->writemask & 1) jega->vram[addr]       = (vala & jega->gdcreg[8]) | (jega->la & ~jega->gdcreg[8]);
-                                if (jega->writemask & 2) jega->vram[addr | 0x1] = (valb & jega->gdcreg[8]) | (jega->lb & ~jega->gdcreg[8]);
-                                if (jega->writemask & 4) jega->vram[addr | 0x2] = (valc & jega->gdcreg[8]) | (jega->lc & ~jega->gdcreg[8]);
-                                if (jega->writemask & 8) jega->vram[addr | 0x3] = (vald & jega->gdcreg[8]) | (jega->ld & ~jega->gdcreg[8]);
+                                if (writemask2 & 1) jega->vram[addr]       = (vala & jega->gdcreg[8]) | (jega->la & ~jega->gdcreg[8]);
+                                if (writemask2 & 2) jega->vram[addr | 0x1] = (valb & jega->gdcreg[8]) | (jega->lb & ~jega->gdcreg[8]);
+                                if (writemask2 & 4) jega->vram[addr | 0x2] = (valc & jega->gdcreg[8]) | (jega->lc & ~jega->gdcreg[8]);
+                                if (writemask2 & 8) jega->vram[addr | 0x3] = (vald & jega->gdcreg[8]) | (jega->ld & ~jega->gdcreg[8]);
                                 break;
                                 case 8: /*AND*/
-                                if (jega->writemask & 1) jega->vram[addr]       = (vala | ~jega->gdcreg[8]) & jega->la;
-                                if (jega->writemask & 2) jega->vram[addr | 0x1] = (valb | ~jega->gdcreg[8]) & jega->lb;
-                                if (jega->writemask & 4) jega->vram[addr | 0x2] = (valc | ~jega->gdcreg[8]) & jega->lc;
-                                if (jega->writemask & 8) jega->vram[addr | 0x3] = (vald | ~jega->gdcreg[8]) & jega->ld;
+                                if (writemask2 & 1) jega->vram[addr]       = (vala | ~jega->gdcreg[8]) & jega->la;
+                                if (writemask2 & 2) jega->vram[addr | 0x1] = (valb | ~jega->gdcreg[8]) & jega->lb;
+                                if (writemask2 & 4) jega->vram[addr | 0x2] = (valc | ~jega->gdcreg[8]) & jega->lc;
+                                if (writemask2 & 8) jega->vram[addr | 0x3] = (vald | ~jega->gdcreg[8]) & jega->ld;
                                 break;
                                 case 0x10: /*OR*/
-                                if (jega->writemask & 1) jega->vram[addr]       = (vala & jega->gdcreg[8]) | jega->la;
-                                if (jega->writemask & 2) jega->vram[addr | 0x1] = (valb & jega->gdcreg[8]) | jega->lb;
-                                if (jega->writemask & 4) jega->vram[addr | 0x2] = (valc & jega->gdcreg[8]) | jega->lc;
-                                if (jega->writemask & 8) jega->vram[addr | 0x3] = (vald & jega->gdcreg[8]) | jega->ld;
+                                if (writemask2 & 1) jega->vram[addr]       = (vala & jega->gdcreg[8]) | jega->la;
+                                if (writemask2 & 2) jega->vram[addr | 0x1] = (valb & jega->gdcreg[8]) | jega->lb;
+                                if (writemask2 & 4) jega->vram[addr | 0x2] = (valc & jega->gdcreg[8]) | jega->lc;
+                                if (writemask2 & 8) jega->vram[addr | 0x3] = (vald & jega->gdcreg[8]) | jega->ld;
                                 break;
                                 case 0x18: /*XOR*/
-                                if (jega->writemask & 1) jega->vram[addr]       = (vala & jega->gdcreg[8]) ^ jega->la;
-                                if (jega->writemask & 2) jega->vram[addr | 0x1] = (valb & jega->gdcreg[8]) ^ jega->lb;
-                                if (jega->writemask & 4) jega->vram[addr | 0x2] = (valc & jega->gdcreg[8]) ^ jega->lc;
-                                if (jega->writemask & 8) jega->vram[addr | 0x3] = (vald & jega->gdcreg[8]) ^ jega->ld;
+                                if (writemask2 & 1) jega->vram[addr]       = (vala & jega->gdcreg[8]) ^ jega->la;
+                                if (writemask2 & 2) jega->vram[addr | 0x1] = (valb & jega->gdcreg[8]) ^ jega->lb;
+                                if (writemask2 & 4) jega->vram[addr | 0x2] = (valc & jega->gdcreg[8]) ^ jega->lc;
+                                if (writemask2 & 8) jega->vram[addr | 0x3] = (vald & jega->gdcreg[8]) ^ jega->ld;
                                 break;
                         }
                 }
@@ -1687,6 +1699,7 @@ uint8_t jega_read(uint32_t addr, void *p)
 {
         jega_t *jega = (jega_t *)p;
         uint8_t temp, temp2, temp3, temp4;
+	int readplane = jega->readplane;
 	uint32_t oa = addr;
 	uint32_t bp = (jega->cr[0x1B] & 0xE0) << 16;
 
@@ -1701,7 +1714,15 @@ uint8_t jega_read(uint32_t addr, void *p)
        	if (addr >= 0xE0000) addr &= 0xffff;
        	else if (addr >= 0xB0000) addr &= 0x7fff;
        	else                 addr &= 0xffff;
-        addr <<= 2;
+
+        if (jega->chain2)
+        {
+                readplane = (readplane & 2) | (addr & 1);
+                addr &= ~1;
+        }
+
+	addr <<= 2;
+
 	if (jega->cr[5] & 8)
 	{
 		addr |= 0x40000;
@@ -1731,7 +1752,7 @@ uint8_t jega_read(uint32_t addr, void *p)
                 temp4 ^= (jega->colourcompare & 8) ? 0xff : 0;
                 return ~(temp | temp2 | temp3 | temp4);
         }
-        return jega->vram[addr | jega->readplane];
+        return jega->vram[addr | readplane];
 }
 
 void jega_init(jega_t *jega)

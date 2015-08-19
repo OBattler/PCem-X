@@ -38,7 +38,7 @@
 
 void
 glue(glue(glue(cirrus_patternfill_, ROP_NAME), _),DEPTH)
-     (gd5446_t *gd5446, svga_t *svga, uint8_t * dst,
+     (clgd_t *clgd, svga_t *svga, uint8_t * dst,
       const uint8_t * src,
       int dstpitch, int srcpitch,
       int bltwidth, int bltheight)
@@ -60,7 +60,7 @@ glue(glue(glue(cirrus_patternfill_, ROP_NAME), _),DEPTH)
 #else
     pattern_pitch = 32;
 #endif
-    pattern_y = gd5446->blt.src_addr & 7;
+    pattern_y = clgd->blt.src_addr & 7;
     for(y = 0; y < bltheight; y++) {
         pattern_x = skipleft;
         d = dst + skipleft;
@@ -93,7 +93,7 @@ glue(glue(glue(cirrus_patternfill_, ROP_NAME), _),DEPTH)
 /* NOTE: srcpitch is ignored */
 void
 glue(glue(glue(cirrus_colorexpand_transp_, ROP_NAME), _),DEPTH)
-     (gd5446_t *gd5446, svga_t *svga, uint8_t * dst,
+     (clgd_t *clgd, svga_t *svga, uint8_t * dst,
       const uint8_t * src,
       int dstpitch, int srcpitch,
       int bltwidth, int bltheight)
@@ -112,12 +112,12 @@ glue(glue(glue(cirrus_colorexpand_transp_, ROP_NAME), _),DEPTH)
     int dstskipleft = srcskipleft * (DEPTH / 8);
 #endif
 
-    if (gd5446->blt.modeext & CIRRUS_BLTMODEEXT_COLOREXPINV) {
+    if (clgd->blt.modeext & CIRRUS_BLTMODEEXT_COLOREXPINV) {
         bits_xor = 0xff;
-        col = gd5446->blt.bg_col;
+        col = clgd->blt.bg_col;
     } else {
         bits_xor = 0x00;
-        col = gd5446->blt.fg_col;
+        col = clgd->blt.fg_col;
     }
 
     for(y = 0; y < bltheight; y++) {
@@ -142,7 +142,7 @@ glue(glue(glue(cirrus_colorexpand_transp_, ROP_NAME), _),DEPTH)
 
 void
 glue(glue(glue(cirrus_colorexpand_, ROP_NAME), _),DEPTH)
-     (gd5446_t *gd5446, svga_t *svga, uint8_t * dst,
+     (clgd_t *clgd, svga_t *svga, uint8_t * dst,
       const uint8_t * src,
       int dstpitch, int srcpitch,
       int bltwidth, int bltheight)
@@ -156,8 +156,8 @@ glue(glue(glue(cirrus_colorexpand_, ROP_NAME), _),DEPTH)
     int srcskipleft = svga->gdcreg[0x2f] & 0x07;
     int dstskipleft = srcskipleft * (DEPTH / 8);
 
-    colors[0] = gd5446->blt.bg_col;
-    colors[1] = gd5446->blt.fg_col;
+    colors[0] = clgd->blt.bg_col;
+    colors[1] = clgd->blt.fg_col;
     for(y = 0; y < bltheight; y++) {
         bitmask = 0x80 >> srcskipleft;
         bits = *src++;
@@ -178,7 +178,7 @@ glue(glue(glue(cirrus_colorexpand_, ROP_NAME), _),DEPTH)
 
 void
 glue(glue(glue(cirrus_colorexpand_pattern_transp_, ROP_NAME), _),DEPTH)
-     (gd5446_t *gd5446, svga_t *svga, uint8_t * dst,
+     (clgd_t *clgd, svga_t *svga, uint8_t * dst,
       const uint8_t * src,
       int dstpitch, int srcpitch,
       int bltwidth, int bltheight)
@@ -195,14 +195,14 @@ glue(glue(glue(cirrus_colorexpand_pattern_transp_, ROP_NAME), _),DEPTH)
     int dstskipleft = srcskipleft * (DEPTH / 8);
 #endif
 
-    if (gd5446->blt.modeext & CIRRUS_BLTMODEEXT_COLOREXPINV) {
+    if (clgd->blt.modeext & CIRRUS_BLTMODEEXT_COLOREXPINV) {
         bits_xor = 0xff;
-        col = gd5446->blt.bg_col;
+        col = clgd->blt.bg_col;
     } else {
         bits_xor = 0x00;
-        col = gd5446->blt.fg_col;
+        col = clgd->blt.fg_col;
     }
-    pattern_y = gd5446->blt.src_addr & 7;
+    pattern_y = clgd->blt.src_addr & 7;
 
     for(y = 0; y < bltheight; y++) {
         bits = src[pattern_y] ^ bits_xor;
@@ -222,7 +222,7 @@ glue(glue(glue(cirrus_colorexpand_pattern_transp_, ROP_NAME), _),DEPTH)
 
 void
 glue(glue(glue(cirrus_colorexpand_pattern_, ROP_NAME), _),DEPTH)
-     (gd5446_t *gd5446, svga_t *svga, uint8_t * dst,
+     (clgd_t *clgd, svga_t *svga, uint8_t * dst,
       const uint8_t * src,
       int dstpitch, int srcpitch,
       int bltwidth, int bltheight)
@@ -235,9 +235,9 @@ glue(glue(glue(cirrus_colorexpand_pattern_, ROP_NAME), _),DEPTH)
     int srcskipleft = svga->gdcreg[0x2f] & 0x07;
     int dstskipleft = srcskipleft * (DEPTH / 8);
 
-    colors[0] = gd5446->blt.bg_col;
-    colors[1] = gd5446->blt.fg_col;
-    pattern_y = gd5446->blt.src_addr & 7;
+    colors[0] = clgd->blt.bg_col;
+    colors[1] = clgd->blt.fg_col;
+    pattern_y = clgd->blt.src_addr & 7;
 
     for(y = 0; y < bltheight; y++) {
         bits = src[pattern_y];
@@ -256,7 +256,7 @@ glue(glue(glue(cirrus_colorexpand_pattern_, ROP_NAME), _),DEPTH)
 
 void
 glue(glue(glue(cirrus_fill_, ROP_NAME), _),DEPTH)
-     (gd5446_t *gd5446, svga_t *svga,
+     (clgd_t *clgd, svga_t *svga,
       uint8_t *dst, int dst_pitch,
       int width, int height)
 {
@@ -264,7 +264,7 @@ glue(glue(glue(cirrus_fill_, ROP_NAME), _),DEPTH)
     uint32_t col;
     int x, y;
 
-    col = gd5446->blt.fg_col;
+    col = clgd->blt.fg_col;
 
     d1 = dst;
     for(y = 0; y < height; y++) {

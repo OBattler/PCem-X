@@ -5,11 +5,7 @@
 #include "lpt.h"
 #include "mouse_serial.h"
 #include "serial.h"
-#include "um8663b.h"
-
-static int um8663b_locked;
-static int um8663b_curreg;
-static uint8_t um8663b_regs[256];
+#include "cpqio.h"
 
 typedef struct
 {

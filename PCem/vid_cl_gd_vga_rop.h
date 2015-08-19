@@ -43,7 +43,7 @@ inline void glue(rop_32_,ROP_NAME)(uint32_t *dst, uint32_t src)
 #undef ROP_FN
 
 void
-glue(cirrus_bitblt_rop_fwd_, ROP_NAME)(gd5446_t *gd5446, svga_t *svga,
+glue(cirrus_bitblt_rop_fwd_, ROP_NAME)(clgd_t *clgd, svga_t *svga,
                              uint8_t *dst,const uint8_t *src,
                              int dstpitch,int srcpitch,
                              int bltwidth,int bltheight)
@@ -68,7 +68,7 @@ glue(cirrus_bitblt_rop_fwd_, ROP_NAME)(gd5446_t *gd5446, svga_t *svga,
 }
 
 void
-glue(cirrus_bitblt_rop_bkwd_, ROP_NAME)(gd5446_t *gd5446, svga_t *svga,
+glue(cirrus_bitblt_rop_bkwd_, ROP_NAME)(clgd_t *clgd, svga_t *svga,
                                         uint8_t *dst,const uint8_t *src,
                                         int dstpitch,int srcpitch,
                                         int bltwidth,int bltheight)
@@ -88,7 +88,7 @@ glue(cirrus_bitblt_rop_bkwd_, ROP_NAME)(gd5446_t *gd5446, svga_t *svga,
 }
 
 void
-glue(glue(cirrus_bitblt_rop_fwd_transp_, ROP_NAME),_8)(gd5446_t *gd5446, svga_t *svga,
+glue(glue(cirrus_bitblt_rop_fwd_transp_, ROP_NAME),_8)(clgd_t *clgd, svga_t *svga,
 						       uint8_t *dst,const uint8_t *src,
 						       int dstpitch,int srcpitch,
 						       int bltwidth,int bltheight)
@@ -111,7 +111,7 @@ glue(glue(cirrus_bitblt_rop_fwd_transp_, ROP_NAME),_8)(gd5446_t *gd5446, svga_t 
 }
 
 void
-glue(glue(cirrus_bitblt_rop_bkwd_transp_, ROP_NAME),_8)(gd5446_t *gd5446, svga_t *svga,
+glue(glue(cirrus_bitblt_rop_bkwd_transp_, ROP_NAME),_8)(clgd_t *clgd, svga_t *svga,
 							uint8_t *dst,const uint8_t *src,
 							int dstpitch,int srcpitch,
 							int bltwidth,int bltheight)
@@ -134,7 +134,7 @@ glue(glue(cirrus_bitblt_rop_bkwd_transp_, ROP_NAME),_8)(gd5446_t *gd5446, svga_t
 }
 
 void
-glue(glue(cirrus_bitblt_rop_fwd_transp_, ROP_NAME),_16)(gd5446_t *gd5446, svga_t *svga,
+glue(glue(cirrus_bitblt_rop_fwd_transp_, ROP_NAME),_16)(clgd_t *clgd, svga_t *svga,
 							uint8_t *dst,const uint8_t *src,
 							int dstpitch,int srcpitch,
 							int bltwidth,int bltheight)
@@ -162,7 +162,7 @@ glue(glue(cirrus_bitblt_rop_fwd_transp_, ROP_NAME),_16)(gd5446_t *gd5446, svga_t
 }
 
 void
-glue(glue(cirrus_bitblt_rop_bkwd_transp_, ROP_NAME),_16)(gd5446_t *gd5446, svga_t *svga,
+glue(glue(cirrus_bitblt_rop_bkwd_transp_, ROP_NAME),_16)(clgd_t *clgd, svga_t *svga,
 							 uint8_t *dst,const uint8_t *src,
 							 int dstpitch,int srcpitch,
 							 int bltwidth,int bltheight)
@@ -190,16 +190,16 @@ glue(glue(cirrus_bitblt_rop_bkwd_transp_, ROP_NAME),_16)(gd5446_t *gd5446, svga_
 }
 
 #define DEPTH 8
-#include "vid_cl5446_vga_rop2.h"
+#include "vid_cl_gd_vga_rop2.h"
 
 #define DEPTH 16
-#include "vid_cl5446_vga_rop2.h"
+#include "vid_cl_gd_vga_rop2.h"
 
 #define DEPTH 24
-#include "vid_cl5446_vga_rop2.h"
+#include "vid_cl_gd_vga_rop2.h"
 
 #define DEPTH 32
-#include "vid_cl5446_vga_rop2.h"
+#include "vid_cl_gd_vga_rop2.h"
 
 #undef ROP_NAME
 #undef ROP_OP

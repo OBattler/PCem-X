@@ -24,9 +24,9 @@ void hdconf_open(HWND hwnd);
 
 void config_open(HWND hwnd);
 
+#ifndef __MINGW64__
 void debug_open(HWND hwnd);
-
-void deviceconfig_open(HWND hwnd, struct device_t *device);
+#endif
 
 extern char openfilestring[260];
 

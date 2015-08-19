@@ -218,12 +218,12 @@ static void pc1512_poll(void *p)
                                         if (drawcursor)
                                         {
                                                 for (c = 0; c < 8; c++)
-                                                    buffer->line[pc1512->displine][(x << 3) + c + 8] = cols[(fontdat[chr][pc1512->sc & 7] & (1 << (c ^ 7))) ? 1 : 0] ^ 15;
+                                                    buffer->line[pc1512->displine][(x << 3) + c + 8] = cols[(pc1512_fontdat[chr][pc1512->sc & 7] & (1 << (c ^ 7))) ? 1 : 0] ^ 15;
                                         }
                                         else
                                         {
                                                 for (c = 0; c < 8; c++)
-                                                    buffer->line[pc1512->displine][(x << 3) + c + 8] = cols[(fontdat[chr][pc1512->sc & 7] & (1 << (c ^ 7))) ? 1 : 0];
+                                                    buffer->line[pc1512->displine][(x << 3) + c + 8] = cols[(pc1512_fontdat[chr][pc1512->sc & 7] & (1 << (c ^ 7))) ? 1 : 0];
                                         }
                                         pc1512->ma++;
                                 }
@@ -252,13 +252,13 @@ static void pc1512_poll(void *p)
                                         {
                                                 for (c = 0; c < 8; c++)
                                                     buffer->line[pc1512->displine][(x << 4) + (c << 1) + 8] = 
-                                                    buffer->line[pc1512->displine][(x << 4) + (c << 1) + 1 + 8] = cols[(fontdat[chr][pc1512->sc & 7] & (1 << (c ^ 7))) ? 1 : 0] ^ 15;
+                                                    buffer->line[pc1512->displine][(x << 4) + (c << 1) + 1 + 8] = cols[(pc1512_fontdat[chr][pc1512->sc & 7] & (1 << (c ^ 7))) ? 1 : 0] ^ 15;
                                         }
                                         else
                                         {
                                                 for (c = 0; c < 8; c++)
                                                     buffer->line[pc1512->displine][(x << 4) + (c << 1) + 8] = 
-                                                    buffer->line[pc1512->displine][(x << 4) + (c << 1) + 1 + 8] = cols[(fontdat[chr][pc1512->sc & 7] & (1 << (c ^ 7))) ? 1 : 0];
+                                                    buffer->line[pc1512->displine][(x << 4) + (c << 1) + 1 + 8] = cols[(pc1512_fontdat[chr][pc1512->sc & 7] & (1 << (c ^ 7))) ? 1 : 0];
                                         }
                                 }
                         }

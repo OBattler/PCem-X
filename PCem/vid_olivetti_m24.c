@@ -200,12 +200,12 @@ void m24_poll(void *p)
                                         if (drawcursor)
                                         {
                                                 for (c = 0; c < 8; c++)
-                                                    buffer->line[m24->displine][(x << 3) + c + 8] = cols[(fontdatm[chr][((m24->sc & 7) << 1) | m24->lineff] & (1 << (c ^ 7))) ? 1 : 0] ^ 15;
+                                                    buffer->line[m24->displine][(x << 3) + c + 8] = cols[(cga_fontdatm[chr][((m24->sc & 7) << 1) | m24->lineff] & (1 << (c ^ 7))) ? 1 : 0] ^ 15;
                                         }
                                         else
                                         {
                                                 for (c = 0; c < 8; c++)
-                                                    buffer->line[m24->displine][(x << 3) + c + 8] = cols[(fontdatm[chr][((m24->sc & 7) << 1) | m24->lineff] & (1 << (c ^ 7))) ? 1 : 0];
+                                                    buffer->line[m24->displine][(x << 3) + c + 8] = cols[(cga_fontdatm[chr][((m24->sc & 7) << 1) | m24->lineff] & (1 << (c ^ 7))) ? 1 : 0];
                                         }
                                         m24->ma++;
                                 }
@@ -234,13 +234,13 @@ void m24_poll(void *p)
                                         {
                                                 for (c = 0; c < 8; c++)
                                                     buffer->line[m24->displine][(x << 4) + (c << 1) + 8] = 
-                                                    buffer->line[m24->displine][(x << 4) + (c << 1) + 1 + 8] = cols[(fontdatm[chr][((m24->sc & 7) << 1) | m24->lineff] & (1 << (c ^ 7))) ? 1 : 0] ^ 15;
+                                                    buffer->line[m24->displine][(x << 4) + (c << 1) + 1 + 8] = cols[(cga_fontdatm[chr][((m24->sc & 7) << 1) | m24->lineff] & (1 << (c ^ 7))) ? 1 : 0] ^ 15;
                                         }
                                         else
                                         {
                                                 for (c = 0; c < 8; c++)
                                                     buffer->line[m24->displine][(x << 4) + (c << 1) + 8] = 
-                                                    buffer->line[m24->displine][(x << 4) + (c << 1) + 1 + 8] = cols[(fontdatm[chr][((m24->sc & 7) << 1) | m24->lineff] & (1 << (c ^ 7))) ? 1 : 0];
+                                                    buffer->line[m24->displine][(x << 4) + (c << 1) + 1 + 8] = cols[(cga_fontdatm[chr][((m24->sc & 7) << 1) | m24->lineff] & (1 << (c ^ 7))) ? 1 : 0];
                                         }
                                 }
                         }

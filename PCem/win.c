@@ -22,7 +22,9 @@
 #include "cpu.h"
 #include "ide.h"
 #include "model.h"
+#ifndef __MINGW64__
 #include "nethandler.h"
+#endif
 #include "sound.h"
 #include "thread.h"
 #include "fdc.h"
@@ -111,6 +113,9 @@ void updatewindowsize(int x, int y)
         RECT r;
         if (vid_resize) return;
 
+	if (x < 160)  x = 160;
+	if (y < 100)  y = 100;
+
         winsizex=x; efwinsizey=y;
 
 	if (force_43)
@@ -176,7 +181,7 @@ void mainthread(LPVOID param)
 		if (firststart)
 		{
 			pause = 1;
-			Sleep(1000);
+			Sleep(2000);
                         resetpc_cad();
 			pause = 0;
 			firststart = 0;
@@ -298,7 +303,11 @@ static void initmenu(void)
         HMENU m;
         char s[32];
         m=GetSubMenu(menu,2); /*Settings*/
+#ifndef __MINGW64__
         m=GetSubMenu(m,4); /*CD-ROM*/
+#else
+        m=GetSubMenu(m,3); /*CD-ROM*/
+#endif
 
         /* Loop through each Windows drive letter and test to see if
            it's a CDROM */
@@ -505,9 +514,11 @@ int WINAPI WinMain (HINSTANCE hThisInstance,
         atexit(midi_close);
 
         initpc();
+#ifndef __MINGW64__
         initpcap();
 
         atexit(closepcap);
+#endif
 
         vid_apis[0][vid_api].init(ghwnd);
 
@@ -845,9 +856,11 @@ LRESULT CALLBACK WindowProcedure (HWND hwnd, UINT message, WPARAM wParam, LPARAM
                         case IDM_CONFIG:
                         config_open(hwnd);
                         break;
+#ifndef __MINGW64__
                         case IDM_DEBUG:
                         debug_open(hwnd);
                         break;
+#endif
                         case IDM_STATUS:
                         status_open(hwnd);
                         break;

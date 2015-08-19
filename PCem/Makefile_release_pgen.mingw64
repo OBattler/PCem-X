@@ -1,0 +1,2 @@
+include Makefile_internal.mingw64
+CFLAGS = $(basecflags) -D RELEASE_BUILD -fprofile-generate

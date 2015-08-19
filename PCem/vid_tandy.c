@@ -330,7 +330,7 @@ void tandy_poll(void *p)
                                         else
                                         {
                                                 for (c = 0; c < 8; c++)
-                                                    buffer->line[tandy->displine][(x << 3) + c + 8] = cols[(fontdat[chr][tandy->sc & 7] & (1 << (c ^ 7))) ? 1 : 0];
+                                                    buffer->line[tandy->displine][(x << 3) + c + 8] = cols[(cga_fontdat[chr][tandy->sc & 7] & (1 << (c ^ 7))) ? 1 : 0];
                                         }
 //                                        if (!((ma^(crtc[15]|(crtc[14]<<8)))&0x3FFF)) printf("Cursor match! %04X\n",ma);
                                         if (drawcursor)
@@ -371,7 +371,7 @@ void tandy_poll(void *p)
                                         {
                                                 for (c = 0; c < 8; c++)
                                                     buffer->line[tandy->displine][(x << 4) + (c << 1) + 8] = 
-                                                    buffer->line[tandy->displine][(x << 4) + (c << 1) + 1 + 8] = cols[(fontdat[chr][tandy->sc & 7] & (1 << (c ^ 7))) ? 1 : 0];
+                                                    buffer->line[tandy->displine][(x << 4) + (c << 1) + 1 + 8] = cols[(cga_fontdat[chr][tandy->sc & 7] & (1 << (c ^ 7))) ? 1 : 0];
                                         }
                                         if (drawcursor)
                                         {

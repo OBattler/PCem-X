@@ -90,6 +90,7 @@ typedef struct FDC
         uint8_t tfifo;
         uint8_t fifobuf[16];
         uint8_t fifobufpos;
+	uint8_t eis;
 	uint8_t scan_wildcard;
         int gotdata[2];
         
@@ -399,6 +400,8 @@ typedef struct FDD
 	uint8_t spt[85];
 	// Sector states
 	uint8_t sstat[2][86][255];
+	uint8_t track;
+	uint8_t trk0;
 	int discchanged;
 	int discmodified;
 
@@ -427,4 +430,12 @@ uint8_t vfdd[2];
 
 extern int allocated;
 
+uint8_t is_48tpi(int d);
+
+void reconfigure_from_int(int d, int val);
+void fdd_seek(int d, uint8_t n, uint8_t dir);
+
 void fdd_init();
+
+#define ISSPECIAL !(is_48tpi(d)) && (fdd[d].CLASS < CLASS_800) && (fdd[d].CLASS != -1)
+#define FDDSPECIAL !(is_48tpi(vfdd[fdc.drive])) && (fdd[vfdd[fdc.drive]].CLASS < CLASS_800) && (fdd[vfdd[fdc.drive]].CLASS != -1)

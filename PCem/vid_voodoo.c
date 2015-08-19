@@ -74,6 +74,12 @@ typedef struct
 
 static rgba8_t rgb332[0x100], rgb565[0x10000], argb1555[0x10000], argb4444[0x10000];
 
+uint16_t thefilter[1024][1024]; // pixel filter, feeding from one or two
+uint16_t thefilterg[1024][1024]; // for green
+
+/* the voodoo adds purple lines for some reason */
+uint16_t purpleline[1024];
+
 typedef struct voodoo_params_t
 {
         int command;
@@ -144,9 +150,13 @@ typedef struct voodoo_t
         int pci_enable;
 
         uint8_t dac_data[8];
-        int dac_reg;
+        int dac_reg, dac_reg_ff;
         uint8_t dac_readdata;
-        
+        uint16_t dac_pll_regs[16];
+
+        float pixel_clock;
+        int line_time;
+
         voodoo_params_t params;
         
         uint32_t fbiInit0, fbiInit1, fbiInit2, fbiInit3, fbiInit4;
@@ -239,11 +249,10 @@ typedef struct voodoo_t
         rgb_t clutData256[256];
         uint32_t video_16to32[0x10000];
 
-        uint16_t thefilter[1024][1024]; // pixel filter, feeding from one or two
-        uint16_t thefilterg[1024][1024]; // for green
+        uint8_t dirty_line[1024];
+        int dirty_line_low, dirty_line_high;
 
-        /* the voodoo adds purple lines for some reason */
-        uint16_t purpleline[1024];
+        int fb_write_buffer, fb_draw_buffer;
 } voodoo_t;
 
 enum
@@ -771,9 +780,11 @@ static void voodoo_recalc(voodoo_t *voodoo)
         {
                 case LFB_WRITE_FRONT:
                 voodoo->fb_write_offset = voodoo->params.front_offset;
+		voodoo->fb_write_buffer = voodoo->disp_buffer ? 1 : 0;
                 break;
                 case LFB_WRITE_BACK:
                 voodoo->fb_write_offset = voodoo->back_offset;
+		voodoo->fb_write_buffer = voodoo->disp_buffer ? 0 : 1;
                 break;
 
                 default:
@@ -802,9 +813,11 @@ static void voodoo_recalc(voodoo_t *voodoo)
         {
                 case FBZ_DRAW_FRONT:
                 voodoo->params.draw_offset = voodoo->params.front_offset;
+		voodoo->fb_draw_buffer = voodoo->disp_buffer ? 1 : 0;
                 break;
                 case FBZ_DRAW_BACK:
                 voodoo->params.draw_offset = voodoo->back_offset;
+		voodoo->fb_draw_buffer = voodoo->disp_buffer ? 0 : 1;
                 break;
 
                 default:
@@ -2150,6 +2163,9 @@ skip_pixel:
                         x += state->xdir;
                 } while (start_x != x2);
 
+		if (voodoo->params.draw_offset == voodoo->params.front_offset)
+			voodoo->dirty_line[real_y] = 1;
+
 next_line:
                 state->base_r += params->dRdY;
                 state->base_g += params->dGdY;
@@ -2411,6 +2427,7 @@ static void voodoo_reg_writel(uint32_t addr, uint32_t val, void *p)
 //                voodoo->front_offset = params->front_offset;
                 if (!(val & 1))
                 {
+			memset(voodoo->dirty_line, 1, 1024);
                         voodoo->front_offset = voodoo->params.front_offset;
                         voodoo->swap_count--;
                 }
@@ -2427,6 +2444,7 @@ static void voodoo_reg_writel(uint32_t addr, uint32_t val, void *p)
                                 if (voodoo->swap_pending && voodoo->flush)
                                 {
                                         /*Main thread is waiting for FIFO to empty, so skip vsync wait and just swap*/
+					memset(voodoo->dirty_line, 1, 1024);
                                         voodoo->front_offset = voodoo->params.front_offset;
                                         voodoo->swap_count--;
                                         voodoo->swap_pending = 0;
@@ -2991,6 +3009,7 @@ static uint32_t voodoo_fb_readl(uint32_t addr, void *p)
         
         x = addr & 0x7fe;
         y = (addr >> 11) & 0x3ff;
+
         read_addr = voodoo->fb_read_offset + x + (y * voodoo->row_width);
 
         if (read_addr > voodoo->fb_mask)
@@ -3075,6 +3094,9 @@ static void voodoo_fb_writew(uint32_t addr, uint16_t val, void *p)
 
         x = addr & 0x7fe;
         y = (addr >> 11) & 0x3ff;
+
+	if (voodoo->fb_write_offset == voodoo->params.front_offset)
+		voodoo->dirty_line[y] = 1;
 
         write_addr = voodoo->fb_write_offset + x + (y * voodoo->row_width);
         write_addr_aux = voodoo->params.aux_offset + x + (y * voodoo->row_width);
@@ -3210,6 +3232,9 @@ static void voodoo_fb_writel(uint32_t addr, uint32_t val, void *p)
 
         x = addr & 0x7fe;
         y = (addr >> 11) & 0x3ff;
+
+	if (voodoo->fb_write_offset == voodoo->params.front_offset)
+		voodoo->dirty_line[y] = 1;
 
         write_addr = voodoo->fb_write_offset + x + (y * voodoo->row_width);
         write_addr_aux = voodoo->params.aux_offset + x + (y * voodoo->row_width);
@@ -3466,6 +3491,30 @@ static void voodoo_writew(uint32_t addr, uint16_t val, void *p)
                 queue_command(voodoo, addr | FIFO_WRITEW_FB, val);
 }
 
+static void voodoo_pixelclock_update(voodoo_t *voodoo)
+{
+        int m  =  (voodoo->dac_pll_regs[0] & 0x7f) + 2;
+        int n1 = ((voodoo->dac_pll_regs[0] >>  8) & 0x1f) + 2;
+        int n2 = ((voodoo->dac_pll_regs[0] >> 13) & 0x07);
+        float t = (14318184.0 * ((float)m / (float)n1)) / (float)(1 << n2);
+        double clock_const;
+        int line_length;
+
+        if ((voodoo->dac_data[6] & 0xf0) == 0x20 ||
+            (voodoo->dac_data[6] & 0xf0) == 0x60 ||
+            (voodoo->dac_data[6] & 0xf0) == 0x70)
+                t /= 2.0f;
+
+        line_length = (voodoo->hSync & 0xff) + ((voodoo->hSync >> 16) & 0x3ff);
+
+//        pclog("Pixel clock %f MHz hsync %08x line_length %d\n", t, voodoo->hSync, line_length);
+
+        voodoo->pixel_clock = t;
+
+        clock_const = cpuclock / t;
+        voodoo->line_time = (int)((double)line_length * clock_const * (double)(1 << TIMER_SHIFT));
+}
+
 static void voodoo_writel(uint32_t addr, uint32_t val, void *p)
 {
         voodoo_t *voodoo = (voodoo_t *)p;
@@ -3552,6 +3601,7 @@ static void voodoo_writel(uint32_t addr, uint32_t val, void *p)
 
                 case SST_hSync:
                 voodoo->hSync = val;
+		voodoo_pixelclock_update(voodoo);
                 break;
                 case SST_vSync:
                 voodoo->vSync = val;
@@ -3584,7 +3634,26 @@ static void voodoo_writel(uint32_t addr, uint32_t val, void *p)
                                 voodoo->dac_readdata = voodoo->dac_data[voodoo->dac_readdata];
                 }
                 else
-                        voodoo->dac_data[voodoo->dac_reg] = val & 0xff;
+                {
+                        if (voodoo->dac_reg == 5)
+                        {
+                                if (!voodoo->dac_reg_ff)
+                                        voodoo->dac_pll_regs[voodoo->dac_data[4] & 0xf] = (voodoo->dac_pll_regs[voodoo->dac_data[4] & 0xf] & 0xff00) | val;
+                                else
+                                        voodoo->dac_pll_regs[voodoo->dac_data[4] & 0xf] = (voodoo->dac_pll_regs[voodoo->dac_data[4] & 0xf] & 0xff) | (val << 8);
+//                                pclog("Write PLL reg %x %04x\n", voodoo->dac_data[4] & 0xf, voodoo->dac_pll_regs[voodoo->dac_data[4] & 0xf]);
+                                voodoo->dac_reg_ff = !voodoo->dac_reg_ff;
+                                if (!voodoo->dac_reg_ff)
+                                        voodoo->dac_data[4]++;
+
+                        }
+                        else
+                        {
+                                voodoo->dac_data[voodoo->dac_reg] = val & 0xff;
+                                voodoo->dac_reg_ff = 0;
+                        }
+                        voodoo_pixelclock_update(voodoo);
+                }
                 break;
 
                 default:
@@ -3735,7 +3804,7 @@ static void voodoo_calc_clutData(voodoo_t *voodoo)
 #define FILTCAP 64.0f /* Needs tuning to match DAC */
 #define FILTCAPG (FILTCAP / 2)
 
-static void voodoo_generate_filter(voodoo_t *voodoo)
+void voodoo_generate_filter()
 {
         int g, h, i;
         float difference, diffg;
@@ -3772,15 +3841,17 @@ static void voodoo_generate_filter(voodoo_t *voodoo)
                         if (thiscolg > 1023)
                                 thiscolg = 1023;
 
-                        voodoo->thefilter[g][h] = thiscol;
-                        voodoo->thefilterg[g][h] = thiscolg;
+                        thefilter[g][h] = thiscol;
+                        thefilterg[g][h] = thiscolg;
                 }
 
                 lined = g + 4;
                 if (lined > 1023)
                         lined = 1023;
-                voodoo->purpleline[g] = lined;
+                purpleline[g] = lined;
         }
+
+	filter_genned = 1;
 }
 
 static void voodoo_filterline(voodoo_t *voodoo, uint16_t *fil, int column, uint16_t *src, int line)
@@ -3802,28 +3873,28 @@ static void voodoo_filterline(voodoo_t *voodoo, uint16_t *fil, int column, uint1
 
         for (x=1; x<column-1;x++)
         {
-                fil[x*3]   = voodoo->thefilter[fil[x*3]][fil[(x-1)*3]];
-                fil[x*3+1] = voodoo->thefilterg[fil[x*3+1]][fil[(x-1)*3+1]];
-                fil[x*3+2] = voodoo->thefilter[fil[x*3+2]][fil[(x-1)*3+2]];
+                fil[x*3]   = thefilter[fil[x*3]][fil[(x-1)*3]];
+                fil[x*3+1] = thefilterg[fil[x*3+1]][fil[(x-1)*3+1]];
+                fil[x*3+2] = thefilter[fil[x*3+2]][fil[(x-1)*3+2]];
         }
         for (x=1; x<column-1;x++)
         {
-                fil[x*3]   = voodoo->thefilter[fil[x*3]][fil[(x-1)*3]];
-                fil[x*3+1] = voodoo->thefilterg[fil[x*3+1]][fil[(x-1)*3+1]];
-                fil[x*3+2] = voodoo->thefilter[fil[x*3+2]][fil[(x-1)*3+2]];
+                fil[x*3]   = thefilter[fil[x*3]][fil[(x-1)*3]];
+                fil[x*3+1] = thefilterg[fil[x*3+1]][fil[(x-1)*3+1]];
+                fil[x*3+2] = thefilter[fil[x*3+2]][fil[(x-1)*3+2]];
         }
         for (x=1; x<column-1;x++)
         {
-                fil[x*3]   = voodoo->thefilter[fil[x*3]][fil[(x-1)*3]];
-                fil[x*3+1] = voodoo->thefilterg[fil[x*3+1]][fil[(x-1)*3+1]];
-                fil[x*3+2] = voodoo->thefilter[fil[x*3+2]][fil[(x-1)*3+2]];
+                fil[x*3]   = thefilter[fil[x*3]][fil[(x-1)*3]];
+                fil[x*3+1] = thefilterg[fil[x*3+1]][fil[(x-1)*3+1]];
+                fil[x*3+2] = thefilter[fil[x*3+2]][fil[(x-1)*3+2]];
         }
 
         for (x=0; x<column;x++)
         {
-                fil[x*3]   = (voodoo->thefilter[fil[x*3]][fil[(x+1)*3]]) >> 2;
-                fil[x*3+1] = (voodoo->thefilterg[fil[x*3+1]][fil[(x+1)*3+1]]) >> 2;
-                fil[x*3+2] = (voodoo->thefilter[fil[x*3+2]][fil[(x+1)*3+2]]) >> 2;
+                fil[x*3]   = (thefilter[fil[x*3]][fil[(x+1)*3]]) >> 2;
+                fil[x*3+1] = (thefilterg[fil[x*3+1]][fil[(x+1)*3+1]]) >> 2;
+                fil[x*3+2] = (thefilter[fil[x*3+2]][fil[(x+1)*3+2]]) >> 2;
         }
 
         /* lines */
@@ -3832,8 +3903,8 @@ static void voodoo_filterline(voodoo_t *voodoo, uint16_t *fil, int column, uint1
         {
                 for (x=0; x<column;x++)
                 {
-                        fil[x*3] = voodoo->purpleline[fil[x*3]];
-                        fil[x*3+2] = voodoo->purpleline[fil[x*3+2]];
+                        fil[x*3] = purpleline[fil[x*3]];
+                        fil[x*3+2] = purpleline[fil[x*3+2]];
                 }
         }
 }
@@ -3846,27 +3917,37 @@ void voodoo_callback(void *p)
         {
                 if (voodoo->line < voodoo->v_disp)
                 {
-                        uint32_t *p = &((uint32_t *)buffer32->line[voodoo->line])[32];
-                        uint16_t *src = (uint16_t *)&voodoo->fb_mem[voodoo->front_offset + voodoo->line*voodoo->row_width];
-                        int x;
-
-                        if (voodoo->scrfilter)
+			if (voodoo->dirty_line[voodoo->line])
                         {
-                                int j, offset;
-                                uint16_t fil[(voodoo->h_disp + 1) * 3];              /* interleaved 24-bit RGB */
+                                uint32_t *p = &((uint32_t *)buffer32->line[voodoo->line])[32];
+                                uint16_t *src = (uint16_t *)&voodoo->fb_mem[voodoo->front_offset + voodoo->line*voodoo->row_width];
+                                int x;
 
-                                voodoo_filterline(voodoo, fil, voodoo->h_disp, src, voodoo->line);
+                                voodoo->dirty_line[voodoo->line] = 0;
 
-                                for (x = 0; x < voodoo->h_disp; x++)
+                                if (voodoo->line < voodoo->dirty_line_low)
+                                        voodoo->dirty_line_low = voodoo->line;
+                                if (voodoo->line > voodoo->dirty_line_high)
+                                        voodoo->dirty_line_high = voodoo->line;
+
+                                if (voodoo->scrfilter)
                                 {
-                                        p[x] = (voodoo->clutData256[fil[x*3]].b << 0 | voodoo->clutData256[fil[x*3+1]].g << 8 | voodoo->clutData256[fil[x*3+2]].r << 16);
+                                        int j, offset;
+                                        uint16_t fil[(voodoo->h_disp + 1) * 3];              /* interleaved 24-bit RGB */
+
+                                        voodoo_filterline(voodoo, fil, voodoo->h_disp, src, voodoo->line);
+
+                                        for (x = 0; x < voodoo->h_disp; x++)
+                                        {
+                                                p[x] = (voodoo->clutData256[fil[x*3]].b << 0 | voodoo->clutData256[fil[x*3+1]].g << 8 | voodoo->clutData256[fil[x*3+2]].r << 16);
+                                        }
                                 }
-                        }
-                        else
-                        {
-                                for (x = 0; x < voodoo->h_disp; x++)
+				else
                                 {
-                                        p[x] = voodoo->video_16to32[src[x]];
+                                        for (x = 0; x < voodoo->h_disp; x++)
+                                        {
+                                                p[x] = voodoo->video_16to32[src[x]];
+                                        }
                                 }
                         }
                 }
@@ -3878,6 +3959,7 @@ void voodoo_callback(void *p)
                 if (voodoo->swap_pending && (voodoo->retrace_count > voodoo->swap_interval))
                 {
 //                        pclog("Retrace swap %i %p\n", voodoo->swap_count, &voodoo->swap_count);
+			memset(voodoo->dirty_line, 1, 1024);
                         voodoo->retrace_count = 0;
                         voodoo->front_offset = voodoo->swap_offset;
                         voodoo->swap_count--;
@@ -3892,19 +3974,25 @@ void voodoo_callback(void *p)
         {
                 if (voodoo->line == voodoo->v_disp)
                 {
-                        svga_doblit(0, voodoo->v_disp, voodoo->h_disp, voodoo->v_disp, voodoo->svga);
-                        if (voodoo->clutData_dirty)
+			if (voodoo->dirty_line_high > voodoo->dirty_line_low)
+				svga_doblit(0, voodoo->v_disp, voodoo->h_disp, voodoo->v_disp, voodoo->svga);
+			if (voodoo->clutData_dirty)
                         {
                                 voodoo->clutData_dirty = 0;
                                 voodoo_calc_clutData(voodoo);
                         }
+			voodoo->dirty_line_high = -1;
+			voodoo->dirty_line_low = 2000;
                 }
         }
         
         if (voodoo->line >= voodoo->v_total)
                 voodoo->line = 0;
                 
-        voodoo->timer_count += TIMER_USEC * 32;
+        if (voodoo->line_time)
+                voodoo->timer_count += voodoo->line_time;
+        else
+                voodoo->timer_count += TIMER_USEC * 32;
 }
 
 static void voodoo_add_status_info(char *s, int max_len, void *p)
@@ -3927,6 +4015,13 @@ static void voodoo_add_status_info(char *s, int max_len, void *p)
         voodoo_time = 0;
 }
 
+static void voodoo_speed_changed(void *p)
+{
+        voodoo_t *voodoo = (voodoo_t *)p;
+
+        voodoo_pixelclock_update(voodoo);
+}
+
 void *voodoo_init()
 {
         int c;
@@ -3940,7 +4035,7 @@ void *voodoo_init()
         voodoo->fb_size = device_get_config_int("framebuffer_memory");
         voodoo->fb_mask = (voodoo->fb_size << 20) - 1;
                 
-        voodoo_generate_filter(voodoo);   /*generate filter lookup tables*/
+        // if (!filter_genned)  voodoo_generate_filter(voodoo);   /*generate filter lookup tables*/
         
         pci_add(voodoo_pci_read, voodoo_pci_write, voodoo);
 
@@ -4088,7 +4183,7 @@ device_t voodoo_device =
         voodoo_init,
         voodoo_close,
         NULL,
-        NULL,
+        voodoo_speed_changed,
         NULL,
         voodoo_add_status_info,
         voodoo_config

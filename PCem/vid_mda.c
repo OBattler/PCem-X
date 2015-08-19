@@ -143,8 +143,8 @@ void mda_poll(void *p)
                                 else
                                 {
                                         for (c = 0; c < 8; c++)
-                                            buffer->line[mda->displine][(x * 9) + c] = mdacols[attr][blink][(fontdatm[chr][mda->sc] & (1 << (c ^ 7))) ? 1 : 0];
-                                        if ((chr & ~0x1f) == 0xc0) buffer->line[mda->displine][(x * 9) + 8] = mdacols[attr][blink][fontdatm[chr][mda->sc] & 1];
+                                            buffer->line[mda->displine][(x * 9) + c] = mdacols[attr][blink][(mda_fontdatm[chr][mda->sc] & (1 << (c ^ 7))) ? 1 : 0];
+                                        if ((chr & ~0x1f) == 0xc0) buffer->line[mda->displine][(x * 9) + 8] = mdacols[attr][blink][mda_fontdatm[chr][mda->sc] & 1];
                                         else                       buffer->line[mda->displine][(x * 9) + 8] = mdacols[attr][blink][0];
                                 }
                                 mda->ma++;
@@ -267,13 +267,13 @@ void mda_load_font()
 	switch(mda_font)
 	{
 		case 0:
-			loadfont("mda.rom", 0);
+			loadfont("mda.rom", 0, mda_fontdat, mda_fontdatm);
 			break;
 		case 1:
-			loadfont("kam.bin", 0);
+			loadfont("kam.bin", 0, mda_fontdat, mda_fontdatm);
 			break;
 		case 2:
-			loadfont("kamcl16.bin", 0);
+			loadfont("kamcl16.bin", 0, mda_fontdat, mda_fontdatm);
 			break;
 	}
 }
@@ -289,13 +289,13 @@ void *mda_init()
 	switch(device_get_config_int("font"))
 	{
 		case 0:
-			loadfont("mda.rom", 0);
+			loadfont("mda.rom", 0, mda_fontdat, mda_fontdatm);
 			break;
 		case 1:
-			loadfont("kam.bin", 0);
+			loadfont("kam.bin", 0, mda_fontdat, mda_fontdatm);
 			break;
 		case 2:
-			loadfont("kamcl16.bin", 0);
+			loadfont("kamcl16.bin", 0, mda_fontdat, mda_fontdatm);
 			break;
 	}
 	mda_font = device_get_config_int("font");

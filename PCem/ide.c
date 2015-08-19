@@ -603,15 +603,13 @@ void resetide(void)
 	else
            ide_drives[1].type = IDE_CDROM;
 #else
-	supports_slave = ((romset == ROM_SIS496) || (romset == ROM_REVENGE) || (romset == ROM_ENDEAVOR) || (romset == ROM_430FX) || (romset == ROM_430VX)) ? 1 : 0;
-
 	/* New IDE loading logic:
 	   Keep loading hard disk images, until either all are loaded, ran out of slots, or CD-ROM is enabled and reached its slot.
 
 	   Designed to allow up to 4 hard disks (up to 3 if CD-ROM is enabled), up to 1 CD-ROM, load all possible hard disks,
 	   ensure there is no slave without master, and ensure at least one slot gets assigned to CD-ROM. */
 
-	limit = ((supports_slave) ? 3 : 1);
+	limit = maxide - 1;
 	limit2 = ((cdrom_enabled) ? (limit - 1) : limit);
 
 	ide_map[0] = -1;
@@ -631,7 +629,6 @@ void resetide(void)
 		hds_loaded++;
 		last_drive++;
 	}
-	// if (ide_drives[last_drive].type != IDE_NONE)  last_drive += ((supports_slave) ? 1 : 2);
 	pclog("IDE Loader: Last drive is %i\n", last_drive);
         if (cdrom_enabled && (hds_loaded == limit))  goto load_cdrom;
         if (!cdrom_enabled && (hds_loaded == limit + 1))  goto done_loading;
@@ -644,9 +641,8 @@ void resetide(void)
 		hds_loaded++;
 		last_drive++;
 	}
-	// if (ide_drives[last_drive].type != IDE_NONE)  last_drive += ((supports_slave) ? 1 : 2);
 	/* This is so if at least 1 slot is assigned for primary IDE, we go straight from here to secondary IDE. */
-	if (supports_slave)  if (last_drive == 1)  last_drive = 2;
+	if (maxide == 4)  if (last_drive == 1)  last_drive = 2;
 	pclog("IDE Loader: Last drive is %i\n", last_drive);
         if (cdrom_enabled && (hds_loaded == limit))  goto load_cdrom;
         if (!cdrom_enabled && (hds_loaded == limit + 1))  goto done_loading;
@@ -659,7 +655,6 @@ void resetide(void)
 		hds_loaded++;
 		last_drive++;
 	}
-	// if (ide_drives[last_drive].type != IDE_NONE)  last_drive += ((supports_slave) ? 1 : 2);
 	pclog("IDE Loader: Last drive is %i\n", last_drive);
         if (cdrom_enabled && (hds_loaded == limit))  goto load_cdrom;
         if (!cdrom_enabled && (hds_loaded == limit + 1))  goto done_loading;
@@ -672,7 +667,6 @@ void resetide(void)
 		hds_loaded++;
 		last_drive++;
 	}
-	// if (ide_drives[last_drive].type != IDE_NONE)  last_drive += ((supports_slave) ? 1 : 2);
 	pclog("IDE Loader: Last drive is %i\n", last_drive);
         if (cdrom_enabled && (hds_loaded == limit))  goto load_cdrom;
         if (!cdrom_enabled && (hds_loaded == limit + 1))  goto done_loading;
@@ -2236,10 +2230,8 @@ void ide_sec_disable()
 
 void ide_init()
 {
-	supports_slave = ((romset == ROM_SIS496) || (romset == ROM_REVENGE) || (romset == ROM_ENDEAVOR) || (romset == ROM_430FX) || (romset == ROM_430VX)) ? 1 : 0;
-
         ide_pri_enable();
-        if (supports_slave)
+        if (maxide == 4)
 	{
 		ide_sec_enable();
 	}
@@ -2250,7 +2242,7 @@ void ide_init()
         ide_bus_master_read_sector = ide_bus_master_write_sector = NULL;
         
         timer_add(ide_callback_pri, &idecallback[0], &idecallback[0],  NULL);
-        if (supports_slave)  timer_add(ide_callback_sec, &idecallback[1], &idecallback[1],  NULL);
+        if (maxide == 4)  timer_add(ide_callback_sec, &idecallback[1], &idecallback[1],  NULL);
 }
 
 void ide_set_bus_master(int (*read_sector)(int channel, uint8_t *data), int (*write_sector)(int channel, uint8_t *data), void (*set_irq)(int channel))

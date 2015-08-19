@@ -135,6 +135,8 @@ void pci_init(int type, int min_card, int max_card)
         
         pci_min_card = min_card;
         pci_max_card = max_card;
+
+	PCI = 1;
 }
 
 void pci_add_specific(int card, uint8_t (*read)(int func, int addr, void *priv), void (*write)(int func, int addr, uint8_t val, void *priv), void *priv)

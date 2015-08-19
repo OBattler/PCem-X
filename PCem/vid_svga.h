@@ -18,9 +18,12 @@ typedef struct svga_t
         uint32_t vram_limit;
 
         uint8_t la, lb, lc, ld;
+	uint32_t latch;
 
         uint8_t dac_mask, dac_status;
         int dac_read, dac_write, dac_pos;
+
+	int dac_r, dac_g;
 
         uint8_t cgastat;
 
@@ -31,7 +34,9 @@ typedef struct svga_t
         int fast;
         uint8_t colourcompare, colournocare;
         int readmode, writemode, readplane;
-        int chain4;
+        int chain4, chain2;
+	int oddeven_page;
+	int enablevram, extvram;
         uint8_t writemask;
         uint32_t charseta, charsetb;
 
@@ -142,3 +147,5 @@ uint8_t svga_in(uint16_t addr, void *p);
 
 svga_t *svga_get_pri();
 void svga_set_override(svga_t *svga, int val);
+
+extern uint8_t mask_crtc[0x19];

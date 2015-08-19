@@ -100,6 +100,7 @@ void ega_out(uint16_t addr, uint8_t val, void *p)
                         break;
                         case 6:
 //                                pclog("Write mapping %02X\n", val);
+			ega->chain2 = val & 2;
                         switch (val & 0xc)
                         {
                                 case 0x0: /*128k at A0000*/
@@ -122,11 +123,11 @@ void ega_out(uint16_t addr, uint8_t val, void *p)
                 }
                 break;
                 case 0x3d4:
-                        pclog("Write 3d4 %02X  %04X:%04X\n", val, CS, pc);
+//                        pclog("Write 3d4 %02X  %04X:%04X\n", val, CS, pc);
                 ega->crtcreg = val & 31;
                 return;
                 case 0x3d5:
-                        pclog("Write 3d5 %02X %02X %02X\n", ega->crtcreg, val, ega->crtc[0x11]);
+//                        pclog("Write 3d5 %02X %02X %02X\n", ega->crtcreg, val, ega->crtc[0x11]);
 //                if (ega->crtcreg == 1 && val == 0x14)
 //                        fatal("Here\n");
                 if (ega->crtcreg <= 7 && ega->crtc[0x11] & 0x80) return;
@@ -149,7 +150,7 @@ uint8_t ega_in(uint16_t addr, void *p)
         ega_t *ega = (ega_t *)p;
 
 if (addr != 0x3da && addr != 0x3ba)
-        pclog("ega_in %04X\n", addr);
+//        pclog("ega_in %04X\n", addr);
         if (((addr & 0xfff0) == 0x3d0 || (addr & 0xfff0) == 0x3b0) && !(ega->miscout & 1)) 
                 addr ^= 0x60;
 
@@ -226,7 +227,7 @@ void ega_recalctimings(ega_t *ega)
 
         ega->rowoffset = ega->crtc[0x13];
 
-        printf("Recalc! %i %i %i %i   %i %02X\n", ega->vtotal, ega->dispend, ega->vsyncstart, ega->split, ega->hdisp, ega->attrregs[0x16]);
+        // printf("Recalc! %i %i %i %i   %i %02X\n", ega->vtotal, ega->dispend, ega->vsyncstart, ega->split, ega->hdisp, ega->attrregs[0x16]);
 
         if (ega->vblankstart < ega->dispend)
                 ega->dispend = ega->vblankstart;
@@ -325,7 +326,7 @@ void ega_poll(void *p)
                                         {
                                                 drawcursor = ((ega->ma == ega->ca) && ega->con && ega->cursoron);
                                                 chr  = ega->vram[(ega->ma << 1) & ega->vrammask];
-                                                attr = ega->vram[((ega->ma << 1) + 4) & ega->vrammask];
+                                                attr = ega->vram[((ega->ma << 1) + 1) & ega->vrammask];
 
                                                 if (attr & 8) charaddr = ega->charsetb + (chr * 128);
                                                 else          charaddr = ega->charseta + (chr * 128);
@@ -639,6 +640,7 @@ void ega_write(uint32_t addr, uint8_t val, void *p)
 {
         ega_t *ega = (ega_t *)p;
         uint8_t vala, valb, valc, vald;
+	int writemask2 = ega->writemask;
 
         egawrites++;
         cycles -= video_timing_b;
@@ -647,18 +649,27 @@ void ega_write(uint32_t addr, uint8_t val, void *p)
         if (addr >= 0xB0000) addr &= 0x7fff;
         else                 addr &= 0xffff;
 
-        if (!(ega->gdcreg[6] & 1)) 
-                fullchange = 2;
+        if (ega->chain2)
+        {
+                writemask2 &= ~0xa;
+                if (addr & 1)
+                        writemask2 <<= 1;
+                addr &= ~1;
+        }
+
         addr <<= 2;
+
+	if (!(ega->gdcreg[6] & 1)) 
+                fullchange = 2;
 
 //        pclog("%i %08X %i %i %02X   %02X %02X %02X %02X\n",chain4,addr,writemode,writemask,gdcreg[8],vram[0],vram[1],vram[2],vram[3]);
         switch (ega->writemode)
         {
                 case 1:
-                if (ega->writemask & 1) ega->vram[addr]       = ega->la;
-                if (ega->writemask & 2) ega->vram[addr | 0x1] = ega->lb;
-                if (ega->writemask & 4) ega->vram[addr | 0x2] = ega->lc;
-                if (ega->writemask & 8) ega->vram[addr | 0x3] = ega->ld;
+                if (writemask2 & 1) ega->vram[addr]       = ega->la;
+                if (writemask2 & 2) ega->vram[addr | 0x1] = ega->lb;
+                if (writemask2 & 4) ega->vram[addr | 0x2] = ega->lc;
+                if (writemask2 & 8) ega->vram[addr | 0x3] = ega->ld;
                 break;
                 case 0:
                 if (ega->gdcreg[3] & 7) 
@@ -666,10 +677,10 @@ void ega_write(uint32_t addr, uint8_t val, void *p)
                         
                 if (ega->gdcreg[8] == 0xff && !(ega->gdcreg[3] & 0x18) && !ega->gdcreg[1])
                 {
-                        if (ega->writemask & 1) ega->vram[addr]       = val;
-                        if (ega->writemask & 2) ega->vram[addr | 0x1] = val;
-                        if (ega->writemask & 4) ega->vram[addr | 0x2] = val;
-                        if (ega->writemask & 8) ega->vram[addr | 0x3] = val;
+                        if (writemask2 & 1) ega->vram[addr]       = val;
+                        if (writemask2 & 2) ega->vram[addr | 0x1] = val;
+                        if (writemask2 & 4) ega->vram[addr | 0x2] = val;
+                        if (writemask2 & 8) ega->vram[addr | 0x3] = val;
                 }
                 else
                 {
@@ -685,28 +696,28 @@ void ega_write(uint32_t addr, uint8_t val, void *p)
                         switch (ega->gdcreg[3] & 0x18)
                         {
                                 case 0: /*Set*/
-                                if (ega->writemask & 1) ega->vram[addr]       = (vala & ega->gdcreg[8]) | (ega->la & ~ega->gdcreg[8]);
-                                if (ega->writemask & 2) ega->vram[addr | 0x1] = (valb & ega->gdcreg[8]) | (ega->lb & ~ega->gdcreg[8]);
-                                if (ega->writemask & 4) ega->vram[addr | 0x2] = (valc & ega->gdcreg[8]) | (ega->lc & ~ega->gdcreg[8]);
-                                if (ega->writemask & 8) ega->vram[addr | 0x3] = (vald & ega->gdcreg[8]) | (ega->ld & ~ega->gdcreg[8]);
+                                if (writemask2 & 1) ega->vram[addr]       = (vala & ega->gdcreg[8]) | (ega->la & ~ega->gdcreg[8]);
+                                if (writemask2 & 2) ega->vram[addr | 0x1] = (valb & ega->gdcreg[8]) | (ega->lb & ~ega->gdcreg[8]);
+                                if (writemask2 & 4) ega->vram[addr | 0x2] = (valc & ega->gdcreg[8]) | (ega->lc & ~ega->gdcreg[8]);
+                                if (writemask2 & 8) ega->vram[addr | 0x3] = (vald & ega->gdcreg[8]) | (ega->ld & ~ega->gdcreg[8]);
                                 break;
                                 case 8: /*AND*/
-                                if (ega->writemask & 1) ega->vram[addr]       = (vala | ~ega->gdcreg[8]) & ega->la;
-                                if (ega->writemask & 2) ega->vram[addr | 0x1] = (valb | ~ega->gdcreg[8]) & ega->lb;
-                                if (ega->writemask & 4) ega->vram[addr | 0x2] = (valc | ~ega->gdcreg[8]) & ega->lc;
-                                if (ega->writemask & 8) ega->vram[addr | 0x3] = (vald | ~ega->gdcreg[8]) & ega->ld;
+                                if (writemask2 & 1) ega->vram[addr]       = (vala | ~ega->gdcreg[8]) & ega->la;
+                                if (writemask2 & 2) ega->vram[addr | 0x1] = (valb | ~ega->gdcreg[8]) & ega->lb;
+                                if (writemask2 & 4) ega->vram[addr | 0x2] = (valc | ~ega->gdcreg[8]) & ega->lc;
+                                if (writemask2 & 8) ega->vram[addr | 0x3] = (vald | ~ega->gdcreg[8]) & ega->ld;
                                 break;
                                 case 0x10: /*OR*/
-                                if (ega->writemask & 1) ega->vram[addr]       = (vala & ega->gdcreg[8]) | ega->la;
-                                if (ega->writemask & 2) ega->vram[addr | 0x1] = (valb & ega->gdcreg[8]) | ega->lb;
-                                if (ega->writemask & 4) ega->vram[addr | 0x2] = (valc & ega->gdcreg[8]) | ega->lc;
-                                if (ega->writemask & 8) ega->vram[addr | 0x3] = (vald & ega->gdcreg[8]) | ega->ld;
+                                if (writemask2 & 1) ega->vram[addr]       = (vala & ega->gdcreg[8]) | ega->la;
+                                if (writemask2 & 2) ega->vram[addr | 0x1] = (valb & ega->gdcreg[8]) | ega->lb;
+                                if (writemask2 & 4) ega->vram[addr | 0x2] = (valc & ega->gdcreg[8]) | ega->lc;
+                                if (writemask2 & 8) ega->vram[addr | 0x3] = (vald & ega->gdcreg[8]) | ega->ld;
                                 break;
                                 case 0x18: /*XOR*/
-                                if (ega->writemask & 1) ega->vram[addr]       = (vala & ega->gdcreg[8]) ^ ega->la;
-                                if (ega->writemask & 2) ega->vram[addr | 0x1] = (valb & ega->gdcreg[8]) ^ ega->lb;
-                                if (ega->writemask & 4) ega->vram[addr | 0x2] = (valc & ega->gdcreg[8]) ^ ega->lc;
-                                if (ega->writemask & 8) ega->vram[addr | 0x3] = (vald & ega->gdcreg[8]) ^ ega->ld;
+                                if (writemask2 & 1) ega->vram[addr]       = (vala & ega->gdcreg[8]) ^ ega->la;
+                                if (writemask2 & 2) ega->vram[addr | 0x1] = (valb & ega->gdcreg[8]) ^ ega->lb;
+                                if (writemask2 & 4) ega->vram[addr | 0x2] = (valc & ega->gdcreg[8]) ^ ega->lc;
+                                if (writemask2 & 8) ega->vram[addr | 0x3] = (vald & ega->gdcreg[8]) ^ ega->ld;
                                 break;
                         }
 //                                pclog("- %02X %02X %02X %02X   %08X\n",vram[addr],vram[addr|0x1],vram[addr|0x2],vram[addr|0x3],addr);
@@ -715,10 +726,10 @@ void ega_write(uint32_t addr, uint8_t val, void *p)
                 case 2:
                 if (!(ega->gdcreg[3] & 0x18) && !ega->gdcreg[1])
                 {
-                        if (ega->writemask & 1) ega->vram[addr]       = (((val & 1) ? 0xff : 0) & ega->gdcreg[8]) | (ega->la & ~ega->gdcreg[8]);
-                        if (ega->writemask & 2) ega->vram[addr | 0x1] = (((val & 2) ? 0xff : 0) & ega->gdcreg[8]) | (ega->lb & ~ega->gdcreg[8]);
-                        if (ega->writemask & 4) ega->vram[addr | 0x2] = (((val & 4) ? 0xff : 0) & ega->gdcreg[8]) | (ega->lc & ~ega->gdcreg[8]);
-                        if (ega->writemask & 8) ega->vram[addr | 0x3] = (((val & 8) ? 0xff : 0) & ega->gdcreg[8]) | (ega->ld & ~ega->gdcreg[8]);
+                        if (writemask2 & 1) ega->vram[addr]       = (((val & 1) ? 0xff : 0) & ega->gdcreg[8]) | (ega->la & ~ega->gdcreg[8]);
+                        if (writemask2 & 2) ega->vram[addr | 0x1] = (((val & 2) ? 0xff : 0) & ega->gdcreg[8]) | (ega->lb & ~ega->gdcreg[8]);
+                        if (writemask2 & 4) ega->vram[addr | 0x2] = (((val & 4) ? 0xff : 0) & ega->gdcreg[8]) | (ega->lc & ~ega->gdcreg[8]);
+                        if (writemask2 & 8) ega->vram[addr | 0x3] = (((val & 8) ? 0xff : 0) & ega->gdcreg[8]) | (ega->ld & ~ega->gdcreg[8]);
                 }
                 else
                 {
@@ -729,28 +740,28 @@ void ega_write(uint32_t addr, uint8_t val, void *p)
                         switch (ega->gdcreg[3] & 0x18)
                         {
                                 case 0: /*Set*/
-                                if (ega->writemask & 1) ega->vram[addr]       = (vala & ega->gdcreg[8]) | (ega->la & ~ega->gdcreg[8]);
-                                if (ega->writemask & 2) ega->vram[addr | 0x1] = (valb & ega->gdcreg[8]) | (ega->lb & ~ega->gdcreg[8]);
-                                if (ega->writemask & 4) ega->vram[addr | 0x2] = (valc & ega->gdcreg[8]) | (ega->lc & ~ega->gdcreg[8]);
-                                if (ega->writemask & 8) ega->vram[addr | 0x3] = (vald & ega->gdcreg[8]) | (ega->ld & ~ega->gdcreg[8]);
+                                if (writemask2 & 1) ega->vram[addr]       = (vala & ega->gdcreg[8]) | (ega->la & ~ega->gdcreg[8]);
+                                if (writemask2 & 2) ega->vram[addr | 0x1] = (valb & ega->gdcreg[8]) | (ega->lb & ~ega->gdcreg[8]);
+                                if (writemask2 & 4) ega->vram[addr | 0x2] = (valc & ega->gdcreg[8]) | (ega->lc & ~ega->gdcreg[8]);
+                                if (writemask2 & 8) ega->vram[addr | 0x3] = (vald & ega->gdcreg[8]) | (ega->ld & ~ega->gdcreg[8]);
                                 break;
                                 case 8: /*AND*/
-                                if (ega->writemask & 1) ega->vram[addr]       = (vala | ~ega->gdcreg[8]) & ega->la;
-                                if (ega->writemask & 2) ega->vram[addr | 0x1] = (valb | ~ega->gdcreg[8]) & ega->lb;
-                                if (ega->writemask & 4) ega->vram[addr | 0x2] = (valc | ~ega->gdcreg[8]) & ega->lc;
-                                if (ega->writemask & 8) ega->vram[addr | 0x3] = (vald | ~ega->gdcreg[8]) & ega->ld;
+                                if (writemask2 & 1) ega->vram[addr]       = (vala | ~ega->gdcreg[8]) & ega->la;
+                                if (writemask2 & 2) ega->vram[addr | 0x1] = (valb | ~ega->gdcreg[8]) & ega->lb;
+                                if (writemask2 & 4) ega->vram[addr | 0x2] = (valc | ~ega->gdcreg[8]) & ega->lc;
+                                if (writemask2 & 8) ega->vram[addr | 0x3] = (vald | ~ega->gdcreg[8]) & ega->ld;
                                 break;
                                 case 0x10: /*OR*/
-                                if (ega->writemask & 1) ega->vram[addr]       = (vala & ega->gdcreg[8]) | ega->la;
-                                if (ega->writemask & 2) ega->vram[addr | 0x1] = (valb & ega->gdcreg[8]) | ega->lb;
-                                if (ega->writemask & 4) ega->vram[addr | 0x2] = (valc & ega->gdcreg[8]) | ega->lc;
-                                if (ega->writemask & 8) ega->vram[addr | 0x3] = (vald & ega->gdcreg[8]) | ega->ld;
+                                if (writemask2 & 1) ega->vram[addr]       = (vala & ega->gdcreg[8]) | ega->la;
+                                if (writemask2 & 2) ega->vram[addr | 0x1] = (valb & ega->gdcreg[8]) | ega->lb;
+                                if (writemask2 & 4) ega->vram[addr | 0x2] = (valc & ega->gdcreg[8]) | ega->lc;
+                                if (writemask2 & 8) ega->vram[addr | 0x3] = (vald & ega->gdcreg[8]) | ega->ld;
                                 break;
                                 case 0x18: /*XOR*/
-                                if (ega->writemask & 1) ega->vram[addr]       = (vala & ega->gdcreg[8]) ^ ega->la;
-                                if (ega->writemask & 2) ega->vram[addr | 0x1] = (valb & ega->gdcreg[8]) ^ ega->lb;
-                                if (ega->writemask & 4) ega->vram[addr | 0x2] = (valc & ega->gdcreg[8]) ^ ega->lc;
-                                if (ega->writemask & 8) ega->vram[addr | 0x3] = (vald & ega->gdcreg[8]) ^ ega->ld;
+                                if (writemask2 & 1) ega->vram[addr]       = (vala & ega->gdcreg[8]) ^ ega->la;
+                                if (writemask2 & 2) ega->vram[addr | 0x1] = (valb & ega->gdcreg[8]) ^ ega->lb;
+                                if (writemask2 & 4) ega->vram[addr | 0x2] = (valc & ega->gdcreg[8]) ^ ega->lc;
+                                if (writemask2 & 8) ega->vram[addr | 0x3] = (vald & ega->gdcreg[8]) ^ ega->ld;
                                 break;
                         }
                 }
@@ -762,13 +773,23 @@ uint8_t ega_read(uint32_t addr, void *p)
 {
         ega_t *ega = (ega_t *)p;
         uint8_t temp, temp2, temp3, temp4;
+	int readplane = ega->readplane;
+
         egareads++;
         cycles -= video_timing_b;
         cycles_lost += video_timing_b;
 //        pclog("Readega %06X   ",addr);
         if (addr >= 0xb0000) addr &= 0x7fff;
         else                 addr &= 0xffff;
-        addr <<= 2;
+
+        if (ega->chain2)
+        {
+                readplane = (readplane & 2) | (addr & 1);
+                addr &= ~1;
+        }
+
+	addr <<= 2;
+
         ega->la = ega->vram[addr];
         ega->lb = ega->vram[addr | 0x1];
         ega->lc = ega->vram[addr | 0x2];
@@ -789,7 +810,7 @@ uint8_t ega_read(uint32_t addr, void *p)
                 temp4 ^= (ega->colourcompare & 8) ? 0xff : 0;
                 return ~(temp | temp2 | temp3 | temp4);
         }
-        return ega->vram[addr | ega->readplane];
+        return ega->vram[addr | readplane];
 }
 
 void ega_init(ega_t *ega)
@@ -858,6 +879,8 @@ void *ega_standalone_init()
         // ega->crtc[6] = 255;
         ega->dispontime = 1000 * (1 << TIMER_SHIFT);
         ega->dispofftime = 1000 * (1 << TIMER_SHIFT);
+	ega->dispontime <<= 1;
+	ega->dispofftime <<= 1;
 
         ega_init(ega);        
 	// ega->attrregs[0x10] |= 0xF7;

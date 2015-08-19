@@ -18,8 +18,8 @@ int writelnext;
 extern int mmu_perm;
 
 #define readmemb(a) ((readlookup2[(a)>>12]==-1)?readmembl(a):*(uint8_t *)(readlookup2[(a) >> 12] + (a)))
-#define readmemw(s,a) ((readlookup2[((s)+(a))>>12]==-1 || (s)==0xFFFFFFFF || (((s)+(a))&0xFFF)>0xFFE)?readmemwl(s,a):*(uint16_t *)(readlookup2[((s)+(a))>>12]+(s)+(a)))
-#define readmeml(s,a) ((readlookup2[((s)+(a))>>12]==-1 || (s)==0xFFFFFFFF || (((s)+(a))&0xFFF)>0xFFC)?readmemll(s,a):*(uint32_t *)(readlookup2[((s)+(a))>>12]+(s)+(a)))
+#define readmemw(s,a) ((readlookup2[(uint32_t)((s)+(a))>>12]==-1 || (s)==0xFFFFFFFF || (((s)+(a))&0xFFF)>0xFFE)?readmemwl(s,a):*(uint16_t *)(readlookup2[(uint32_t)((s)+(a))>>12]+(uint32_t)((s)+(a))))
+#define readmeml(s,a) ((readlookup2[(uint32_t)((s)+(a))>>12]==-1 || (s)==0xFFFFFFFF || (((s)+(a))&0xFFF)>0xFFC)?readmemll(s,a):*(uint32_t *)(readlookup2[(uint32_t)((s)+(a))>>12]+(uint32_t)((s)+(a))))
 
 //#define writememb(a,v) if (writelookup2[(a)>>12]==0xFFFFFFFF) writemembl(a,v); else ram[writelookup2[(a)>>12]+((a)&0xFFF)]=v
 //#define writememw(s,a,v) if (writelookup2[((s)+(a))>>12]==0xFFFFFFFF || (s)==0xFFFFFFFF) writememwl(s,a,v); else *((uint16_t *)(&ram[writelookup2[((s)+(a))>>12]+(((s)+(a))&0xFFF)]))=v
@@ -142,7 +142,7 @@ uint8_t *pccache2;
 #define ds _ds.base
 #define es _es.base
 #define ss _ss.base
-#define fs _fs.base
+#define seg_fs _fs.base
 #define gs _gs.base
 
 #define CPL ((_cs.access>>5)&3)
@@ -184,7 +184,6 @@ uint32_t dr[8];
 //#define IOPLV86 ((!(msw&1)) || (CPL<=IOPL))
 extern int cycles;
 extern int cycles_lost;
-extern int is486;
 extern uint8_t opcode;
 extern int insc;
 extern int fpucount;
@@ -272,28 +271,31 @@ int driveempty[2];
 
 
 /*Config stuff*/
-#define GMDA (gfxcard==GFX_MDA || gfxcard==GFX_HERCULES)
-#define MDA ((gfxcard==GFX_MDA || gfxcard==GFX_HERCULES) && (romset<ROM_TANDY || romset>=ROM_IBMAT))
+#define GMDA (gfxcard==GFX_MDA || gfxcard==GFX_HERCULES || gfxcard==GFX_CPQVDU)
+#define MDA (GMDA && (romset<ROM_TANDY || romset>=ROM_IBMAT))
 #define GHERC (gfxcard==GFX_HERCULES)
 #define HERCULES (gfxcard==GFX_HERCULES && (romset<ROM_TANDY || romset>=ROM_IBMAT))
 #define AMSTRAD (romset==ROM_PC1512 || romset==ROM_PC1640 || romset==ROM_PC3086)
 #define AMSTRADIO (romset==ROM_PC1512 || romset==ROM_PC1640 || romset==ROM_PC200 || romset==ROM_PC2086 || romset == ROM_PC3086)
 #define TANDY (romset==ROM_TANDY/* || romset==ROM_IBMPCJR*/)
-#define VID_EGA ((gfxcard==GFX_EGA) || (gfxcard==GFX_JEGA))
+#define VID_EGA ((gfxcard==GFX_EGA) || (gfxcard==GFX_JEGA) || (gfxcard==GFX_SUPEREGA) || (gfxcard==GFX_CPQEGA))
 #define VID_JEGA (gfxcard==GFX_JEGA)
+#define GFXVGA (gfxcard>=GFX_TVGA && gfxcard!=GFX_JEGA && gfxcard!=GFX_SUPEREGA && gfxcard!=GFX_CPQEGA && gfxcard!=GFX_CPQVDU)
+#define VGA ((GFXVGA || romset==ROM_ACER386) && romset!=ROM_PC1640 && romset!=ROM_PC1512 && romset!=ROM_TANDY && romset!=ROM_PC200)
 #define EGA (romset==ROM_PC1640 || VID_EGA || VGA)
-#define VGA ((gfxcard>=GFX_TVGA || romset==ROM_ACER386) && romset!=ROM_PC1640 && romset!=ROM_PC1512 && romset!=ROM_TANDY && romset!=ROM_PC200)
-#define SVGA (gfxcard==GFX_ET4000 && VGA)
+#define VID_SVGA ((gfxcard==GFX_ET4000) || (gfxcard==GFX_ET4000W32) || (gfxcard==GFX_BAHAMAS64) || (gfxcard==GFX_N9_9FX) || (gfxcard==GFX_VIRGE) || (gfxcard==GFX_TGUI9440) || (gfxcard==GFX_MACH64GX) || (gfxcard==GFX_CL_GD5429) || (gfxcard==GFX_CL_GD6235) || (gfxcard==GFX_VIRGEDX) || (gfxcard==GFX_CL_PHOENIX_TRIO32) || (gfxcard==GFX_CL_PHOENIX_TRIO64) || (gfxcard==GFX_CL_PHOENIX_VISION964) || (gfxcard==GFX_CL_GD5436) || (gfxcard==GFX_CL_GD5446) || (gfxcard==GFX_RIVA128))
+#define SVGA (VID_SVGA && VGA)
 #define TRIDENT (gfxcard==GFX_TVGA && !OTI067)
-#define OTI067 (romset==ROM_ACER386)
+#define OTI067 ((romset==ROM_ACER386) || (gfxcard==GFX_OTI067))
 #define ET4000 (gfxcard==GFX_ET4000 && VGA)
 #define ET4000W32 (gfxcard==GFX_ET4000W32 && VGA)
-#define AT (romset>=ROM_IBMAT)
-#define PCI (romset >= ROM_PCI486)
+// #define AT (romset>=ROM_IBMAT)
+// #define PCI (romset >= ROM_PCI486)
 #define PCJR (romset == ROM_IBMPCJR)
 
 #define AMIBIOS (romset==ROM_AMI386 || romset==ROM_AMI486 || romset == ROM_WIN486)
 
+uint8_t PCI, maxide, AT;
 int GAMEBLASTER, GUS, SSI2001, voodoo_enabled;
 
 enum
@@ -315,22 +317,28 @@ enum
         ROM_CMDPC30,
         ROM_AMI286,
         ROM_DELL200,
-	ROM_IBMPS1_2011,
         ROM_MISC286,
         ROM_IBMAT386,
         ROM_ACER386,
         ROM_MEGAPC,
         ROM_AMI386,
-	ROM_DESKPRO_386,
         ROM_AMI486,
         ROM_WIN486,
-	ROM_SIS471,
         ROM_PCI486,
         ROM_SIS496,
         ROM_430VX,
         ROM_ENDEAVOR,
         ROM_REVENGE,
+	ROM_IBMPS1_2011,
+	ROM_DESKPRO_386,
+	ROM_AMIXT,
+	ROM_LTXT,
+	ROM_LXT3,
+	ROM_SIS471,
         ROM_430FX,
+	ROM_COLORBOOK,
+	ROM_PX386,
+	ROM_430TX,
         
         ROM_MAX
 };
@@ -338,9 +346,11 @@ enum
 extern int romspresent[ROM_MAX];
 
 //#define ROM_IBMPCJR 5 /*Not working! ROMs are corrupt*/
-#define is386 (romset>=ROM_IBMAT386)
+// #define is386 (romset>=ROM_IBMAT386)
 #define is386sx 0
 
+uint8_t is386;
+extern int is486;
 int hasfpu;
 int romset;
 
@@ -377,6 +387,7 @@ enum
 	GFX_CPQVDU,
 	GFX_CPQEGA,
 	GFX_CPQVGA,
+	GFX_CL_GD5422,
         
         GFX_MAX
 };
@@ -481,10 +492,12 @@ extern int cdrom_drive;
 extern int idecallback[2];
 extern int cdrom_enabled;
 
+#ifndef __MINGW64__
 /*Networking*/
 #define NE2000      1
 extern uint8_t ethif;
 extern int inum;
+#endif
 
 void pclog(const char *format, ...);
 extern int nmi;

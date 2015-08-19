@@ -174,8 +174,8 @@ void hercules_poll(void *p)
                                         else
                                         {
                                                 for (c = 0; c < 8; c++)
-                                                    buffer->line[hercules->displine][(x * 9) + c] = mdacols[attr][blink][(fontdatm[chr][hercules->sc] & (1 << (c ^ 7))) ? 1 : 0];
-                                                if ((chr & ~0x1f) == 0xc0) buffer->line[hercules->displine][(x * 9) + 8] = mdacols[attr][blink][fontdatm[chr][hercules->sc] & 1];
+                                                    buffer->line[hercules->displine][(x * 9) + c] = mdacols[attr][blink][(herc_fontdatm[chr][hercules->sc] & (1 << (c ^ 7))) ? 1 : 0];
+                                                if ((chr & ~0x1f) == 0xc0) buffer->line[hercules->displine][(x * 9) + 8] = mdacols[attr][blink][herc_fontdatm[chr][hercules->sc] & 1];
                                                 else                       buffer->line[hercules->displine][(x * 9) + 8] = mdacols[attr][blink][0];
                                         }
                                         hercules->ma++;
@@ -310,13 +310,13 @@ void hercules_load_font()
 	switch(herc_font)
 	{
 		case 0:
-			loadfont("mda.rom", 0);
+			loadfont("mda.rom", 0, herc_fontdat, herc_fontdatm);
 			break;
 		case 1:
-			loadfont("kam.bin", 0);
+			loadfont("kam.bin", 0, herc_fontdat, herc_fontdatm);
 			break;
 		case 2:
-			loadfont("kamcl16.bin", 0);
+			loadfont("kamcl16.bin", 0, herc_fontdat, herc_fontdatm);
 			break;
 	}
 }
@@ -332,13 +332,13 @@ void *hercules_init()
 	switch(device_get_config_int("font"))
 	{
 		case 0:
-			loadfont("mda.rom", 0);
+			loadfont("mda.rom", 0, herc_fontdat, herc_fontdatm);
 			break;
 		case 1:
-			loadfont("kam.bin", 0);
+			loadfont("kam.bin", 0, herc_fontdat, herc_fontdatm);
 			break;
 		case 2:
-			loadfont("kamcl16.bin", 0);
+			loadfont("kamcl16.bin", 0, herc_fontdat, herc_fontdatm);
 			break;
 	}
 	herc_font = device_get_config_int("font");

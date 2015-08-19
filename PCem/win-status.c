@@ -22,7 +22,11 @@ extern int sreadlnum, swritelnum, segareads, segawrites, scycles_lost;
 extern uint64_t main_time;
 static uint64_t status_time;
 
+#ifndef __MINGW64__
 static BOOL CALLBACK status_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPARAM lParam)
+#else
+static INT_PTR CALLBACK status_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPARAM lParam)
+#endif
 {
         char device_s[4096];
         switch (message)

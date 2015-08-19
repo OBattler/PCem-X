@@ -16,8 +16,6 @@
 extern uint16_t *mod1add[2][8];
 extern uint32_t *mod1seg[8];
 
-/*Copy-and-pasted from 386_dynarec.c, is not in a header file because it will
-  eventually be different for the dynarec ops*/
 static inline void fetch_ea_32_long(uint32_t rmdat)
 {
         eal_r = eal_w = NULL;
@@ -25,10 +23,11 @@ static inline void fetch_ea_32_long(uint32_t rmdat)
         ea_rseg = ea_seg->seg;
         if (easeg != 0xFFFFFFFF && ((easeg + eaaddr) & 0xFFF) <= 0xFFC)
         {
-                if ( readlookup2[(easeg + eaaddr) >> 12] != -1)
-                   eal_r = (uint32_t *)(readlookup2[(easeg + eaaddr) >> 12] + easeg + eaaddr);
-                if (writelookup2[(easeg + eaaddr) >> 12] != -1)
-                   eal_w = (uint32_t *)(writelookup2[(easeg + eaaddr) >> 12] + easeg + eaaddr);
+                uint32_t addr = easeg + eaaddr;
+                if ( readlookup2[addr >> 12] != -1)
+                   eal_r = (uint32_t *)(readlookup2[addr >> 12] + addr);
+                if (writelookup2[addr >> 12] != -1)
+                   eal_w = (uint32_t *)(writelookup2[addr >> 12] + addr);
         }
 }
 
@@ -39,18 +38,21 @@ static inline void fetch_ea_16_long(uint32_t rmdat)
         ea_rseg = ea_seg->seg;
         if (easeg != 0xFFFFFFFF && ((easeg + eaaddr) & 0xFFF) <= 0xFFC)
         {
-                if ( readlookup2[(easeg + eaaddr) >> 12] != -1)
-                   eal_r = (uint32_t *)(readlookup2[(easeg + eaaddr) >> 12] + easeg + eaaddr);
-                if (writelookup2[(easeg + eaaddr) >> 12] != -1)
-                   eal_w = (uint32_t *)(writelookup2[(easeg + eaaddr) >> 12] + easeg + eaaddr);
+                uint32_t addr = easeg + eaaddr;
+                if ( readlookup2[addr >> 12] != -1)
+                   eal_r = (uint32_t *)(readlookup2[addr >> 12] + addr);
+                if (writelookup2[addr >> 12] != -1)
+                   eal_w = (uint32_t *)(writelookup2[addr >> 12] + addr);
         }
 }
 
-#define fetch_ea_16(rmdat)              pc++; if (mod != 3) fetch_ea_16_long(rmdat);
-#define fetch_ea_32(rmdat)              pc++; if (mod != 3) fetch_ea_32_long(rmdat);
+#define fetch_ea_16(rmdat)              pc++; if (mod != 3) fetch_ea_16_long(rmdat); 
+#define fetch_ea_32(rmdat)              pc++; if (mod != 3) fetch_ea_32_long(rmdat); 
+
+
 
 #define OP_TABLE(name) dynarec_ops_ ## name
-#define CLOCK_CYCLES(c)  if (!is486)  cycles -= (c)
+#define CLOCK_CYCLES(c) 
 #define CLOCK_CYCLES_ALWAYS(c) cycles -= (c)
 
 #include "386_ops.h"

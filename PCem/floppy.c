@@ -495,23 +495,28 @@ void set_sector_id_2m(int d, int t, int h, int s, int sid, int nb)
 
 void read_raw_sectors(FILE *f, int d, int st, int nt, int sh, int nh, int ss2, int ns, int nb, int si)
 {
-	int h,t,s,b;
+	int h,t,t2,s,b;
 	for (t=st;t<(st+nt);t++)
 	{
 		for (h=sh;h<(sh+nh);h++)
 		{
 			for (s=ss2;s<(ss2+ns);s++)
 			{
-				if (si)  set_sector_id(d, t, h, s, s + 1, nb);
-				for (b=0;b<(128 << nb);b++)
+				if ((ISSPECIAL && !(t & 1)) || (!(ISSPECIAL)))
 				{
-					if (feof(f))
+					t2 = t;
+					if (ISSPECIAL)  t2 >>= 1;
+					if (si)  set_sector_id(d, t2, h, s, s + 1, nb);
+					for (b=0;b<(128 << nb);b++)
 					{
-						fdd[d].disc[h][t][s][b]=0xF6;
-					}
-					else
-					{
-						fdd[d].disc[h][t][s][b]=getc(f);
+						if (feof(f))
+						{
+							fdd[d].disc[h][t][s][b]=0xF6;
+						}
+						else
+						{
+							fdd[d].disc[h][t][s][b]=getc(f);
+						}
 					}
 				}
 			}
@@ -524,6 +529,8 @@ void read_raw_sectors(FILE *f, int d, int st, int nt, int sh, int nh, int ss2, i
 void read_normal_floppy(FILE *f, int d)
 {
 	int h,t,s,b;
+
+	if (ISSPECIAL)  fdd[d].TRACKS <<= 1;
 
 	for (h = 0; h < fdd[d].SIDES; h++)
 	{
@@ -678,34 +685,42 @@ void read_xdf_track0(FILE *f, int d, int sfat, int se, int sg)
 
 void read_xdf(FILE *f, int d, int xdft)
 {
-	int h,t,s,b,s2,p0,p1;
+	int h,t,t2,s,b,s2,p0,p1;
 
 	// Track 0
 	read_xdf_track0(f, d, xdf_track0[xdft][0], xdf_track0[xdft][1], xdf_track0[xdft][2]);
 
+	if (ISSPECIAL)  fdd[d].TRACKS <<= 1;
+
 	// Now, Tracks 1+
 	for (t=1;t<fdd[d].TRACKS;t++)
 	{
-		pclog("Reading track %u...\n", t);
-		for(s2=0;s2<(xdf_spt[xdft]*2);s2++)
+		if ((ISSPECIAL && !(t & 1)) || (!(ISSPECIAL)))
 		{
-			pclog("xdf_map[%lu][%lu] = {%lu, %lu, %lu}\n", xdft, s2, xdf_map[xdft][s2][0], xdf_map[xdft][s2][1], xdf_map[xdft][s2][2]);
-			set_sector_id(d, t, xdf_map[xdft][s2][0], xdf_map[xdft][s2][1], xdf_map[xdft][s2][2] + 128, xdf_map[xdft][s2][2]);
+			t2 = t;
+			if (ISSPECIAL)  t2 >>= 1;
+
+			pclog("Reading track %u...\n", t);
+			for(s2=0;s2<(xdf_spt[xdft]*2);s2++)
+			{
+				pclog("xdf_map[%lu][%lu] = {%lu, %lu, %lu}\n", xdft, s2, xdf_map[xdft][s2][0], xdf_map[xdft][s2][1], xdf_map[xdft][s2][2]);
+				set_sector_id(d, t2, xdf_map[xdft][s2][0], xdf_map[xdft][s2][1], xdf_map[xdft][s2][2] + 128, xdf_map[xdft][s2][2]);
+			}
+			/* Doing it twice so sector ID's are known when reading. */
+			p0 = p1 = 0;
+			for(s2=0;s2<(xdf_spt[xdft]);s2++)
+			{
+				fdd[d].disc[0][t][s2] = fdd[d].trackbufs[0][t] + p0;
+				p0 += (128 << fdd[d].scid[0][t][s2][3]);
+				fdd[d].disc[1][t][s2] = fdd[d].trackbufs[1][t] + p1;
+				p1 += (128 << fdd[d].scid[1][t][s2][3]);
+			}
+			for(s2=0;s2<(xdf_spt[xdft]*2);s2++)
+			{
+				read_raw_sectors(f, d, t, 1, xdf_map[xdft][s2][0], 1, xdf_map[xdft][s2][1], 1, xdf_map[xdft][s2][2], 0);
+			}
+			fdd[d].spt[t] = xdf_spt[xdft];
 		}
-		/* Doing it twice so sector ID's are known when reading. */
-		p0 = p1 = 0;
-		for(s2=0;s2<(xdf_spt[xdft]);s2++)
-		{
-			fdd[d].disc[0][t][s2] = fdd[d].trackbufs[0][t] + p0;
-			p0 += (128 << fdd[d].scid[0][t][s2][3]);
-			fdd[d].disc[1][t][s2] = fdd[d].trackbufs[1][t] + p1;
-			p1 += (128 << fdd[d].scid[1][t][s2][3]);
-		}
-		for(s2=0;s2<(xdf_spt[xdft]*2);s2++)
-		{
-			read_raw_sectors(f, d, t, 1, xdf_map[xdft][s2][0], 1, xdf_map[xdft][s2][1], 1, xdf_map[xdft][s2][2], 0);
-		}
-		fdd[d].spt[t] = xdf_spt[xdft];
 	}
 
 	// Saving not implemented yet, so write-protect in order to prevent changes and corruption
@@ -753,7 +768,7 @@ void read_2m_track0(FILE *f, int d, int sfat, int se, int sg)
 
 void read_2m(FILE *f, int d, int xdft)
 {
-	int h,t,s,b,s2;
+	int h,t,t2,s,b,s2;
 
 	// Track 0
 	read_2m_track0(f, d, xdf_track0[xdft][0], xdf_track0[xdft][1], xdf_track0[xdft][2]);
@@ -761,11 +776,16 @@ void read_2m(FILE *f, int d, int xdft)
 	// Now, Tracks 1+
 	for (t=1;t<fdd[d].TRACKS;t++)
 	{
-		pclog("Reading track %u...\n", t);
-		for(s2=1;s2<(xdf_spt[xdft]*2);s2++)
+		if ((ISSPECIAL && !(t & 1)) || (!(ISSPECIAL)))
 		{
-			set_sector_id_2m(d, t, xdf_map[xdft][s2][0], xdf_map[xdft][s2][1] - 1, xdf_map[xdft][s2][1], xdf_map[xdft][s2][2]);
-			read_raw_sectors(f, d, t, 1, xdf_map[xdft][s2][0], 1, xdf_map[xdft][s2][1], 1, xdf_map[xdft][s2][2], 0);
+			t2 = t;
+			if (ISSPECIAL)  t2 >>= 1;
+			pclog("Reading track %u...\n", t);
+			for(s2=1;s2<(xdf_spt[xdft]*2);s2++)
+			{
+				set_sector_id_2m(d, t2, xdf_map[xdft][s2][0], xdf_map[xdft][s2][1] - 1, xdf_map[xdft][s2][1], xdf_map[xdft][s2][2]);
+				read_raw_sectors(f, d, t, 1, xdf_map[xdft][s2][0], 1, xdf_map[xdft][s2][1], 1, xdf_map[xdft][s2][2], 0);
+			}
 		}
 	}
 
@@ -1463,6 +1483,61 @@ int floppy_drive_enabled[2] = {0, 0};
 
 int allocated = 0;
 
+uint8_t is_48tpi(int d)
+{
+	return (fdd[d].BIGFLOPPY && !fdd[d].DENSITY && !fdd[d].THREEMODE);
+}
+
+int is_48tpi_old = 0;
+
+void configure_from_int(int d, int val)
+{
+	if (val == 16)
+	{
+		fdd[d].floppy_drive_enabled = 0;
+		return;
+	}
+	else
+	{
+		fdd[d].floppy_drive_enabled = 1;
+	}
+
+	fdd[d].BIGFLOPPY = ((val) & 8) >> 3;
+	fdd[d].DENSITY = ((val) & 6) >> 1;
+	fdd[d].THREEMODE = ((val) & 1);
+}
+
+void reconfigure_from_int(int d, int val)
+{
+	is_48tpi_old = is_48tpi(d);
+	savedisc(d);
+	fdd[d].track = 0;
+	fdd[d].trk0 = 1;
+	configure_from_int(d, val);
+	if ((is_48tpi(d) ^ is_48tpi_old) && (!fdd[d].driveempty) && (fdd[d].CLASS < CLASS_800) && (fdd[d].CLASS != -1))
+	{
+		freesectors(d);
+		fdd[d].discmodified = 0;
+		loaddisc(d, discfns[d]);
+	}
+}
+
+int int_from_config(int d)
+{
+	if (!fdd[d].floppy_drive_enabled)
+	{
+		return 16;
+	}
+
+	int temp = 0;
+	temp |= fdd[d].BIGFLOPPY;
+	temp <<= 2;
+	temp |= fdd[d].DENSITY;
+	temp <<= 1;
+	temp |= fdd[d].THREEMODE;
+	return temp;
+}
+
 void floppy_load_image(int d, char *fn)
 {
         FILE *f;
@@ -1555,7 +1630,7 @@ drive_disabled:
 			if (!fdd[d].XDF)  fdd[d].WP = 0;
 			break;
 	}
-        printf("Drive %c: %i sect./track, %i tracks, %i B/sect., %i shift, %i total sectors, %i sides, class %i, and image type %i\n",'A'+d,fdd[d].SECTORS,fdd[d].TRACKS,fdd[d].BPS,fdd[d].BPSCODE,fdd[d].TOTAL, fdd[d].SIDES, fdd[d].CLASS, fdd[d].IMGTYPE);
+        printf("Drive %c: %i sect./track, %i tracks (step %i), %i B/sect., %i shift, %i total sectors, %i sides, class %i, and image type %i\n",'A'+d,fdd[d].SECTORS,fdd[d].TRACKS,((ISSPECIAL) ? 2 : 1),fdd[d].BPS,fdd[d].BPSCODE,fdd[d].TOTAL, fdd[d].SIDES, fdd[d].CLASS, fdd[d].IMGTYPE);
 	/* For time being, to test reading, after that, saving will be implemented. */
 	// WP[d] = 1;
 
@@ -1570,6 +1645,43 @@ drive_disabled:
 	fdc.sector[vfdd[d]] = 1;
 	fdc.pos[vfdd[d]] = 0;
 	fdc.gotdata[vfdd[d]] = 0;
+}
+
+#define COLORBOOK_CASE	((d == 1) && (romset == ROM_COLORBOOK))
+#define NO_DRIVE	(COLORBOOK_CASE || !fdd[d].floppy_drive_enabled)
+
+void fdd_seek(int d, uint8_t n, uint8_t dir)
+{
+	int i = 0;
+	int move = -1;
+	int max = 85;
+	if (dir)  move = 1;
+	if (is_48tpi(d))  max = 42;
+
+	if (NO_DRIVE)  fdd[d].trk0 = 0;
+
+	if (!n)  return;
+
+	if (!dir && !fdd[d].track)  return;
+	if (dir && (fdd[d].track == max))  return;
+
+	for (i = 0; i < n; i++)
+	{
+		fdd[d].track += move;
+		if (!fdd[d].track)
+		{
+			if (!(NO_DRIVE))  fdd[d].trk0 = 1;
+			break;
+		}
+		else
+		{
+			fdd[d].trk0 = 0;
+			if (fdd[d].track == max)
+			{
+				break;
+			}
+		}
+	}
 }
 
 void fdd_init()
@@ -1603,5 +1715,7 @@ void fdd_init()
 		fdd[i].sectors_formatted = 0;
 		fdd[i].discmodified = 0;
 		fdd[i].image_file = NULL;
+		fdd[i].track = 0;
+		fdd[i].trk0 = 1;
 	}
 }

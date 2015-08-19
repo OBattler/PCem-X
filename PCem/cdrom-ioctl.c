@@ -2,15 +2,18 @@
 
 #include <windows.h>
 #include <io.h>
+#ifdef __MINGW64__
+#include "ntddcdrm.h"
+#else
 #include "ddk/ntddcdrm.h"
-//#include "ntddcdrm.h"
+#endif
 #include "ibm.h"
 #include "ide.h"
 #include "cdrom-ioctl.h"
 
 int cdrom_drive;
 
-#ifndef NEWWINDDK
+#ifndef __MINGW64__
 typedef struct _CDROM_TOC_SESSION_DATA {
   UCHAR      Length[2];
   UCHAR      FirstCompleteSession;
@@ -18,6 +21,7 @@ typedef struct _CDROM_TOC_SESSION_DATA {
   TRACK_DATA TrackData[1];
 } CDROM_TOC_SESSION_DATA, *PCDROM_TOC_SESSION_DATA;
 #endif
+
 static ATAPI ioctl_atapi;
 
 static uint32_t last_block = 0;
@@ -221,8 +225,8 @@ static int ioctl_ready(void)
         ioctl_open(0);
         temp=DeviceIoControl(hIOCTL,IOCTL_CDROM_READ_TOC, NULL,0,&ltoc,sizeof(ltoc),&size,NULL);
         ioctl_close();
-	if (!temp)
-		return 0;
+        if (!temp)
+                return 0;
         if ((ltoc.TrackData[ltoc.LastTrack].Address[1] != toc.TrackData[toc.LastTrack].Address[1]) ||
             (ltoc.TrackData[ltoc.LastTrack].Address[2] != toc.TrackData[toc.LastTrack].Address[2]) ||
             (ltoc.TrackData[ltoc.LastTrack].Address[3] != toc.TrackData[toc.LastTrack].Address[3]) ||
@@ -355,14 +359,7 @@ static void ioctl_readsector(uint8_t *b, int sector)
         LARGE_INTEGER pos;
         long size;
         if (!cdrom_drive) return;
-	if (ioctl_cd_state == CD_PLAYING)
-	{
-		return;
-	}
-	else
-	{
-		ioctl_cd_state = CD_STOPPED;
-	}
+        ioctl_cd_state = CD_STOPPED;        
         pos.QuadPart=sector*2048;
         ioctl_open(0);
         SetFilePointer(hIOCTL,pos.LowPart,&pos.HighPart,FILE_BEGIN);

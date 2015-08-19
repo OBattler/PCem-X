@@ -9,6 +9,8 @@
                                         4 clocks - fetch mod/rm
         2 clocks - fetch opcode 1       2 clocks - execute
         2 clocks - fetch opcode 2  etc*/
+/*	Modified by OBattler: Made it tentatively cycle-accurate (8088mph now says the emulated 8088/4.77 is the ral thing),
+	but there might be mistakes in my modifications. All input about 8088 emulation is welcome. */
 #include <stdio.h>
 #include "ibm.h"
 
@@ -40,27 +42,36 @@ void writememll(uint32_t seg, uint32_t addr, uint32_t val);
 
 #undef readmemb
 #undef readmemw
+int i808x_memcycs()
+{
+	if (is8086)  return 4;
+	return 8;
+}
+
 uint8_t readmemb(uint32_t a)
 {
-        if (a!=(cs+pc)) memcycs+=4;
+        // if (a!=(cs+pc)) memcycs+=1;
+	if (a!=(cs+pc)) memcycs+=i808x_memcycs();
         if (readlookup2[(a)>>12]==-1) return readmembl(a);
         else return *(uint8_t *)(readlookup2[(a) >> 12] + (a));
 }
 
 uint8_t readmembf(uint32_t a)
 {
+	if (a!=(cs+pc)) memcycs+=i808x_memcycs();
         if (readlookup2[(a)>>12]==-1) return readmembl(a);
         else return *(uint8_t *)(readlookup2[(a) >> 12] + (a));
 }
 
 uint16_t readmemw(uint32_t s, uint16_t a)
 {
-        if (a!=(cs+pc)) memcycs+=(8>>is8086);
+        // if (a!=(cs+pc)) memcycs+=(8>>is8086);
+	if (a!=(cs+pc)) memcycs+=i808x_memcycs();
         if ((readlookup2[((s)+(a))>>12]==-1 || (s)==0xFFFFFFFF)) return readmemwl(s,a);
         else return *(uint16_t *)(readlookup2[(s + a) >> 12] + s + a);
 }
 
-void refreshread() { /*pclog("Refreshread\n"); */FETCHCOMPLETE(); memcycs+=4; }
+void refreshread() { /*pclog("Refreshread\n"); */FETCHCOMPLETE(); memcycs+=i808x_memcycs(); }
 
 #undef fetchea
 #define fetchea()   { rmdat=FETCH();  \
@@ -72,20 +83,23 @@ void refreshread() { /*pclog("Refreshread\n"); */FETCHCOMPLETE(); memcycs+=4; }
 void writemembl(uint32_t addr, uint8_t val);
 void writememb(uint32_t a, uint8_t v)
 {
-        memcycs+=4;
+        // memcycs+=4;
+	memcycs+=i808x_memcycs();
         if (writelookup2[(a)>>12]==-1) writemembl(a,v);
         else *(uint8_t *)(writelookup2[a >> 12] + a) = v;
 }
 void writememwl(uint32_t seg, uint32_t addr, uint16_t val);
 void writememw(uint32_t s, uint32_t a, uint16_t v)
 {
-        memcycs+=(8>>is8086);
+        // memcycs+=(8>>is8086);
+	memcycs+=i808x_memcycs();
         if (writelookup2[((s)+(a))>>12]==-1 || (s)==0xFFFFFFFF) writememwl(s,a,v);
         else *(uint16_t *)(writelookup2[(s + a) >> 12] + s + a) = v;
 }
 void writememll(uint32_t seg, uint32_t addr, uint32_t val);
 void writememl(uint32_t s, uint32_t a, uint32_t v)
 {
+	// memcycs+=i808x_memcycs();
         if (writelookup2[((s)+(a))>>12]==-1 || (s)==0xFFFFFFFF) writememll(s,a,v);
         else *(uint32_t *)(writelookup2[(s + a) >> 12] + s + a) = v;
 }
@@ -594,7 +608,7 @@ chdir(pcempath);
         printf("ES : base=%06X limit=%08X access=%02X  limit_low=%08X limit_high=%08X\n",es,_es.limit,_es.access, _es.limit_low, _es.limit_high);
         if (is386)
         {
-                printf("FS : base=%06X limit=%08X access=%02X  limit_low=%08X limit_high=%08X\n",fs,_fs.limit,_fs.access, _fs.limit_low, _fs.limit_high);
+                printf("FS : base=%06X limit=%08X access=%02X  limit_low=%08X limit_high=%08X\n",seg_fs,_fs.limit,_fs.access, _fs.limit_low, _fs.limit_high);
                 printf("GS : base=%06X limit=%08X access=%02X  limit_low=%08X limit_high=%08X\n",gs,_gs.limit,_gs.access, _gs.limit_low, _gs.limit_high);
         }
         printf("SS : base=%06X limit=%08X access=%02X  limit_low=%08X limit_high=%08X\n",ss,_ss.limit,_ss.access, _ss.limit_low, _ss.limit_high);

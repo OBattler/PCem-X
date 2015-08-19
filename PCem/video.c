@@ -15,10 +15,8 @@
 #include "vid_ati28800.h"
 #include "vid_ati_mach64.h"
 #include "vid_cga.h"
-#include "vid_cl6235.h"
-#include "vid_cl5429.h"
 #include "vid_cl_ramdac.h"
-#include "vid_cl5446.h"
+#include "vid_cl_gd.h"
 #include "vid_cpqvdu.h"
 #include "vid_ega.h"
 #include "vid_et4000.h"
@@ -54,8 +52,9 @@ static VIDEO_CARD video_cards[] =
         {"ATI VGA Charger (ATI-28800)",            &ati28800_device,            GFX_VGACHARGER},
         {"ATI VGA Edge-16 (ATI-18800)",            &ati18800_device,            GFX_VGAEDGE16},
         {"CGA",                                    &cga_device,                 GFX_CGA},
-        {"Cirrus Logic CL-GD5429",                 &gd5429_device,              GFX_CL_GD5429},
         {"Cirrus Logic CL-GD6235",                 &gd6235_device,              GFX_CL_GD6235},
+        {"Cirrus Logic CL-GD5422",                 &gd5422_device,              GFX_CL_GD5422},
+        {"Cirrus Logic CL-GD5429",                 &gd5429_device,              GFX_CL_GD5429},
         {"Cirrus Logic CL-GD5436",                 &gd5436_device,              GFX_CL_GD5436},
         {"Cirrus Logic CL-GD5446",                 &gd5446_device,              GFX_CL_GD5446},
         {"Compaq VDU",                             &cpqvdu_device,              GFX_CPQVDU},
@@ -80,7 +79,6 @@ static VIDEO_CARD video_cards[] =
         {"Trident TVGA8900D",                      &tvga8900d_device,           GFX_TVGA},
         {"Tseng ET4000AX",                         &et4000_device,              GFX_ET4000},
         {"Trident TGUI9440",                       &tgui9440_device,            GFX_TGUI9440},
-        {"nVidia RIVA 128",                        &riva128_device,             GFX_RIVA128},
         {"VGA",                                    &vga_device,                 GFX_VGA},
         {"",                                       NULL,                        0}
 };
@@ -236,26 +234,32 @@ void video_init()
 
         switch (romset)
         {
+		/* Uses own interface, standard font. */
                 case ROM_IBMPCJR:
                 device_add(&pcjr_video_device);
                 return;
 
+		/* Uses own interface, standard font. */
                 case ROM_TANDY:
                 device_add(&tandy_device);
                 return;
 
+		/* Uses own interface. */
                 case ROM_PC1512:
                 device_add(&pc1512_device);
                 return;
 
+		/* CGA, standard font. */
                 case ROM_PC1640:
                 device_add(&pc1640_device);
                 return;
 
+		/* CGA, own font. */
                 case ROM_PC200:
                 device_add(&pc200_device);
                 return;
 
+		/* Uses own interface. */
                 case ROM_OLIM24:
                 device_add(&m24_device);
                 return;
@@ -286,14 +290,26 @@ void video_init()
 
 BITMAP *buffer, *buffer32;
 
-uint8_t fontdat[256][8];
-uint8_t fontdatm[256][16];
+uint8_t mda_fontdat[256][8];
+uint8_t mda_fontdatm[256][16];
+
+uint8_t cga_fontdat[256][8];
+uint8_t cga_fontdatm[256][16];
+
+uint8_t pc1512_fontdat[256][8];
+uint8_t pc1512_fontdatm[256][16];
+
+uint8_t pc200_fontdat[256][8];
+uint8_t pc200_fontdatm[256][16];
+
+uint8_t herc_fontdat[256][8];
+uint8_t herc_fontdatm[256][16];
 
 int xsize=1,ysize=1;
 
 PALETTE cgapal;
 
-void loadfont(char *s, int format)
+void loadfont(char *s, int format, uint8_t fontdat[256][8], uint8_t fontdatm[256][16])
 {
         // FILE *f=romfopen(s,"rb");
         FILE *f=fopen(s,"rb");
@@ -369,6 +385,157 @@ void loadfont(char *s, int format)
         fclose(f);
 }
 
+void cga_loadfont(char *s, int format)
+{
+        // FILE *f=romfopen(s,"rb");
+        FILE *f=fopen(s,"rb");
+        int c,d;
+        if (!f)
+	{
+	   fclose(f);
+           return;
+	}
+
+	fseek(f, 0, SEEK_SET);
+        if (!format)
+        {
+                for (c=0;c<256;c++)
+                {
+                        for (d=0;d<8;d++)
+                        {
+                                cga_fontdatm[c][d]=getc(f);
+                        }
+                }
+                for (c=0;c<256;c++)
+                {
+                        for (d=0;d<8;d++)
+                        {
+                                cga_fontdatm[c][d+8]=getc(f);
+                        }
+                }
+                fseek(f,4096+2048,SEEK_SET);
+                for (c=0;c<256;c++)
+                {
+                        for (d=0;d<8;d++)
+                        {
+                                cga_fontdat[c][d]=getc(f);
+                        }
+                }
+        }
+        else if (format == 1)
+        {
+                for (c=0;c<256;c++)
+                {
+                        for (d=0;d<8;d++)
+                        {
+                                cga_fontdatm[c][d]=getc(f);
+                        }
+                }
+                for (c=0;c<256;c++)
+                {
+                        for (d=0;d<8;d++)
+                        {
+                                cga_fontdatm[c][d+8]=getc(f);
+                        }
+                }
+                fseek(f, 4096, SEEK_SET);
+                for (c=0;c<256;c++)
+                {
+                        for (d=0;d<8;d++)
+                        {
+                                cga_fontdat[c][d]=getc(f);
+                        }
+                        for (d=0;d<8;d++) getc(f);
+                }
+        }
+        else
+        {
+                for (c=0;c<256;c++)
+                {
+                        for (d=0;d<8;d++)
+                        {
+                                cga_fontdat[c][d]=getc(f);
+                        }
+                }
+        }
+        fclose(f);
+}
+
+void pc1512_loadfont(char *s, int format)
+{
+        // FILE *f=romfopen(s,"rb");
+        FILE *f=fopen(s,"rb");
+        int c,d;
+        if (!f)
+	{
+	   fclose(f);
+           return;
+	}
+
+	fseek(f, 0, SEEK_SET);
+        if (!format)
+        {
+                for (c=0;c<256;c++)
+                {
+                        for (d=0;d<8;d++)
+                        {
+                                pc1512_fontdatm[c][d]=getc(f);
+                        }
+                }
+                for (c=0;c<256;c++)
+                {
+                        for (d=0;d<8;d++)
+                        {
+                                pc1512_fontdatm[c][d+8]=getc(f);
+                        }
+                }
+                fseek(f,4096+2048,SEEK_SET);
+                for (c=0;c<256;c++)
+                {
+                        for (d=0;d<8;d++)
+                        {
+                                pc1512_fontdat[c][d]=getc(f);
+                        }
+                }
+        }
+        else if (format == 1)
+        {
+                for (c=0;c<256;c++)
+                {
+                        for (d=0;d<8;d++)
+                        {
+                                pc1512_fontdatm[c][d]=getc(f);
+                        }
+                }
+                for (c=0;c<256;c++)
+                {
+                        for (d=0;d<8;d++)
+                        {
+                                pc1512_fontdatm[c][d+8]=getc(f);
+                        }
+                }
+                fseek(f, 4096, SEEK_SET);
+                for (c=0;c<256;c++)
+                {
+                        for (d=0;d<8;d++)
+                        {
+                                pc1512_fontdat[c][d]=getc(f);
+                        }
+                        for (d=0;d<8;d++) getc(f);
+                }
+        }
+        else
+        {
+                for (c=0;c<256;c++)
+                {
+                        for (d=0;d<8;d++)
+                        {
+                                pc1512_fontdat[c][d]=getc(f);
+                        }
+                }
+        }
+        fclose(f);
+}
 
 void initvideo()
 {

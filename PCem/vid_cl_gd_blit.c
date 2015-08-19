@@ -9,13 +9,13 @@
 #include "vid_svga.h"
 #include "vid_svga_render.h"
 #include "vid_cl_ramdac.h"
-#include "vid_cl5446.h"
-#include "vid_cl5446_blit.h"
+#include "vid_cl_gd.h"
+#include "vid_cl_gd_blit.h"
 
 // Same for all the svga->vrammask which are -s>cirrus_addr_mask in the original.
 
 // Eventually this needs to be configurable
-#define gd5446_vram_size gd5446->vram_size
+#define clgd_vram_size clgd->vram_size
 
 #define true 1
 #define false 0
@@ -36,102 +36,102 @@ int ABS(int sval)
 	}
 }
 
-bool blit_region_is_unsafe(gd5446_t *gd5446, svga_t *svga, int32_t pitch, int32_t addr)
+bool blit_region_is_unsafe(clgd_t *clgd, svga_t *svga, int32_t pitch, int32_t addr)
 {
 	if (pitch < 0)
 	{
-		int64_t min = addr + ((int64_t)gd5446->blt.height-1) * pitch;
-		int32_t max = addr + gd5446->blt.width;
-		if (min < 0 || max >= gd5446_vram_size)  return true;
+		int64_t min = addr + ((int64_t)clgd->blt.height-1) * pitch;
+		int32_t max = addr + clgd->blt.width;
+		if (min < 0 || max >= clgd_vram_size)  return true;
 	}
 	else
 	{
-		int64_t max = addr + ((int64_t)gd5446->blt.height-1) * pitch + gd5446->blt.width;
-		if (max >= gd5446_vram_size)  return true;
+		int64_t max = addr + ((int64_t)clgd->blt.height-1) * pitch + clgd->blt.width;
+		if (max >= clgd_vram_size)  return true;
 	}
 	return false;
 }
 
-bool blit_is_unsafe(gd5446_t *gd5446, svga_t *svga)
+bool blit_is_unsafe(clgd_t *clgd, svga_t *svga)
 {
-	if (gd5446->blt.width > 0)  fatal("CL-GD5446: Blit width is 0!\n");
-	if (gd5446->blt.height > 0)  fatal("CL-GD5446: Blit height is 0!\n");
+	if (clgd->blt.width > 0)  fatal("CL-clgd: Blit width is 0!\n");
+	if (clgd->blt.height > 0)  fatal("CL-clgd: Blit height is 0!\n");
 
-	if (gd5446->blt.width > CIRRUS_BLTBUFSIZE)  return true;
+	if (clgd->blt.width > CIRRUS_BLTBUFSIZE)  return true;
 
-	if (blit_region_is_unsafe(gd5446, svga, gd5446->blt.dst_pitch, gd5446->blt.dst_addr & svga->vrammask))  return true;
-	if (blit_region_is_unsafe(gd5446, svga, gd5446->blt.src_pitch, gd5446->blt.src_addr & svga->vrammask))  return true;
+	if (blit_region_is_unsafe(clgd, svga, clgd->blt.dst_pitch, clgd->blt.dst_addr & svga->vrammask))  return true;
+	if (blit_region_is_unsafe(clgd, svga, clgd->blt.src_pitch, clgd->blt.src_addr & svga->vrammask))  return true;
 
 	return false;
 }
 
-void cirrus_bitblt_rop_nop(gd5446_t *gd5446, uint8_t *dst, const uint8_t *src, int dstpitch, int srcpitch, int bltwidth, int bltheight)
+void cirrus_bitblt_rop_nop(clgd_t *clgd, uint8_t *dst, const uint8_t *src, int dstpitch, int srcpitch, int bltwidth, int bltheight)
 {
 }
 
-void cirrus_bitblt_fill_nop(gd5446_t *gd5446, uint8_t *dst, int dstpitch, int bltwidth, int bltheight)
+void cirrus_bitblt_fill_nop(clgd_t *clgd, uint8_t *dst, int dstpitch, int bltwidth, int bltheight)
 {
 }
 
 #define ROP_NAME 0
 #define ROP_FN(d, s) 0
-#include "vid_cl5446_vga_rop.h"
+#include "vid_cl_gd_vga_rop.h"
 
 #define ROP_NAME src_and_dst
 #define ROP_FN(d, s) (s) & (d)
-#include "vid_cl5446_vga_rop.h"
+#include "vid_cl_gd_vga_rop.h"
 
 #define ROP_NAME src_and_notdst
 #define ROP_FN(d, s) (s) & (~(d))
-#include "vid_cl5446_vga_rop.h"
+#include "vid_cl_gd_vga_rop.h"
 
 #define ROP_NAME notdst
 #define ROP_FN(d, s) ~(d)
-#include "vid_cl5446_vga_rop.h"
+#include "vid_cl_gd_vga_rop.h"
 
 #define ROP_NAME src
 #define ROP_FN(d, s) s
-#include "vid_cl5446_vga_rop.h"
+#include "vid_cl_gd_vga_rop.h"
 
 #define ROP_NAME 1
 #define ROP_FN(d, s) ~0
-#include "vid_cl5446_vga_rop.h"
+#include "vid_cl_gd_vga_rop.h"
 
 #define ROP_NAME notsrc_and_dst
 #define ROP_FN(d, s) (~(s)) & (d)
-#include "vid_cl5446_vga_rop.h"
+#include "vid_cl_gd_vga_rop.h"
 
 #define ROP_NAME src_xor_dst
 #define ROP_FN(d, s) (s) ^ (d)
-#include "vid_cl5446_vga_rop.h"
+#include "vid_cl_gd_vga_rop.h"
 
 #define ROP_NAME src_or_dst
 #define ROP_FN(d, s) (s) | (d)
-#include "vid_cl5446_vga_rop.h"
+#include "vid_cl_gd_vga_rop.h"
 
 #define ROP_NAME notsrc_or_notdst
 #define ROP_FN(d, s) (~(s)) | (~(d))
-#include "vid_cl5446_vga_rop.h"
+#include "vid_cl_gd_vga_rop.h"
 
 #define ROP_NAME src_notxor_dst
 #define ROP_FN(d, s) ~((s) ^ (d))
-#include "vid_cl5446_vga_rop.h"
+#include "vid_cl_gd_vga_rop.h"
 
 #define ROP_NAME src_or_notdst
 #define ROP_FN(d, s) (s) | (~(d))
-#include "vid_cl5446_vga_rop.h"
+#include "vid_cl_gd_vga_rop.h"
 
 #define ROP_NAME notsrc
 #define ROP_FN(d, s) (~(s))
-#include "vid_cl5446_vga_rop.h"
+#include "vid_cl_gd_vga_rop.h"
 
 #define ROP_NAME notsrc_or_dst
 #define ROP_FN(d, s) (~(s)) | (d)
-#include "vid_cl5446_vga_rop.h"
+#include "vid_cl_gd_vga_rop.h"
 
 #define ROP_NAME notsrc_and_notdst
 #define ROP_FN(d, s) (~(s)) & (~(d))
-#include "vid_cl5446_vga_rop.h"
+#include "vid_cl_gd_vga_rop.h"
 
 const cirrus_bitblt_rop_t cirrus_fwd_rop[16] = {
     cirrus_bitblt_rop_fwd_0,
@@ -346,53 +346,53 @@ const cirrus_fill_t cirrus_fill[16][4] = {
     ROP2(cirrus_fill_notsrc_and_notdst),
 };
 
-inline void cirrus_bitblt_fgcol(gd5446_t *gd5446, svga_t *svga)
+inline void cirrus_bitblt_fgcol(clgd_t *clgd, svga_t *svga)
 {
 	unsigned int color;
-	switch (gd5446->blt.pixel_width)
+	switch (clgd->blt.pixel_width)
 	{
 		case 1:
-			gd5446->blt.fg_col = gd5446->shadow_gr1;
+			clgd->blt.fg_col = clgd->shadow_gr1;
 			break;
 		case 2:
-			color = gd5446->shadow_gr1 | (svga->gdcreg[0x11] << 8);
-			gd5446->blt.fg_col = le16_to_cpu(color);
+			color = clgd->shadow_gr1 | (svga->gdcreg[0x11] << 8);
+			clgd->blt.fg_col = le16_to_cpu(color);
 			break;
 		case 3:
-			gd5446->blt.fg_col = gd5446->shadow_gr1 | (svga->gdcreg[0x11] << 8) | (svga->gdcreg[0x13] << 16);
+			clgd->blt.fg_col = clgd->shadow_gr1 | (svga->gdcreg[0x11] << 8) | (svga->gdcreg[0x13] << 16);
 			break;
 		default:
 		case 4:
-			color = gd5446->shadow_gr1 | (svga->gdcreg[0x11] << 8) | (svga->gdcreg[0x13] << 16) | (svga->gdcreg[0x15] << 24);
-			gd5446->blt.fg_col = le32_to_cpu(color);
+			color = clgd->shadow_gr1 | (svga->gdcreg[0x11] << 8) | (svga->gdcreg[0x13] << 16) | (svga->gdcreg[0x15] << 24);
+			clgd->blt.fg_col = le32_to_cpu(color);
 			break;
 	}
 }
 
-inline void cirrus_bitblt_bgcol(gd5446_t *gd5446, svga_t *svga)
+inline void cirrus_bitblt_bgcol(clgd_t *clgd, svga_t *svga)
 {
 	unsigned int color;
-	switch (gd5446->blt.pixel_width)
+	switch (clgd->blt.pixel_width)
 	{
 		case 1:
-			gd5446->blt.bg_col = gd5446->shadow_gr0;
+			clgd->blt.bg_col = clgd->shadow_gr0;
 			break;
 		case 2:
-			color = gd5446->shadow_gr0 | (svga->gdcreg[0x10] << 8);
-			gd5446->blt.bg_col = le16_to_cpu(color);
+			color = clgd->shadow_gr0 | (svga->gdcreg[0x10] << 8);
+			clgd->blt.bg_col = le16_to_cpu(color);
 			break;
 		case 3:
-			gd5446->blt.bg_col = gd5446->shadow_gr0 | (svga->gdcreg[0x10] << 8) | (svga->gdcreg[0x12] << 16);
+			clgd->blt.bg_col = clgd->shadow_gr0 | (svga->gdcreg[0x10] << 8) | (svga->gdcreg[0x12] << 16);
 			break;
 		default:
 		case 4:
-			color = gd5446->shadow_gr0 | (svga->gdcreg[0x10] << 8) | (svga->gdcreg[0x12] << 16) | (svga->gdcreg[0x14] << 24);
-			gd5446->blt.bg_col = le32_to_cpu(color);
+			color = clgd->shadow_gr0 | (svga->gdcreg[0x10] << 8) | (svga->gdcreg[0x12] << 16) | (svga->gdcreg[0x14] << 24);
+			clgd->blt.bg_col = le32_to_cpu(color);
 			break;
 	}
 }
 
-void cirrus_invalidate_region(gd5446_t *gd5446, svga_t *svga, int off_begin, int off_pitch, int bytesperline, int lines)
+void cirrus_invalidate_region(clgd_t *clgd, svga_t *svga, int off_begin, int off_pitch, int bytesperline, int lines)
 {
 	int y;
 	int off_cur;
@@ -407,42 +407,42 @@ void cirrus_invalidate_region(gd5446_t *gd5446, svga_t *svga, int off_begin, int
 	}
 }
 
-int cirrus_bitblt_common_patterncopy(gd5446_t *gd5446, svga_t *svga, const uint8_t * src)
+int cirrus_bitblt_common_patterncopy(clgd_t *clgd, svga_t *svga, const uint8_t * src)
 {
 	uint8_t *dst;
 
-	dst = svga->vram + (gd5446->blt.dst_addr & svga->vrammask);
+	dst = svga->vram + (clgd->blt.dst_addr & svga->vrammask);
 
-	if (blit_is_unsafe(gd5446, svga))  return 0;
+	if (blit_is_unsafe(clgd, svga))  return 0;
 
-	(*cirrus_rop) (gd5446, svga, dst, src, gd5446->blt.dst_pitch, 0, gd5446->blt.width, gd5446->blt.height);
-	cirrus_invalidate_region(gd5446, svga, gd5446->blt.dst_addr, gd5446->blt.dst_pitch, gd5446->blt.width, gd5446->blt.height);
+	(*cirrus_rop) (clgd, svga, dst, src, clgd->blt.dst_pitch, 0, clgd->blt.width, clgd->blt.height);
+	cirrus_invalidate_region(clgd, svga, clgd->blt.dst_addr, clgd->blt.dst_pitch, clgd->blt.width, clgd->blt.height);
 
 	return 1;
 }
 
 /* fill */
 
-int cirrus_bitblt_solidfill(gd5446_t *gd5446, svga_t *svga, int blt_rop)
+int cirrus_bitblt_solidfill(clgd_t *clgd, svga_t *svga, int blt_rop)
 {
 	cirrus_fill_t rop_func;
 
-	if (blit_is_unsafe(gd5446, svga))  return 0;
+	if (blit_is_unsafe(clgd, svga))  return 0;
 
-	rop_func = cirrus_fill[rop_to_index[blt_rop]][gd5446->blt.pixel_width - 1];
-	rop_func(gd5446, svga, svga->vram + (gd5446->blt.dst_addr & svga->vrammask), gd5446->blt.dst_pitch, gd5446->blt.width, gd5446->blt.height);
-	cirrus_invalidate_region(gd5446, svga, gd5446->blt.dst_addr, gd5446->blt.dst_pitch, gd5446->blt.width, gd5446->blt.height);
-	cirrus_bitblt_reset(gd5446, svga);
+	rop_func = cirrus_fill[rop_to_index[blt_rop]][clgd->blt.pixel_width - 1];
+	rop_func(clgd, svga, svga->vram + (clgd->blt.dst_addr & svga->vrammask), clgd->blt.dst_pitch, clgd->blt.width, clgd->blt.height);
+	cirrus_invalidate_region(clgd, svga, clgd->blt.dst_addr, clgd->blt.dst_pitch, clgd->blt.width, clgd->blt.height);
+	cirrus_bitblt_reset(clgd, svga);
 
 	return 1;
 }
 
-int cirrus_bitblt_videotovideo_patterncopy(gd5446_t *gd5446, svga_t *svga)
+int cirrus_bitblt_videotovideo_patterncopy(clgd_t *clgd, svga_t *svga)
 {
-	return cirrus_bitblt_common_patterncopy(gd5446, svga, svga->vram + ((gd5446->blt.src_addr & ~7) & svga->vrammask));
+	return cirrus_bitblt_common_patterncopy(clgd, svga, svga->vram + ((clgd->blt.src_addr & ~7) & svga->vrammask));
 }
 
-void cirrus_do_copy(gd5446_t *gd5446, svga_t *svga, int dst, int src, int w, int h)
+void cirrus_do_copy(clgd_t *clgd, svga_t *svga, int dst, int src, int w, int h)
 {
 	int sx = 0, sy = 0;
 	int dx = 0, dy = 0;
@@ -455,27 +455,27 @@ void cirrus_do_copy(gd5446_t *gd5446, svga_t *svga, int dst, int src, int w, int
 	{
 		int width, height;
 
-		depth = cirrus_get_bpp(gd5446, svga) / 8;
+		depth = cirrus_get_bpp(clgd, svga) / 8;
 		width = svga->video_res_x;
 		height = svga->video_res_y;
 
 		/* extra x, y */
-		sx = (src % ABS(gd5446->blt.src_pitch)) / depth;
-		sy = (src / ABS(gd5446->blt.src_pitch));
-		dx = (dst % ABS(gd5446->blt.dst_pitch)) / depth;
-		dy = (dst / ABS(gd5446->blt.dst_pitch));
+		sx = (src % ABS(clgd->blt.src_pitch)) / depth;
+		sy = (src / ABS(clgd->blt.src_pitch));
+		dx = (dst % ABS(clgd->blt.dst_pitch)) / depth;
+		dy = (dst / ABS(clgd->blt.dst_pitch));
 
 		/* normalize width */
 		w /= depth;
 
 		/* if we're doing a backward copy, we have to adjust
 		   our x/y to be the upper left corner (instead of the lower right corner) */
-		if (gd5446->blt.dst_pitch < 0)
+		if (clgd->blt.dst_pitch < 0)
 		{
-			sx -= (gd5446->blt.width / depth) - 1;
-			dx -= (gd5446->blt.width / depth) - 1;
-			sy -= gd5446->blt.height - 1;
-			dy -= gd5446->blt.height - 1;
+			sx -= (clgd->blt.width / depth) - 1;
+			dx -= (clgd->blt.width / depth) - 1;
+			sy -= clgd->blt.height - 1;
+			dy -= clgd->blt.height - 1;
 		}
 
 		/* are we in the visible portion of memory? */
@@ -498,117 +498,117 @@ void cirrus_do_copy(gd5446_t *gd5446, svga_t *svga, int dst, int src, int w, int
 	/* we don't have to notify the display that this portion has
 	   changed since qemu_console_copy implies this */
 
-	cirrus_invalidate_region(gd5446, svga, gd5446->blt.dst_addr, gd5446->blt.dst_pitch, gd5446->blt.width, gd5446->blt.height);
+	cirrus_invalidate_region(clgd, svga, clgd->blt.dst_addr, clgd->blt.dst_pitch, clgd->blt.width, clgd->blt.height);
 }
 
-int cirrus_bitblt_videotovideo_copy(gd5446_t *gd5446, svga_t *svga)
+int cirrus_bitblt_videotovideo_copy(clgd_t *clgd, svga_t *svga)
 {
-	if (blit_is_unsafe(gd5446, svga))  return 0;
+	if (blit_is_unsafe(clgd, svga))  return 0;
 
-	cirrus_do_copy(gd5446, svga, gd5446->blt.dst_addr - svga->firstline, gd5446->blt.src_addr - svga->firstline,
-		gd5446->blt.width, gd5446->blt.height);
+	cirrus_do_copy(clgd, svga, clgd->blt.dst_addr - svga->firstline, clgd->blt.src_addr - svga->firstline,
+		clgd->blt.width, clgd->blt.height);
 
 	return 1;
 }
 
-void cirrus_bitblt_cputovideo_next(gd5446_t *gd5446, svga_t *svga)
+void cirrus_bitblt_cputovideo_next(clgd_t *clgd, svga_t *svga)
 {
 	int copy_count;
 	uint8_t *end_ptr;
 
-	if (gd5446->src_counter > 0)
+	if (clgd->src_counter > 0)
 	{
-		if (gd5446->blt.mode & CIRRUS_BLTMODE_PATTERNCOPY)
+		if (clgd->blt.mode & CIRRUS_BLTMODE_PATTERNCOPY)
 		{
-			cirrus_bitblt_common_patterncopy(gd5446, svga, gd5446->blt.buf);
+			cirrus_bitblt_common_patterncopy(clgd, svga, clgd->blt.buf);
 		the_end:
-			gd5446->src_counter = 0;
-			cirrus_bitblt_reset(gd5446, svga);
+			clgd->src_counter = 0;
+			cirrus_bitblt_reset(clgd, svga);
 		}
 		else
 		{
 			/* at least one scan line */
 			do
 			{
-				(*cirrus_rop)(gd5446, svga, svga->vram + (gd5446->blt.dst_addr & svga->vrammask), gd5446->blt.buf, 0, 0, gd5446->blt.width, 1);
-				cirrus_invalidate_region(gd5446, svga, gd5446->blt.dst_addr, 0 , gd5446->blt.width, 1);
-				gd5446->blt.dst_addr += gd5446->blt.dst_pitch;
-				gd5446->src_counter -= gd5446->blt.src_pitch;
-				if (gd5446->src_counter <= 0)  goto the_end;
+				(*cirrus_rop)(clgd, svga, svga->vram + (clgd->blt.dst_addr & svga->vrammask), clgd->blt.buf, 0, 0, clgd->blt.width, 1);
+				cirrus_invalidate_region(clgd, svga, clgd->blt.dst_addr, 0 , clgd->blt.width, 1);
+				clgd->blt.dst_addr += clgd->blt.dst_pitch;
+				clgd->src_counter -= clgd->blt.src_pitch;
+				if (clgd->src_counter <= 0)  goto the_end;
 				/* more bytes than needed can be transferred because of
 				   word alignment, so we keep them for the next line */
 				/* XXX: keep alignment to speed up transfer */
-				end_ptr = gd5446->blt.buf + gd5446->blt.src_pitch;
-				memmove(gd5446->blt.buf, end_ptr, copy_count);
-				gd5446->src_ptr = gd5446->blt.buf + copy_count;
-				gd5446->src_ptr_end = gd5446->blt.buf + gd5446->blt.src_pitch;
+				end_ptr = clgd->blt.buf + clgd->blt.src_pitch;
+				copy_count = clgd->src_ptr_end - end_ptr;
+				memmove(clgd->blt.buf, end_ptr, copy_count);
+				clgd->src_ptr = clgd->blt.buf + copy_count;
+				clgd->src_ptr_end = clgd->blt.buf + clgd->blt.src_pitch;
 			}
-			while (gd5446->src_ptr >= gd5446->src_ptr_end);
+			while (clgd->src_ptr >= clgd->src_ptr_end);
 		}
 	}
 }
 
-void cirrus_bitblt_reset(gd5446_t *gd5446, svga_t *svga)
+void cirrus_bitblt_reset(clgd_t *clgd, svga_t *svga)
 {
 	int need_update;
 
 	svga->gdcreg[0x31] &= ~(CIRRUS_BLT_START | CIRRUS_BLT_BUSY | CIRRUS_BLT_FIFOUSED);
-	need_update = gd5446->src_ptr != &gd5446->blt.buf[0]
-		|| gd5446->src_ptr_end != &gd5446->blt.buf[0];
-	gd5446->src_ptr = &gd5446->blt.buf[0];
-	gd5446->src_ptr_end = &gd5446->blt.buf[0];
-	gd5446->src_counter = 0;
+	need_update = clgd->src_ptr != &clgd->blt.buf[0]
+		|| clgd->src_ptr_end != &clgd->blt.buf[0];
+	clgd->src_ptr = &clgd->blt.buf[0];
+	clgd->src_ptr_end = &clgd->blt.buf[0];
+	clgd->src_counter = 0;
 	if (!need_update)
 		return;
-	// cirrus_update_memory_access(gd5446, svga);
-	gd5446_recalc_mapping(gd5446);
+	cirrus_update_memory_access(clgd);
 }
 
-int cirrus_bitblt_cputovideo(gd5446_t *gd5446, svga_t *svga)
+int cirrus_bitblt_cputovideo(clgd_t *clgd, svga_t *svga)
 {
 	int w;
 
-	gd5446->blt.mode &= ~CIRRUS_BLTMODE_MEMSYSSRC;
-	gd5446->src_ptr = &gd5446->blt.buf[0];
-	gd5446->src_ptr_end = &gd5446->blt.buf[0];
+	clgd->blt.mode &= ~CIRRUS_BLTMODE_MEMSYSSRC;
+	clgd->src_ptr = &clgd->blt.buf[0];
+	clgd->src_ptr_end = &clgd->blt.buf[0];
 
-	if (gd5446->blt.mode & CIRRUS_BLTMODE_PATTERNCOPY)
+	if (clgd->blt.mode & CIRRUS_BLTMODE_PATTERNCOPY)
 	{
-		if (gd5446->blt.mode & CIRRUS_BLTMODE_COLOREXPAND)
+		if (clgd->blt.mode & CIRRUS_BLTMODE_COLOREXPAND)
 		{
-			gd5446->blt.src_pitch = 8;
+			clgd->blt.src_pitch = 8;
 		}
 		else
 		{
 			/* XXX: check for 24 bpp */
-			gd5446->blt.src_pitch = 8 * 8 * gd5446->blt.pixel_width;
+			clgd->blt.src_pitch = 8 * 8 * clgd->blt.pixel_width;
 		}
-		gd5446->src_counter = gd5446->blt.src_pitch;
+		clgd->src_counter = clgd->blt.src_pitch;
 	}
 	else
 	{
-		if (gd5446->blt.mode & CIRRUS_BLTMODE_COLOREXPAND)
+		if (clgd->blt.mode & CIRRUS_BLTMODE_COLOREXPAND)
 		{
-			w = gd5446->blt.width / gd5446->blt.pixel_width;
-			if (gd5446->blt.modeext & CIRRUS_BLTMODEEXT_DWORDGRANULARITY)
-				gd5446->blt.src_pitch = ((w + 31) >> 5);
+			w = clgd->blt.width / clgd->blt.pixel_width;
+			if (clgd->blt.modeext & CIRRUS_BLTMODEEXT_DWORDGRANULARITY)
+				clgd->blt.src_pitch = ((w + 31) >> 5);
 			else
-				gd5446->blt.src_pitch = ((w + 7) >> 3);
+				clgd->blt.src_pitch = ((w + 7) >> 3);
 		}
 		else
 		{
 			/* always align input size to 32 bit */
-			gd5446->blt.src_pitch = (gd5446->blt.width + 3) & ~3;
+			clgd->blt.src_pitch = (clgd->blt.width + 3) & ~3;
 		}
-		gd5446->src_counter = gd5446->blt.src_pitch * gd5446->blt.height;
+		clgd->src_counter = clgd->blt.src_pitch * clgd->blt.height;
 	}
-	gd5446->src_ptr = gd5446->blt.buf;
-	gd5446->src_ptr_end = gd5446->blt.buf + gd5446->blt.src_pitch;
-	gd5446_recalc_mapping(gd5446);
+	clgd->src_ptr = clgd->blt.buf;
+	clgd->src_ptr_end = clgd->blt.buf + clgd->blt.src_pitch;
+	cirrus_update_memory_access(clgd);
 	return 1;
 }
 
-int cirrus_bitblt_videotocpu(gd5446_t *gd5446, svga_t *svga)
+int cirrus_bitblt_videotocpu(clgd_t *clgd, svga_t *svga)
 {
 	/* XXX */
 #ifdef DEBUG_BITBLT
@@ -617,80 +617,82 @@ int cirrus_bitblt_videotocpu(gd5446_t *gd5446, svga_t *svga)
 	return 0;
 }
 
-int cirrus_bitblt_videotovideo(gd5446_t *gd5446, svga_t *svga)
+int cirrus_bitblt_videotovideo(clgd_t *clgd, svga_t *svga)
 {
 	int ret;
 
-	if (gd5446->blt.mode & CIRRUS_BLTMODE_PATTERNCOPY)
+	if (clgd->blt.mode & CIRRUS_BLTMODE_PATTERNCOPY)
 	{
-		ret = cirrus_bitblt_videotovideo_patterncopy(gd5446, svga);
+		ret = cirrus_bitblt_videotovideo_patterncopy(clgd, svga);
 	}
 	else
 	{
-		ret = cirrus_bitblt_videotovideo_copy(gd5446, svga);
+		ret = cirrus_bitblt_videotovideo_copy(clgd, svga);
 	}
 	if (ret)
-		cirrus_bitblt_reset(gd5446, svga);
+		cirrus_bitblt_reset(clgd, svga);
 	return ret;
 }
 
-void cirrus_bitblt_start(gd5446_t *gd5446, svga_t *svga)
+void cirrus_bitblt_start(clgd_t *clgd, svga_t *svga)
 {
 	uint8_t blt_rop;
 
 	svga->gdcreg[0x31] |= CIRRUS_BLT_BUSY;
 
-	gd5446->blt.width = (svga->gdcreg[0x20] | (svga->gdcreg[0x21] << 8)) + 1;
-	gd5446->blt.height = (svga->gdcreg[0x22] | (svga->gdcreg[0x23] << 8)) + 1;
-	gd5446->blt.dst_pitch = (svga->gdcreg[0x24] | (svga->gdcreg[0x25] << 8));
-	gd5446->blt.src_pitch = (svga->gdcreg[0x26] | (svga->gdcreg[0x27] << 8));
-	gd5446->blt.dst_addr = (svga->gdcreg[0x28] | (svga->gdcreg[0x29] << 8) || (svga->gdcreg[0x2a] << 16));
-	gd5446->blt.src_addr = (svga->gdcreg[0x2c] | (svga->gdcreg[0x2d] << 8) || (svga->gdcreg[0x2e] << 16));
-	gd5446->blt.mode = svga->gdcreg[0x30];
-	gd5446->blt.modeext = svga->gdcreg[0x33];
+	clgd->blt.width = (svga->gdcreg[0x20] | (svga->gdcreg[0x21] << 8)) + 1;
+	clgd->blt.height = (svga->gdcreg[0x22] | (svga->gdcreg[0x23] << 8)) + 1;
+	clgd->blt.dst_pitch = (svga->gdcreg[0x24] | (svga->gdcreg[0x25] << 8));
+	clgd->blt.src_pitch = (svga->gdcreg[0x26] | (svga->gdcreg[0x27] << 8));
+	clgd->blt.dst_addr = (svga->gdcreg[0x28] | (svga->gdcreg[0x29] << 8) || (svga->gdcreg[0x2a] << 16));
+	clgd->blt.src_addr = (svga->gdcreg[0x2c] | (svga->gdcreg[0x2d] << 8) || (svga->gdcreg[0x2e] << 16));
+	clgd->blt.mode = svga->gdcreg[0x30];
+	clgd->blt.modeext = svga->gdcreg[0x33];
 	blt_rop = svga->gdcreg[0x32];
 
 #ifdef DEBUG_BITBLT
 	printf("rop=0x%02x mode=0x%02x modeext=0x%02x w=%d h=%d dpitch=%d spitch=%d daddr=0x%08x saddr=0x%08x writemask=0x%02x\n",
 		blt_rop,
-		gd5446->blt.mode,
-		gd5446->blt.modeext,
-		gd5446->blt.width,
-		gd5446->blt.height,
-		gd5446->blt.dst_pitch,
-		gd5446->blt.src_pitch,
-		gd5446->blt.dst_addr,
-		gd5446->blt.src_addr,
+		clgd->blt.mode,
+		clgd->blt.modeext,
+		clgd->blt.width,
+		clgd->blt.height,
+		clgd->blt.dst_pitch,
+		clgd->blt.src_pitch,
+		clgd->blt.dst_addr,
+		clgd->blt.src_addr,
 		svga->gdcreg[0x2f]);
 #endif
                 
-	if (gd5446->blt.mode & 0x04)
+#ifdef LEGACY_CIRRUS_MAPPING
+	if (clgd->blt.mode & 0x04)
 	{
 //		pclog("blt.mode & 0x04\n");
-		mem_mapping_set_handler(&svga->mapping, NULL, NULL, NULL, gd5446_blt_write_b, gd5446_blt_write_w, gd5446_blt_write_l);
-		mem_mapping_set_p(&svga->mapping, gd5446);
+		mem_mapping_set_handler(&svga->mapping, NULL, NULL, NULL, clgd_blt_write_b, clgd_blt_write_w, clgd_blt_write_l);
+		mem_mapping_set_p(&svga->mapping, clgd);
 		return;
 	}
 	else
 	{
-		mem_mapping_set_handler(&gd5446->svga.mapping, gd5446_read, NULL, NULL, gd5446_write, NULL, NULL);
-		mem_mapping_set_p(&gd5446->svga.mapping, gd5446);
-		gd5446_recalc_mapping(gd5446);
+		mem_mapping_set_handler(&svga->mapping, svga_read_cirrus, svga_readw, svga_readl, svga_write_cirrus, svga_writew, svga_writel);
+		mem_mapping_set_p(&svga->mapping, svga);
+		clgd_recalc_mapping(clgd);
 	}
+#endif
 
-	switch (gd5446->blt.mode & CIRRUS_BLTMODE_PIXELWIDTHMASK)
+	switch (clgd->blt.mode & CIRRUS_BLTMODE_PIXELWIDTHMASK)
 	{
 		case CIRRUS_BLTMODE_PIXELWIDTH8:
-			gd5446->blt.pixel_width = 1;
+			clgd->blt.pixel_width = 1;
 			break;
 		case CIRRUS_BLTMODE_PIXELWIDTH16:
-			gd5446->blt.pixel_width = 2;
+			clgd->blt.pixel_width = 2;
 			break;
 		case CIRRUS_BLTMODE_PIXELWIDTH24:
-			gd5446->blt.pixel_width = 3;
+			clgd->blt.pixel_width = 3;
 			break;
 		case CIRRUS_BLTMODE_PIXELWIDTH32:
-			gd5446->blt.pixel_width = 4;
+			clgd->blt.pixel_width = 4;
 			break;
 		default:
 #ifdef DEBUG_BITBLT
@@ -698,9 +700,9 @@ void cirrus_bitblt_start(gd5446_t *gd5446, svga_t *svga)
 #endif
 			goto bitblt_ignore;
 	}
-	gd5446->blt.mode &= ~CIRRUS_BLTMODE_PIXELWIDTHMASK;
+	clgd->blt.mode &= ~CIRRUS_BLTMODE_PIXELWIDTHMASK;
 
-	if ((gd5446->blt.mode & (CIRRUS_BLTMODE_MEMSYSSRC | CIRRUS_BLTMODE_MEMSYSDEST)) == (CIRRUS_BLTMODE_MEMSYSSRC | CIRRUS_BLTMODE_MEMSYSDEST))
+	if ((clgd->blt.mode & (CIRRUS_BLTMODE_MEMSYSSRC | CIRRUS_BLTMODE_MEMSYSDEST)) == (CIRRUS_BLTMODE_MEMSYSSRC | CIRRUS_BLTMODE_MEMSYSDEST))
 	{
 #ifdef DEBUG_BITBLT
 		printf("cirrus: bitblt - memory-to-memory copy is requested\n");
@@ -708,82 +710,82 @@ void cirrus_bitblt_start(gd5446_t *gd5446, svga_t *svga)
 		goto bitblt_ignore;
 	}
 
-	if ((gd5446->blt.modeext & CIRRUS_BLTMODEEXT_SOLIDFILL) &&
-		(gd5446->blt.mode & (CIRRUS_BLTMODE_MEMSYSDEST | CIRRUS_BLTMODE_TRANSPARENTCOMP | CIRRUS_BLTMODE_PATTERNCOPY | CIRRUS_BLTMODE_COLOREXPAND)) ==
+	if ((clgd->blt.modeext & CIRRUS_BLTMODEEXT_SOLIDFILL) &&
+		(clgd->blt.mode & (CIRRUS_BLTMODE_MEMSYSDEST | CIRRUS_BLTMODE_TRANSPARENTCOMP | CIRRUS_BLTMODE_PATTERNCOPY | CIRRUS_BLTMODE_COLOREXPAND)) ==
 		(CIRRUS_BLTMODE_PATTERNCOPY | CIRRUS_BLTMODE_COLOREXPAND))
 	{
-		cirrus_bitblt_fgcol(gd5446, svga);
-		cirrus_bitblt_solidfill(gd5446, svga, blt_rop);
+		cirrus_bitblt_fgcol(clgd, svga);
+		cirrus_bitblt_solidfill(clgd, svga, blt_rop);
 	}
 	else
 	{
-		if ((gd5446->blt.mode & (CIRRUS_BLTMODE_COLOREXPAND | CIRRUS_BLTMODE_PATTERNCOPY)) == CIRRUS_BLTMODE_COLOREXPAND)
+		if ((clgd->blt.mode & (CIRRUS_BLTMODE_COLOREXPAND | CIRRUS_BLTMODE_PATTERNCOPY)) == CIRRUS_BLTMODE_COLOREXPAND)
 		{
-			if (gd5446->blt.mode & CIRRUS_BLTMODE_TRANSPARENTCOMP)
+			if (clgd->blt.mode & CIRRUS_BLTMODE_TRANSPARENTCOMP)
 			{
-				if (gd5446->blt.modeext & CIRRUS_BLTMODEEXT_COLOREXPINV)
-					cirrus_bitblt_bgcol(gd5446, svga);
+				if (clgd->blt.modeext & CIRRUS_BLTMODEEXT_COLOREXPINV)
+					cirrus_bitblt_bgcol(clgd, svga);
 				else
-					cirrus_bitblt_fgcol(gd5446, svga);
-				cirrus_rop = cirrus_colorexpand_transp[rop_to_index[blt_rop]][gd5446->blt.pixel_width - 1];
+					cirrus_bitblt_fgcol(clgd, svga);
+				cirrus_rop = cirrus_colorexpand_transp[rop_to_index[blt_rop]][clgd->blt.pixel_width - 1];
 			}
 			else
 			{
-				cirrus_bitblt_fgcol(gd5446, svga);
-				cirrus_bitblt_bgcol(gd5446, svga);
-				cirrus_rop = cirrus_colorexpand[rop_to_index[blt_rop]][gd5446->blt.pixel_width - 1];
+				cirrus_bitblt_fgcol(clgd, svga);
+				cirrus_bitblt_bgcol(clgd, svga);
+				cirrus_rop = cirrus_colorexpand[rop_to_index[blt_rop]][clgd->blt.pixel_width - 1];
 			}
 		}
-		else if (gd5446->blt.mode & CIRRUS_BLTMODE_PATTERNCOPY)
+		else if (clgd->blt.mode & CIRRUS_BLTMODE_PATTERNCOPY)
 		{
-			if (gd5446->blt.mode & CIRRUS_BLTMODE_COLOREXPAND)
+			if (clgd->blt.mode & CIRRUS_BLTMODE_COLOREXPAND)
 			{
-				if (gd5446->blt.mode & CIRRUS_BLTMODE_TRANSPARENTCOMP)
+				if (clgd->blt.mode & CIRRUS_BLTMODE_TRANSPARENTCOMP)
 				{
-					if (gd5446->blt.modeext & CIRRUS_BLTMODEEXT_COLOREXPINV)
-						cirrus_bitblt_bgcol(gd5446, svga);
+					if (clgd->blt.modeext & CIRRUS_BLTMODEEXT_COLOREXPINV)
+						cirrus_bitblt_bgcol(clgd, svga);
 					else
-						cirrus_bitblt_fgcol(gd5446, svga);
-					cirrus_rop = cirrus_colorexpand_pattern_transp[rop_to_index[blt_rop]][gd5446->blt.pixel_width - 1];
+						cirrus_bitblt_fgcol(clgd, svga);
+					cirrus_rop = cirrus_colorexpand_pattern_transp[rop_to_index[blt_rop]][clgd->blt.pixel_width - 1];
 				}
 				else
 				{
-					cirrus_bitblt_fgcol(gd5446, svga);
-					cirrus_bitblt_bgcol(gd5446, svga);
-					cirrus_rop = cirrus_colorexpand_pattern[rop_to_index[blt_rop]][gd5446->blt.pixel_width - 1];
+					cirrus_bitblt_fgcol(clgd, svga);
+					cirrus_bitblt_bgcol(clgd, svga);
+					cirrus_rop = cirrus_colorexpand_pattern[rop_to_index[blt_rop]][clgd->blt.pixel_width - 1];
 				}
 			}
 			else
 			{
-				cirrus_rop = cirrus_patternfill[rop_to_index[blt_rop]][gd5446->blt.pixel_width - 1];
+				cirrus_rop = cirrus_patternfill[rop_to_index[blt_rop]][clgd->blt.pixel_width - 1];
 			}
 		}
 		else
 		{
-			if (gd5446->blt.mode & CIRRUS_BLTMODE_TRANSPARENTCOMP)
+			if (clgd->blt.mode & CIRRUS_BLTMODE_TRANSPARENTCOMP)
 			{
-				if (gd5446->blt.pixel_width > 2)
+				if (clgd->blt.pixel_width > 2)
 				{
 					printf("src transparent without color expand must be 8bpp or 16bpp\n");
 					goto bitblt_ignore;
 				}
-				if (gd5446->blt.mode & CIRRUS_BLTMODE_BACKWARDS)
+				if (clgd->blt.mode & CIRRUS_BLTMODE_BACKWARDS)
 				{
-					gd5446->blt.dst_pitch = -gd5446->blt.dst_pitch;
-					gd5446->blt.src_pitch = -gd5446->blt.src_pitch;
-					cirrus_rop = cirrus_bkwd_transp_rop[rop_to_index[blt_rop]][gd5446->blt.pixel_width - 1];
+					clgd->blt.dst_pitch = -clgd->blt.dst_pitch;
+					clgd->blt.src_pitch = -clgd->blt.src_pitch;
+					cirrus_rop = cirrus_bkwd_transp_rop[rop_to_index[blt_rop]][clgd->blt.pixel_width - 1];
 				}
 				else
 				{
-					cirrus_rop = cirrus_fwd_transp_rop[rop_to_index[blt_rop]][gd5446->blt.pixel_width - 1];
+					cirrus_rop = cirrus_fwd_transp_rop[rop_to_index[blt_rop]][clgd->blt.pixel_width - 1];
 				}
 			}
 			else
 			{
-				if (gd5446->blt.mode & CIRRUS_BLTMODE_BACKWARDS)
+				if (clgd->blt.mode & CIRRUS_BLTMODE_BACKWARDS)
 				{
-					gd5446->blt.dst_pitch = -gd5446->blt.dst_pitch;
-					gd5446->blt.src_pitch = -gd5446->blt.src_pitch;
+					clgd->blt.dst_pitch = -clgd->blt.dst_pitch;
+					clgd->blt.src_pitch = -clgd->blt.src_pitch;
 					cirrus_rop = cirrus_bkwd_rop[rop_to_index[blt_rop]];
 				}
 				else
@@ -793,25 +795,25 @@ void cirrus_bitblt_start(gd5446_t *gd5446, svga_t *svga)
 			}
 		}
 		// setup bitblt engine.
-		if (gd5446->blt.mode & CIRRUS_BLTMODE_MEMSYSSRC)
+		if (clgd->blt.mode & CIRRUS_BLTMODE_MEMSYSSRC)
 		{
-			if (!cirrus_bitblt_cputovideo(gd5446, svga))  goto bitblt_ignore;
+			if (!cirrus_bitblt_cputovideo(clgd, svga))  goto bitblt_ignore;
 		}
-		else if (gd5446->blt.mode & CIRRUS_BLTMODE_MEMSYSDEST)
+		else if (clgd->blt.mode & CIRRUS_BLTMODE_MEMSYSDEST)
 		{
-			if (!cirrus_bitblt_videotocpu(gd5446, svga))  goto bitblt_ignore;
+			if (!cirrus_bitblt_videotocpu(clgd, svga))  goto bitblt_ignore;
 		}
 		else
 		{
-			if (!cirrus_bitblt_videotovideo(gd5446, svga))  goto bitblt_ignore;
+			if (!cirrus_bitblt_videotovideo(clgd, svga))  goto bitblt_ignore;
 		}
 	}
 	return;
 bitblt_ignore:;
-	cirrus_bitblt_reset(gd5446, svga);
+	cirrus_bitblt_reset(clgd, svga);
 }
 
-void cirrus_write_bitblt(gd5446_t *gd5446, svga_t *svga, unsigned reg_value)
+void cirrus_write_bitblt(clgd_t *clgd, svga_t *svga, unsigned reg_value)
 {
 	unsigned old_value;
 
@@ -821,16 +823,16 @@ void cirrus_write_bitblt(gd5446_t *gd5446, svga_t *svga, unsigned reg_value)
 	if (((old_value & CIRRUS_BLT_RESET) != 0) &&
 		((reg_value & CIRRUS_BLT_RESET) == 0))
 	{
-		cirrus_bitblt_reset(gd5446, svga);
+		cirrus_bitblt_reset(clgd, svga);
 	}
 	else if (((old_value & CIRRUS_BLT_START) == 0) &&
 		((reg_value & CIRRUS_BLT_START) != 0))
 	{
-		cirrus_bitblt_start(gd5446, svga);
+		cirrus_bitblt_start(clgd, svga);
 	}
 }
 
-void cirrus_get_offsets(gd5446_t *gd5446, svga_t *svga, uint32_t *pline_offset, uint32_t *pstart_addr, uint32_t *pline_compare)
+void cirrus_get_offsets(clgd_t *clgd, svga_t *svga, uint32_t *pline_offset, uint32_t *pstart_addr, uint32_t *pline_compare)
 {
 	uint32_t start_addr, line_offset, line_compare;
 
@@ -851,7 +853,7 @@ void cirrus_get_offsets(gd5446_t *gd5446, svga_t *svga, uint32_t *pline_offset, 
 	*pline_compare = line_compare;
 }
 
-uint32_t cirrus_get_bpp16_depth(gd5446_t *gd5446, svga_t *svga)
+uint32_t cirrus_get_bpp16_depth(clgd_t *clgd, svga_t *svga)
 {
 	uint32_t ret = 16;
 
@@ -873,7 +875,7 @@ uint32_t cirrus_get_bpp16_depth(gd5446_t *gd5446, svga_t *svga)
 	return ret;
 }
 
-int cirrus_get_bpp(gd5446_t *gd5446, svga_t *svga)
+int cirrus_get_bpp(clgd_t *clgd, svga_t *svga)
 {
 	uint32_t ret = 8;
 
@@ -886,13 +888,13 @@ int cirrus_get_bpp(gd5446_t *gd5446, svga_t *svga)
 				ret = 8;
 				break;
 			case CIRRUS_SR7_BPP_16_DOUBLEVCLK:
-				ret = cirrus_get_bpp16_depth(gd5446, svga);
+				ret = cirrus_get_bpp16_depth(clgd, svga);
 				break;
 			case CIRRUS_SR7_BPP_24:
 				ret = 24;
 				break;
 			case CIRRUS_SR7_BPP_16:
-				ret = cirrus_get_bpp16_depth(gd5446, svga);
+				ret = cirrus_get_bpp16_depth(clgd, svga);
 				break;
 			case CIRRUS_SR7_BPP_32:
 				ret = 32;
@@ -914,7 +916,7 @@ int cirrus_get_bpp(gd5446_t *gd5446, svga_t *svga)
 	return ret;
 }
 
-void cirrus_get_resolution(gd5446_t *gd5446, svga_t *svga, int *pwidth, int *pheight)
+void cirrus_get_resolution(clgd_t *clgd, svga_t *svga, int *pwidth, int *pheight)
 {
 	int width, height;
 
@@ -927,7 +929,7 @@ void cirrus_get_resolution(gd5446_t *gd5446, svga_t *svga, int *pwidth, int *phe
 	*pheight = height;
 }
 
-void cirrus_update_bank_ptr(gd5446_t *gd5446, svga_t *svga, unsigned bank_index)
+void cirrus_update_bank_ptr(clgd_t *clgd, svga_t *svga, unsigned bank_index)
 {
 	unsigned offset;
 	unsigned limit;
@@ -942,10 +944,10 @@ void cirrus_update_bank_ptr(gd5446_t *gd5446, svga_t *svga, unsigned bank_index)
 	else
 		offset <<= 12;
 
-	if (gd5446_vram_size <= offset)
+	if (clgd_vram_size <= offset)
 		limit = 0;
 	else
-		limit = gd5446_vram_size - offset;
+		limit = clgd_vram_size - offset;
 
 	if (((svga->gdcreg[0xb] & 1) == 0) && (bank_index != 0))
 	{
@@ -962,13 +964,13 @@ void cirrus_update_bank_ptr(gd5446_t *gd5446, svga_t *svga, unsigned bank_index)
 
 	if (limit > 0)
 	{
-		gd5446->bank_base[bank_index] = offset;
-		gd5446->bank_limit[bank_index] = limit;
+		clgd->bank_base[bank_index] = offset;
+		clgd->bank_limit[bank_index] = limit;
 	}
 	else
 	{
-		gd5446->bank_base[bank_index] = 0;
-		gd5446->bank_limit[bank_index] = 0;
+		clgd->bank_base[bank_index] = 0;
+		clgd->bank_limit[bank_index] = 0;
 	}
 }
 

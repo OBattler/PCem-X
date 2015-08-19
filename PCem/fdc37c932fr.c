@@ -20,6 +20,106 @@ static uint8_t fdc37c932fr_ld_regs[10][256];
 
 static uint8_t tries;
 
+static uint16_t ld0_valid_ports[2] = {0x3F0, 0x370};
+static uint16_t ld1_valid_ports[2] = {0x1F0, 0x170};
+static uint16_t ld1_valid_ports2[2] = {0x3F6, 0x376};
+static uint16_t ld2_valid_ports[2] = {0x170, 0x1F0};
+static uint16_t ld2_valid_ports2[2] = {0x376, 0x3F6};
+static uint16_t ld3_valid_ports[3] = {0x3BC, 0x378, 0x278};
+static uint16_t ld4_valid_ports[9] = {0x3F8, 0x2F8, 0x338, 0x3E8, 0x2E8, 0x220, 0x238, 0x2E0, 0x228};
+static uint16_t ld5_valid_ports[9] = {0x3F8, 0x2F8, 0x338, 0x3E8, 0x2E8, 0x220, 0x238, 0x2E0, 0x228};
+static uint16_t ld5_valid_ports2[9] = {0x3F8, 0x2F8, 0x338, 0x3E8, 0x2E8, 0x220, 0x238, 0x2E0, 0x228};
+
+static uint8_t is_in_array(uint16_t *port_array, uint8_t max, uint16_t port)
+{
+	uint8_t i = 0;
+
+	for (i = 0; i < max; i++)
+	{
+		if (port_array[i] == port)  return 1;
+	}
+	return 0;
+}
+
+static uint16_t make_port(uint8_t ld)
+{
+	uint16_t r0 = fdc37c932fr_ld_regs[ld][0x60];
+	uint16_t r1 = fdc37c932fr_ld_regs[ld][0x61];
+
+	uint16_t p = (r0 << 8) + r1;
+
+	switch(ld)
+	{
+		case 0:
+			p &= 0xFF8;
+			if ((p < 0x100) || (p > 0xFF8))  p = 0x3F0;
+			if (!(is_in_array(ld0_valid_ports, 2, p)))  p = 0x3F0;
+			break;
+		case 1:
+			p &= 0xFF8;
+			if ((p < 0x100) || (p > 0xFF8))  p = 0x1F0;
+			if (!(is_in_array(ld1_valid_ports, 2, p)))  p = 0x1F0;
+			break;
+		case 2:
+			p &= 0xFF8;
+			if ((p < 0x100) || (p > 0xFF8))  p = 0x170;
+			if (!(is_in_array(ld2_valid_ports, 2, p)))  p = 0x170;
+			break;
+		case 3:
+			p &= 0xFF8;
+			if ((p < 0x100) || (p > 0xFF8))  p = 0x378;
+			if (!(is_in_array(ld3_valid_ports, 3, p)))  p = 0x378;
+			break;
+		case 4:
+			p &= 0xFF8;
+			if ((p < 0x100) || (p > 0xFF8))  p = 0x3F8;
+			if (!(is_in_array(ld4_valid_ports, 9, p)))  p = 0x3F8;
+			break;
+		case 5:
+			p &= 0xFF8;
+			if ((p < 0x100) || (p > 0xFF8))  p = 0x2F8;
+			if (!(is_in_array(ld5_valid_ports, 9, p)))  p = 0x2F8;
+			break;
+	}
+
+	fdc37c932fr_ld_regs[ld][0x60] = (p >> 8);
+	fdc37c932fr_ld_regs[ld][0x61] = (p & 0xFF);
+
+	return p;
+}
+
+uint16_t make_port2(uint8_t ld)
+{
+	uint16_t r0 = fdc37c932fr_ld_regs[ld][0x62];
+	uint16_t r1 = fdc37c932fr_ld_regs[ld][0x63];
+
+	uint16_t p = (r0 << 8) + r1;
+
+	switch(ld)
+	{
+		case 1:
+			p &= 0xFFF;
+			if ((p < 0x100) || (p > 0xFF8))  p = 0x3F6;
+			if (!(is_in_array(ld1_valid_ports2, 2, p)))  p = 0x3F6;
+			break;
+		case 2:
+			p &= 0xFFF;
+			if ((p < 0x100) || (p > 0xFF8))  p = 0x376;
+			if (!(is_in_array(ld2_valid_ports2, 2, p)))  p = 0x376;
+			break;
+		case 5:
+			p &= 0xFF8;
+			if ((p < 0x100) || (p > 0xFF8))  p = 0x3E8;
+			if (!(is_in_array(ld5_valid_ports2, 9, p)))  p = 0x3E8;
+			break;
+	}
+
+	fdc37c932fr_ld_regs[ld][0x62] = (p >> 8);
+	fdc37c932fr_ld_regs[ld][0x63] = (p & 0xFF);
+
+	return p;
+}
+
 void fdc37c932fr_write(uint16_t port, uint8_t val, void *priv)
 {
 	uint8_t index = (port & 1) ? 0 : 1;
@@ -100,17 +200,19 @@ process_value:
 							fdc_remove();
 						else
 						{
-							ld_port = (fdc37c932fr_ld_regs[0][0x60] << 8) + fdc37c932fr_ld_regs[0][0x61];
+							ld_port = make_port(0);
 							fdc_add_ex(ld_port, 1);
 						}
 					}
 					break;
 				case 0x60:
 				case 0x61:
-					if (valxor)
+					if (valxor && fdc37c932fr_ld_regs[0][0x30])
 					{
 						fdc_remove();
-						ld_port = (fdc37c932fr_ld_regs[0][0x60] << 8) + fdc37c932fr_ld_regs[0][0x61];
+						ld_port = make_port(0);
+						fdc37c932fr_ld_regs[0][0x60] = make_port(0) >> 8;
+						fdc37c932fr_ld_regs[0][0x61] = make_port(0) & 0xFF;
 						fdc_add_ex(ld_port, 1);
 					}
 					break;
@@ -144,8 +246,9 @@ process_value:
 							ide_pri_disable();
 						else
 						{
-							ld_port = (fdc37c932fr_ld_regs[1][0x60] << 8) + fdc37c932fr_ld_regs[1][0x61];
-							ld_port2 = (fdc37c932fr_ld_regs[1][0x62] << 8) + fdc37c932fr_ld_regs[1][0x63];
+							ld_port = make_port(1);
+							ld_port2 = make_port2(1);
+							pclog("IDE 1 ports: %04X, %04X\n", ld_port, ld_port2);
 							ide_pri_enable_custom(ld_port, ld_port2);
 						}
 					}
@@ -154,11 +257,12 @@ process_value:
 				case 0x61:
 				case 0x62:
 				case 0x63:
-					if (valxor)
+					if (valxor && fdc37c932fr_ld_regs[1][0x30])
 					{
 						ide_pri_disable();
-						ld_port = (fdc37c932fr_ld_regs[1][0x60] << 8) + fdc37c932fr_ld_regs[1][0x61];
-						ld_port2 = (fdc37c932fr_ld_regs[1][0x62] << 8) + fdc37c932fr_ld_regs[1][0x63];
+						ld_port = make_port(1);
+						ld_port2 = make_port2(1);
+						pclog("IDE 1 ports: %04X, %04X\n", ld_port, ld_port2);
 						ide_pri_enable_custom(ld_port, ld_port2);
 					}
 					break;
@@ -177,8 +281,9 @@ process_value:
 							ide_sec_disable();
 						else
 						{
-							ld_port = (fdc37c932fr_ld_regs[2][0x60] << 8) + fdc37c932fr_ld_regs[2][0x61];
-							ld_port2 = (fdc37c932fr_ld_regs[2][0x62] << 8) + fdc37c932fr_ld_regs[2][0x63];
+							ld_port = make_port(2);
+							ld_port2 = make_port2(2);
+							pclog("IDE 2 ports: %04X, %04X\n", ld_port, ld_port2);
 							ide_sec_enable_custom(ld_port, ld_port2);
 						}
 					}
@@ -187,11 +292,12 @@ process_value:
 				case 0x61:
 				case 0x62:
 				case 0x63:
-					if (valxor)
+					if (valxor && fdc37c932fr_ld_regs[2][0x30])
 					{
 						ide_sec_disable();
-						ld_port = (fdc37c932fr_ld_regs[2][0x60] << 8) + fdc37c932fr_ld_regs[2][0x61];
-						ld_port2 = (fdc37c932fr_ld_regs[2][0x62] << 8) + fdc37c932fr_ld_regs[2][0x63];
+						ld_port = make_port(2);
+						ld_port2 = make_port2(2);
+						pclog("IDE 2 ports: %04X, %04X\n", ld_port, ld_port2);
 						ide_sec_enable_custom(ld_port, ld_port2);
 					}
 					break;
@@ -209,17 +315,17 @@ process_value:
 							lpt1_remove();
 						else
 						{
-							ld_port = (fdc37c932fr_ld_regs[3][0x60] << 8) + fdc37c932fr_ld_regs[3][0x61];
+							ld_port = make_port(3);
 							lpt1_init(ld_port);
 						}
 					}
 					break;
 				case 0x60:
 				case 0x61:
-					if (valxor)
+					if (valxor && fdc37c932fr_ld_regs[3][0x30])
 					{
 						lpt1_remove();
-						ld_port = (fdc37c932fr_ld_regs[3][0x60] << 8) + fdc37c932fr_ld_regs[3][0x61];
+						ld_port = make_port(3);
 						lpt1_init(ld_port);
 					}
 					break;
@@ -237,7 +343,7 @@ process_value:
 							serial1_remove();
 						else
 						{
-							ld_port = (fdc37c932fr_ld_regs[4][0x60] << 8) + fdc37c932fr_ld_regs[4][0x61];
+							ld_port = make_port(4);
 							serial1_set(ld_port, fdc37c932fr_ld_regs[4][0x70]);
 							mouse_serial_init();
 						}
@@ -246,9 +352,9 @@ process_value:
 				case 0x60:
 				case 0x61:
 				case 0x70:
-					if (valxor)
+					if (valxor && fdc37c932fr_ld_regs[4][0x30])
 					{
-						ld_port = (fdc37c932fr_ld_regs[4][0x60] << 8) + fdc37c932fr_ld_regs[4][0x61];
+						ld_port = make_port(4);
 						serial1_set(ld_port, fdc37c932fr_ld_regs[4][0x70]);
 						mouse_serial_init();
 					}
@@ -267,7 +373,7 @@ process_value:
 							serial2_remove();
 						else
 						{
-							ld_port = (fdc37c932fr_ld_regs[5][0x60] << 8) + fdc37c932fr_ld_regs[5][0x61];
+							ld_port = make_port(5);
 							serial2_set(ld_port, fdc37c932fr_ld_regs[5][0x70]);
 						}
 					}
@@ -275,9 +381,9 @@ process_value:
 				case 0x60:
 				case 0x61:
 				case 0x70:
-					if (valxor)
+					if (valxor && fdc37c932fr_ld_regs[5][0x30])
 					{
-						ld_port = (fdc37c932fr_ld_regs[5][0x60] << 8) + fdc37c932fr_ld_regs[5][0x61];
+						ld_port = make_port(5);
 						serial2_set(ld_port, fdc37c932fr_ld_regs[5][0x70]);
 					}
 					break;
@@ -311,6 +417,11 @@ uint8_t fdc37c932fr_read(uint16_t port, void *priv)
 			return fdc37c932fr_ld_regs[fdc37c932fr_regs[7]][fdc37c932fr_curreg];
 		}
 	}
+}
+
+uint8_t ap5t_read(uint16_t port, void *priv)
+{
+	return 0xfe;
 }
 
 void fdc37c932fr_init()
@@ -372,6 +483,7 @@ void fdc37c932fr_init()
 	fdc37c932fr_ld_regs[4][0x60] = 3;
 	fdc37c932fr_ld_regs[4][0x61] = 0xf8;
 	fdc37c932fr_ld_regs[4][0x70] = 4;
+	fdc37c932fr_ld_regs[4][0xF0] = 3;
 
 	/* Logical device 5: Serial Port 2 */
 	fdc37c932fr_ld_regs[5][0x30] = 1;
@@ -400,5 +512,6 @@ void fdc37c932fr_init()
 	densel_force = 0;
 	fdc_setswap(0);
         io_sethandler(0x3f0, 0x0002, fdc37c932fr_read, NULL, NULL, fdc37c932fr_write, NULL, NULL,  NULL);
+        io_sethandler(0x92, 0x0001, ap5t_read, NULL, NULL, NULL, NULL, NULL,  NULL);
         fdc37c932fr_locked = 0;
 }

@@ -11,7 +11,9 @@
 #define IDM_CONFIG_LOAD    40021
 #define IDM_CONFIG_SAVE    40022
 #define IDM_STATUS         40030
+#ifndef __MINGW64__
 #define IDM_DEBUG          40040
+#endif
 #define IDM_VID_RESIZE     40050
 #define IDM_VID_DDRAW      40060
 #define IDM_VID_D3D        40061
@@ -33,15 +35,19 @@
 #define IDC_COMBO486 1006
 #define IDC_COMBOSND 1007
 #define IDC_COMBOCHC 1008
+#ifndef __MINGW64__
 #define IDC_COMBONET 1009
+#endif
 #define IDC_COMBOCPUM 1060
 #define IDC_COMBOSPD  1061
 #define IDC_COMBOFDA 1062
 #define IDC_COMBOFDB 1063
 #define IDC_CHECKFORCE43 1064
 #define IDC_CHECKPS1XTIDE 1065
+#ifndef __MINGW64__
 #define IDC_DSBAR 1066
 #define IDC_DEBUGTEXT 1067
+#endif
 #define IDC_CHECK1 1010
 #define IDC_CHECK2 1011
 #define IDC_CHECK3 1012
@@ -110,7 +116,9 @@
 #define IDC_CONFIGUREVID 1200
 #define IDC_CONFIGURESND 1201
 #define IDC_CONFIGUREVOODOO 1202
+#ifndef __MINGW64__
 #define IDC_CONFIGURENET 1203
+#endif
 
 #define IDC_CONFIG_BASE 1200
 

@@ -5,13 +5,17 @@
 
 #include "ibm.h"
 #include "config.h"
-#include "device.h"
+#include "win-deviceconfig.h"
 #include "resources.h"
 #include "win.h"
 
 static device_t *config_device;
 
+#ifndef __MINGW64__
 static BOOL CALLBACK deviceconfig_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPARAM lParam)
+#else
+static INT_PTR CALLBACK deviceconfig_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPARAM lParam)
+#endif
 {
         switch (message)
         {
@@ -165,13 +169,14 @@ static BOOL CALLBACK deviceconfig_dlgproc(HWND hdlg, UINT message, WPARAM wParam
 void deviceconfig_open(HWND hwnd, device_t *device)
 {
         device_config_t *config = device->config;
-        uint16_t *data = malloc(16384);
-        DLGTEMPLATE *dlg = (DLGTEMPLATE *)data;
+        uint16_t *data_block = malloc(16384);
+        uint16_t *data;
+        DLGTEMPLATE *dlg = (DLGTEMPLATE *)data_block;
         DLGITEMTEMPLATE *item;
         int y = 10;
         int id = IDC_CONFIG_BASE;
 
-        memset(data, 0, 4096);
+        memset(data_block, 0, 4096);
         
         dlg->style = DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU;
         dlg->x  = 10;
@@ -188,7 +193,11 @@ void deviceconfig_open(HWND hwnd, device_t *device)
         *data++ = 8; /*Point*/
         data += MultiByteToWideChar(CP_ACP, 0, "MS Sans Serif", -1, data, 50);
         
+#ifndef __MINGW64__
         if (((unsigned long)data) & 2)
+#else
+        if (((unsigned long long)data) & 2)
+#endif
                 data++;
 
         while (config->type != -1)
@@ -235,7 +244,11 @@ void deviceconfig_open(HWND hwnd, device_t *device)
                         data += MultiByteToWideChar(CP_ACP, 0, config->description, -1, data, 256);
                         *data++ = 0;              // no creation data
                         
+#ifndef __MINGW64__
                         if (((unsigned long)data) & 2)
+#else
+                        if (((unsigned long long)data) & 2)
+#endif
                                 data++;
 
                         /*Static text*/
@@ -256,14 +269,22 @@ void deviceconfig_open(HWND hwnd, device_t *device)
                         data += MultiByteToWideChar(CP_ACP, 0, config->description, -1, data, 256);
                         *data++ = 0;              // no creation data
                         
+#ifndef __MINGW64__
                         if (((unsigned long)data) & 2)
+#else
+                        if (((unsigned long long)data) & 2)
+#endif
                                 data++;
 
                         y += 20;
                         break;
                 }
 
+#ifndef __MINGW64__
                 if (((unsigned long)data) & 2)
+#else
+                if (((unsigned long long)data) & 2)
+#endif
                         data++;
 
                 config++;
@@ -289,8 +310,12 @@ void deviceconfig_open(HWND hwnd, device_t *device)
         data += MultiByteToWideChar(CP_ACP, 0, "OK", -1, data, 50);
         *data++ = 0;              // no creation data
 
+#ifndef __MINGW64__
         if (((unsigned long)data) & 2)
-                data++;
+#else
+        if (((unsigned long long)data) & 2)
+#endif
+		data++;
                 
         item = (DLGITEMTEMPLATE *)data;
         item->x = 80;
@@ -313,5 +338,5 @@ void deviceconfig_open(HWND hwnd, device_t *device)
         
         DialogBoxIndirect(hinstance, dlg, hwnd, deviceconfig_dlgproc);
 
-        free(data);
+        free(data_block);
 }

@@ -1,8 +1,10 @@
 // ID
+#define CIRRUS_ID_CLGD6235  (0x22<<2)
 #define CIRRUS_ID_CLGD5422  (0x23<<2)
 #define CIRRUS_ID_CLGD5426  (0x24<<2)
 #define CIRRUS_ID_CLGD5424  (0x25<<2)
 #define CIRRUS_ID_CLGD5428  (0x26<<2)
+#define CIRRUS_ID_CLGD5429  (0x27<<2)
 #define CIRRUS_ID_CLGD5430  (0x28<<2)
 #define CIRRUS_ID_CLGD5434  (0x2A<<2)
 #define CIRRUS_ID_CLGD5436  (0x2B<<2)
@@ -124,7 +126,7 @@
 
 #define CIRRUS_BLTBUFSIZE (2048 * 4) /* one line width */
 
-typedef struct gd5446_t
+typedef struct clgd_t
 {
         mem_mapping_t mmio_mapping;
         
@@ -142,6 +144,7 @@ typedef struct gd5446_t
 	uint32_t linear_mmio_mask;
 
 	uint8_t *pbank[2];
+	mem_mapping_t mbank[2];
        
         uint32_t bank[2];
         uint32_t mask;
@@ -178,36 +181,38 @@ typedef struct gd5446_t
 		uint16_t pixel_width, pixel_height;
         } blt;
 
-} gd5446_t;
+} clgd_t;
 
-typedef void (*cirrus_bitblt_rop_t) (gd5446_t *gd5446, svga_t *svga,
+typedef void (*cirrus_bitblt_rop_t) (clgd_t *clgd, svga_t *svga,
 					uint8_t * dst, const uint8_t * src,
 					int dstpitch, int srcpitch,
 					int bltwidth, int bltheight);
 
-typedef void (*cirrus_fill_t)(gd5446_t *gd5446, svga_t *svga,
+typedef void (*cirrus_fill_t)(clgd_t *clgd, svga_t *svga,
 				uint8_t *dst, int dst_pitch, int width, int height);
 
 cirrus_bitblt_rop_t cirrus_rop;
 
+extern device_t gd5422_device;
+extern device_t gd5429_device;
 extern device_t gd5436_device;
 extern device_t gd5446_device;
+extern device_t gd6235_device;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-void gd5446_out(uint16_t addr, uint8_t val, void *p);
+void clgd_out(uint16_t addr, uint8_t val, void *p);
 #ifdef __cplusplus
 }
 #endif
 
-void gd5446_write(uint32_t addr, uint8_t val, void *p);
-uint8_t gd5446_read(uint32_t addr, void *p);
-
-void gd5446_blt_write_b(uint32_t addr, uint8_t val, void *p);
-void gd5446_blt_write_w(uint32_t addr, uint16_t val, void *p);
-void gd5446_blt_write_l(uint32_t addr, uint32_t val, void *p);
+void clgd_blt_write_b(uint32_t addr, uint8_t val, void *p);
+void clgd_blt_write_w(uint32_t addr, uint16_t val, void *p);
+void clgd_blt_write_l(uint32_t addr, uint32_t val, void *p);
 
 int dodump;
 
-gd5446_t *gd5446;
+clgd_t *clgd;
+
+void cirrus_update_memory_access(clgd_t *clgd);

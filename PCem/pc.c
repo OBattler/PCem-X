@@ -23,7 +23,9 @@
 #include "keyboard.h"
 #include "model.h"
 #include "mouse.h"
+#ifndef __MINGW64__
 #include "nethandler.h"
+#endif
 #include "nvr.h"
 #include "pc.h"
 #include "pic.h"
@@ -161,6 +163,7 @@ int cpuspeed2;
 int clocks[3][12][4]=
 {
 	// 4772728
+#ifdef WRONG_8088
         {
                 {3512199,13920,59660,5965},  /*4.77MHz*/
                 {5887115,23333,110000,0}, /*8MHz*/
@@ -168,6 +171,15 @@ int clocks[3][12][4]=
                 {8830672,35000,165000,0}, /*12MHz*/
                 {11774229,46666,220000,0}, /*16MHz*/
         },
+#else
+        {
+                {4772727,13920,59660,5965},  /*4.77MHz*/
+                {8000000,23333,110000,0}, /*8MHz*/
+                {10000000,29166,137500,0}, /*10MHz*/
+                {12000000,35000,165000,0}, /*12MHz*/
+                {16000000,46666,220000,0}, /*16MHz*/
+        },
+#endif
         {
                 {8000000,23333,110000,0}, /*8MHz*/
                 {12000000,35000,165000,0}, /*12MHz*/
@@ -247,6 +259,11 @@ void initpc()
         loadconfig(NULL);
         pclog("Config loaded\n");
 
+	pclog("Loading pre-EGA font ROMs...\n");
+	loadfont("mda.rom", 0, cga_fontdat, cga_fontdatm);
+	loadfont("roms/pc1512/40078.ic127", 0, pc1512_fontdat, pc1512_fontdatm);
+	loadfont("roms/pc200/40109.bin", 0, pc200_fontdat, pc200_fontdatm);
+
 #if DYNAREC
         codegen_init();
 #endif
@@ -264,17 +281,22 @@ void initpc()
         mem_add_bios();
         initvideo();
 
+	voodoo_generate_filter();
+
         loaddisc(0,discfns[0]);
         loaddisc(1,discfns[1]);
 
         timer_reset();
         sound_reset();
+#ifndef __MINGW64__
         vlan_reset();
+#endif
 	fdc_init();
 
         //loadfont();
         loadnvr();
         sound_init();
+        model_init();
         resetide();
 #if __unix
 	if (cdrom_drive == -1)
@@ -282,11 +304,12 @@ void initpc()
 	else
 #endif
 	        ioctl_open(cdrom_drive);
-        model_init();
         video_init();
         speaker_init();
         sound_card_init(sound_card_current);
+#ifndef __MINGW64__
         network_card_init(network_card_current);
+#endif
         if (GUS)
                 device_add(&gus_device);
         if (GAMEBLASTER)
@@ -337,14 +360,18 @@ void resetpchard()
 
         timer_reset();
         sound_reset();
+#ifndef __MINGW64__
         vlan_reset();
+#endif
         mem_resize();
         fdc_hard_reset();
         model_init();
         video_init();
         speaker_init();
         sound_card_init(sound_card_current);
+#ifndef __MINGW64__
         network_card_init(network_card_current);
+#endif
 	pclog("GUS...\n");
         if (GUS)
                 device_add(&gus_device);
@@ -400,6 +427,19 @@ int serial_fifo_read, serial_fifo_write;
 
 int emu_fps = 0;
 
+uint8_t is_nonat_286()
+{
+	if ((romset == ROM_IBMPC) || (romset == ROM_IBMXT) || (romset == ROM_GENXT) || (romset == ROM_AMIXT) || (romset == ROM_DTKXT) || (romset == ROM_LTXT) || (romset == ROM_LXT3))
+	{
+		if (cpu_manufacturer == 1)
+			return 1;
+		else
+			return 0;
+	}
+	else
+		return 0;
+}
+
 void runpc()
 {
         char s[200];
@@ -410,9 +450,9 @@ void runpc()
                 if (is486)   exec386(models[model].cpu[cpu_manufacturer].cpus[cpu].rspeed / 100);
 #ifdef DYNAREC
                 else if (is386) exec386i(models[model].cpu[cpu_manufacturer].cpus[cpu].rspeed / 100);
-                else if (AT) exec286(models[model].cpu[cpu_manufacturer].cpus[cpu].rspeed / 100);
+                else if (AT || is_nonat_286()) exec286(models[model].cpu[cpu_manufacturer].cpus[cpu].rspeed / 100);
 #else
-                else if (AT) exec386(models[model].cpu[cpu_manufacturer].cpus[cpu].rspeed / 100);
+                else if (AT || is_nonat_286()) exec386(models[model].cpu[cpu_manufacturer].cpus[cpu].rspeed / 100);
 #endif
                 else         execx86(models[model].cpu[cpu_manufacturer].cpus[cpu].rspeed / 100);
                 keyboard_poll_host();
@@ -485,7 +525,7 @@ void runpc()
 				}
 				else
 				{
-					if (AT)
+					if (AT || is_nonat_286())
 					{
                         			sprintf(s, "PCem-X v9 [INT 286] - %i%% - %s - %s - %s", fps, model_getname(), models[model].cpu[cpu_manufacturer].cpus[cpu].name, (!mousecapture) ? "Click to capture mouse" : "Press CTRL-END or middle button to release mouse");
 					}
@@ -579,10 +619,12 @@ void loadconfig(char *fn)
 
         model = config_get_int(NULL, "model", 14);
 
+#ifndef __MINGW64__
         ethif = config_get_int(NULL, "netinterface", 1);
 
         if (ethif >= inum)
                 inum = ethif + 1;
+#endif
 
         if (model >= model_count())
                 model = model_count() - 1;
@@ -594,7 +636,9 @@ void loadconfig(char *fn)
         gfxcard = config_get_int(NULL, "gfxcard", 0);
         video_speed = config_get_int(NULL, "video_speed", 3);
         sound_card_current = config_get_int(NULL, "sndcard", SB2);
+#ifndef __MINGW64__
         network_card_current = config_get_int(NULL, "netcard", 0);
+#endif
 
         p = (char *)config_get_string(NULL, "disc_a", "");
         if (p) strcpy(discfns[0], p);
@@ -655,7 +699,9 @@ void saveconfig()
         config_set_int(NULL, "ssi2001", SSI2001);
         config_set_int(NULL, "voodoo", voodoo_enabled);
 
+#ifndef __MINGW64__
         config_set_int(NULL, "netinterface", ethif);
+#endif
 
         config_set_int(NULL, "model", model);
         config_set_int(NULL, "cpu_manufacturer", cpu_manufacturer);
@@ -664,7 +710,10 @@ void saveconfig()
         config_set_int(NULL, "gfxcard", gfxcard);
         config_set_int(NULL, "video_speed", video_speed);
         config_set_int(NULL, "sndcard", sound_card_current);
+
+#ifndef __MINGW64__
         config_set_int(NULL, "netcard", network_card_current);
+#endif
         config_set_int(NULL, "cpu_speed", cpuspeed);
         config_set_int(NULL, "has_fpu", hasfpu);
         config_set_int(NULL, "slow_video", slowega);

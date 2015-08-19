@@ -15,7 +15,11 @@ static int hd_new_spt, hd_new_hpc, hd_new_cyl;
 
 static uint64_t cookie = 0;
 
+#ifndef __MINGW64__
 static BOOL CALLBACK hdnew_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPARAM lParam)
+#else
+static INT_PTR CALLBACK hdnew_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPARAM lParam)
+#endif
 {
         char s[260];
         HWND h;
@@ -130,7 +134,11 @@ static BOOL CALLBACK hdnew_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPARA
         return FALSE;
 }
 
+#ifndef __MINGW64__
 BOOL CALLBACK hdsize_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPARAM lParam)
+#else
+INT_PTR CALLBACK hdsize_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPARAM lParam)
+#endif
 {
         char s[260];
         HWND h;
@@ -211,7 +219,11 @@ BOOL CALLBACK hdsize_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPARAM lPar
         return FALSE;
 }
 
+#ifndef __MINGW64__
 static BOOL CALLBACK hdconf_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPARAM lParam)
+#else
+static INT_PTR CALLBACK hdconf_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPARAM lParam)
+#endif
 {
         char s[260];
         HWND h;

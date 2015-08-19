@@ -161,6 +161,8 @@ void tgui_out(uint16_t addr, uint8_t val, void *p)
 		svga->crtcreg = val & 0x7f;
                 return;
                 case 0x3D5:
+		if (svga->crtcreg <= 0x18)
+			val &= mask_crtc[svga->crtcreg];
                 if ((svga->crtcreg < 7) && (svga->crtc[0x11] & 0x80))
                         return;
                 if ((svga->crtcreg == 7) && (svga->crtc[0x11] & 0x80))
