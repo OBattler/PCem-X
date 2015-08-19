@@ -340,15 +340,39 @@ CPU cpus_Pentium[] =
         {"Pentium 200",      CPU_PENTIUM,    17, 200000000, 3, 0x52c, 0x52c, 0},
         {"Pentium MMX 166",  CPU_PENTIUMMMX, 15, 166666666, 3, 0x543, 0x543, 0},
         {"Pentium MMX 200",  CPU_PENTIUMMMX, 17, 200000000, 3, 0x543, 0x543, 0},
-        {"Pentium MMX 233",  CPU_PENTIUMMMX, 17, 233333333, 4, 0x543, 0x543, 0},
+        {"Pentium MMX 233",  CPU_PENTIUMMMX, 19, 233333333, 4, 0x543, 0x543, 0},
         {"Mobile Pentium MMX 120",  CPU_PENTIUMMMX, 11, 120000000, 2, 0x543, 0x543, 0},
         {"Mobile Pentium MMX 133",  CPU_PENTIUMMMX, 12, 133333333, 2, 0x543, 0x543, 0},
         {"Mobile Pentium MMX 150",  CPU_PENTIUMMMX, 13, 150000000, 3, 0x544, 0x544, 0},
         {"Mobile Pentium MMX 166",  CPU_PENTIUMMMX, 15, 166666666, 3, 0x544, 0x544, 0},
         {"Mobile Pentium MMX 200",  CPU_PENTIUMMMX, 17, 200000000, 3, 0x581, 0x581, 0},
-        {"Mobile Pentium MMX 233",  CPU_PENTIUMMMX, 17, 233333333, 4, 0x581, 0x581, 0},
-        {"Mobile Pentium MMX 266",  CPU_PENTIUMMMX, 17, 266666666, 4, 0x582, 0x582, 0},
-        {"Mobile Pentium MMX 300",  CPU_PENTIUMMMX, 17, 300000000, 5, 0x582, 0x582, 0},
+        {"Mobile Pentium MMX 233",  CPU_PENTIUMMMX, 19, 233333333, 4, 0x581, 0x581, 0},
+        {"Mobile Pentium MMX 266",  CPU_PENTIUMMMX, 21, 266666666, 4, 0x582, 0x582, 0},
+        {"Mobile Pentium MMX 300",  CPU_PENTIUMMMX, 22, 300000000, 5, 0x582, 0x582, 0},
+        {"",             -1,        0, 0, 0}
+};
+
+CPU cpus_PentiumPro[] =
+{
+        /*Intel Pentium Pro and II Overdrive*/
+        {"Pentium Pro 150",  CPU_PENTIUMPRO, 13, 150000000, 3, 0x612, 0x612, 0},
+        {"Pentium Pro 166",  CPU_PENTIUMPRO, 15, 166666666, 3, 0x617, 0x617, 0},
+        {"Pentium Pro 180",  CPU_PENTIUMPRO, 16, 180000000, 3, 0x617, 0x617, 0},
+        {"Pentium Pro 200",  CPU_PENTIUMPRO, 17, 200000000, 3, 0x617, 0x617, 0},
+        {"Pentium II Overdrive 333",  CPU_PENTIUM2, 18, 333333333, 5, 0x1632, 0x1632, 0},
+        {"",             -1,        0, 0, 0}
+};
+
+CPU cpus_Pentium2[] =
+{
+        /*Intel Pentium II*/
+        {"Pentium II 233",  CPU_PENTIUM2, 19, 233333333, 4, 0x634, 0x634, 0},
+        {"Pentium II 266",  CPU_PENTIUM2, 21, 266666666, 4, 0x634, 0x634, 0},
+        {"Pentium II 300",  CPU_PENTIUM2, 22, 300000000, 5, 0x634, 0x634, 0},
+        {"Pentium II 333",  CPU_PENTIUM2, 23, 333333333, 5, 0x650, 0x650, 0},
+        {"Pentium II 350",  CPU_PENTIUM2, 24, 350000000, 4, 0x653, 0x653, 0},
+        {"Pentium II 400",  CPU_PENTIUM2, 25, 400000000, 4, 0x653, 0x653, 0},
+        {"Pentium II 450",  CPU_PENTIUM2, 26, 450000000, 5, 0x653, 0x653, 0},
         {"",             -1,        0, 0, 0}
 };
 #endif
@@ -648,6 +672,8 @@ void cpu_set()
                 break;
 
                 case CPU_PENTIUMMMX:
+                case CPU_PENTIUMPRO:
+                case CPU_PENTIUM2:
                 x86_setopcodes(ops_386, ops_pentiummmx_0f, dynarec_ops_386, dynarec_ops_pentiummmx_0f);
                 timing_rr  = 1; /*register dest - register src*/
                 timing_rm  = 2; /*register dest - memory src*/
@@ -794,6 +820,48 @@ void cpu_CPUID()
                 else
                         EAX = 0;
                 break;
+
+                case CPU_PENTIUMPRO:
+                if (!EAX)
+                {
+                        EAX = 0x00000002;
+                        EBX = 0x756e6547;
+                        EDX = 0x49656e69;
+                        ECX = 0x6c65746e;
+                }
+                else if (EAX == 1)
+                {
+                        EAX = CPUID;
+                        EBX = ECX = 0;
+                        EDX = CPUID_FPU | CPUID_TSC | CPUID_MSR | CPUID_CMPXCHG8B | CPUID_MMX;
+                }
+		else if (EAX == 2)
+		{
+		}
+                else
+                        EAX = 0;
+                break;
+
+                case CPU_PENTIUM2:
+                if (!EAX)
+                {
+                        EAX = 0x00000002;
+                        EBX = 0x756e6547;
+                        EDX = 0x49656e69;
+                        ECX = 0x6c65746e;
+                }
+                else if (EAX == 1)
+                {
+                        EAX = CPUID;
+                        EBX = ECX = 0;
+                        EDX = CPUID_FPU | CPUID_TSC | CPUID_MSR | CPUID_CMPXCHG8B | CPUID_MMX;
+                }
+		else if (EAX == 2)
+		{
+		}
+                else
+                        EAX = 0;
+                break;
 #endif
         }
 }
@@ -834,6 +902,8 @@ void cpu_RDMSR()
 #ifdef DYNAREC
                 case CPU_PENTIUM:
                 case CPU_PENTIUMMMX:
+                case CPU_PENTIUMPRO:
+                case CPU_PENTIUM2:
                 EAX = EDX = 0;
                 switch (ECX)
                 {
@@ -885,6 +955,8 @@ void cpu_WRMSR()
 #ifdef DYNAREC
                 case CPU_PENTIUM:
                 case CPU_PENTIUMMMX:
+                case CPU_PENTIUMPRO:
+                case CPU_PENTIUM2:
                 switch (ECX)
                 {
                         case 0x10:

@@ -29,6 +29,12 @@ extern int cpu, cpu_manufacturer;
 #define CPU_PENTIUMMMX 16
 #endif
 
+/*686 class CPUs*/
+#ifdef DYNAREC
+#define CPU_PENTIUMPRO 17
+#define CPU_PENTIUM2 18
+#endif
+
 #define MANU_INTEL 0
 #define MANU_AMD   1
 #define MANU_CYRIX 2
@@ -68,6 +74,8 @@ extern CPU cpus_WinChip[];
 extern CPU cpus_Pentium5V[];
 extern CPU cpus_PentiumS5[];
 extern CPU cpus_Pentium[];
+extern CPU cpus_PentiumPro[];
+extern CPU cpus_Pentium2[];
 #endif
 
 extern CPU cpus_pcjr[];

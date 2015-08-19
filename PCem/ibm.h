@@ -466,7 +466,7 @@ void setsbclock(float clock);
 
 int sbtype;
 
-int clocks[3][12][4];
+int clocks[3][28][4];
 int at70hz;
 
 char pcempath[512];
