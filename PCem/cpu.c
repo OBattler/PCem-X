@@ -372,7 +372,8 @@ CPU cpus_Pentium2[] =
         {"Pentium II 333",  CPU_PENTIUM2, 23, 333333333, 5, 0x650, 0x650, 0},
         {"Pentium II 350",  CPU_PENTIUM2, 24, 350000000, 4, 0x653, 0x653, 0},
         {"Pentium II 400",  CPU_PENTIUM2, 25, 400000000, 4, 0x653, 0x653, 0},
-        {"Pentium II 450",  CPU_PENTIUM2, 26, 450000000, 5, 0x653, 0x653, 0},
+        {"Pentium II 450",  CPU_PENTIUM2, 26, 450000000, 5, 0x654, 0x654, 0},
+        {"Pentium II 500",  CPU_PENTIUM2, 27, 500000000, 5, 0x654, 0x654, 0},
         {"",             -1,        0, 0, 0}
 };
 #endif

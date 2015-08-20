@@ -89,6 +89,17 @@ static void flash_write(uint32_t addr, uint8_t val, void *p)
                         mem_mapping_disable(&bios_mapping[5]);
                         mem_mapping_disable(&bios_mapping[6]);
                         mem_mapping_disable(&bios_mapping[7]);
+			if (romset == ROM_440BX)
+			{
+                        	mem_mapping_disable(&bios_mapping[8]);
+                	        mem_mapping_disable(&bios_mapping[9]);
+        	                mem_mapping_disable(&bios_mapping[10]);
+	                        mem_mapping_disable(&bios_mapping[11]);
+                        	mem_mapping_disable(&bios_mapping[12]);
+                	        mem_mapping_disable(&bios_mapping[13]);
+        	                mem_mapping_disable(&bios_mapping[14]);
+	                        mem_mapping_disable(&bios_mapping[15]);
+			}
                         mem_mapping_enable(&flash->read_mapping);                        
                         break;
                         
@@ -101,6 +112,17 @@ static void flash_write(uint32_t addr, uint8_t val, void *p)
                         mem_mapping_enable(&bios_mapping[5]);
                         mem_mapping_enable(&bios_mapping[6]);
                         mem_mapping_enable(&bios_mapping[7]);
+			if (romset == ROM_440BX)
+			{
+                        	mem_mapping_enable(&bios_mapping[8]);
+                	        mem_mapping_enable(&bios_mapping[9]);
+        	                mem_mapping_enable(&bios_mapping[10]);
+	                        mem_mapping_enable(&bios_mapping[11]);
+                        	mem_mapping_enable(&bios_mapping[12]);
+                	        mem_mapping_enable(&bios_mapping[13]);
+        	                mem_mapping_enable(&bios_mapping[14]);
+	                        mem_mapping_enable(&bios_mapping[15]);
+			}
                         mem_mapping_disable(&flash->read_mapping);
                         break;
                 }
@@ -113,18 +135,36 @@ void *intel_flash_init()
         flash_t *flash = malloc(sizeof(flash_t));
         memset(flash, 0, sizeof(flash_t));
 
-        mem_mapping_add(&flash->read_mapping,
-                    0xe0000, 
-                    0x20000,
-                    flash_read, NULL, NULL,
-                    NULL, NULL, NULL,
-                    NULL, MEM_MAPPING_EXTERNAL, (void *)flash);
-        mem_mapping_add(&flash->write_mapping,
-                    0xe0000, 
-                    0x20000,
-                    NULL, NULL, NULL,
-                    flash_write, NULL, NULL,
-                    NULL, MEM_MAPPING_EXTERNAL, (void *)flash);
+	if (romset == ROM_440BX)
+	{
+	        mem_mapping_add(&flash->read_mapping,
+        	            0xc0000, 
+                	    0x40000,
+        	            flash_read, NULL, NULL,
+	                    NULL, NULL, NULL,
+                	    NULL, MEM_MAPPING_EXTERNAL, (void *)flash);
+	        mem_mapping_add(&flash->write_mapping,
+	                    0xc0000, 
+        	            0x40000,
+        	            NULL, NULL, NULL,
+	                    flash_write, NULL, NULL,
+        	            NULL, MEM_MAPPING_EXTERNAL, (void *)flash);
+	}
+	else
+	{
+	        mem_mapping_add(&flash->read_mapping,
+        	            0xe0000, 
+                	    0x20000,
+        	            flash_read, NULL, NULL,
+	                    NULL, NULL, NULL,
+                	    NULL, MEM_MAPPING_EXTERNAL, (void *)flash);
+	        mem_mapping_add(&flash->write_mapping,
+	                    0xe0000, 
+        	            0x20000,
+        	            NULL, NULL, NULL,
+	                    flash_write, NULL, NULL,
+        	            NULL, MEM_MAPPING_EXTERNAL, (void *)flash);
+	}
         mem_mapping_disable(&flash->read_mapping);
         flash->command = CMD_READ_ARRAY;
         flash->status = 0;

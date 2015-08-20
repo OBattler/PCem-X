@@ -2257,7 +2257,7 @@ void *mach64gx_init()
 
         mach64_io_set(mach64);
 
-        pci_add(mach64_pci_read, mach64_pci_write, mach64);
+        gfxpciid = pci_add(mach64_pci_read, mach64_pci_write, mach64);
 
         mach64->pci_regs[PCI_REG_COMMAND] = 3;
         mach64->pci_regs[0x30] = 0x00;

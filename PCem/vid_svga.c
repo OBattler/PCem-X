@@ -124,7 +124,7 @@ void svga_out(uint16_t addr, uint8_t val, void *p)
                         break;
                         case 4:
                         svga->chain4 = val & 8;
-                        // svga->fast = (svga->gdcreg[8] == 0xff && !(svga->gdcreg[3] & 0x18) && !svga->gdcreg[1]) && svga->chain4;
+                        svga->fast = (svga->gdcreg[8] == 0xff && !(svga->gdcreg[3] & 0x18) && !svga->gdcreg[1]) && svga->chain4;
 			svga->extvram = (val & 2) ? 1 : 0;
                         break;
                 }
@@ -211,7 +211,7 @@ void svga_out(uint16_t addr, uint8_t val, void *p)
                 }
 		svga->gdcreg[svga->gdcaddr & 15] = val;
                 	
-                // svga->fast = (svga->gdcreg[8] == 0xff && !(svga->gdcreg[3] & 0x18) && !svga->gdcreg[1]) && svga->chain4;
+                svga->fast = (svga->gdcreg[8] == 0xff && !(svga->gdcreg[3] & 0x18) && !svga->gdcreg[1]) && svga->chain4;
                 if (((svga->gdcaddr & 15) == 5  && (val ^ o) & 0x70) || ((svga->gdcaddr & 15) == 6 && (val ^ o) & 1))
                         svga_recalctimings(svga);
                 break;
@@ -808,7 +808,7 @@ void svga_write_common(uint32_t addr, uint8_t val, void *p, uint8_t linear)
 	uint32_t write_mask, bit_mask, set_mask, real_addr, real_mask;
 
 	if (!svga->enablevram)  return;
-	if (!(svga->seqregs[0] & 2))  return;
+	// if (!(svga->seqregs[0] & 2))  return;
 
 	if (linear)
 	{
@@ -858,6 +858,9 @@ void svga_write_common(uint32_t addr, uint8_t val, void *p, uint8_t linear)
 	}
 
 	// if ((!svga->extvram) && (addr >= 0x10000))  return;
+	/* Horrible hack, I know, but it's the only way to fix the 440FX BIOS filling the VRAM with garbage until Tom fixes the memory emulation. */
+	if ((cs == 0xE0000) && (pc == 0xBF2F) && (romset == ROM_440FX))  return;
+	if ((cs == 0xE0000) && (pc == 0xBF77) && (romset == ROM_440FX))  return;
 
 	if (svga->chain4 || svga->fb_only)
 	{
@@ -887,6 +890,8 @@ void svga_write_common(uint32_t addr, uint8_t val, void *p, uint8_t linear)
 			if (linear)  real_addr &= 0x7fffff;
 			if ((!svga->extvram) && (real_addr >= 0x10000))  return;
 	                if (real_addr >= svga->vram_limit)  return;
+			if ((raddr <= 0xA0000) && (raddr >= 0xBFFFF))  return;
+			// pclog("Write %08X %08X %02X [%02X %02X %02X %02X %02X %02X %02X %02X %02X] [%02X %02X %02X %02X %02X %02X] [%02X] [%04X %08X]\n", addr, raddr, val, svga->gdcreg[0], svga->gdcreg[1], svga->gdcreg[2], svga->gdcreg[3], svga->gdcreg[4], svga->gdcreg[5], svga->gdcreg[6], svga->gdcreg[7], svga->gdcreg[8], svga->seqregs[0], svga->seqregs[1], svga->seqregs[2], svga->seqregs[3], svga->seqregs[4], svga->seqregs[7], svga->miscout, cs, pc);
 			svga->vram[real_addr] = val32;
 
 		        svga->changedvram[real_addr >> 12] = changeframecount;
@@ -993,7 +998,7 @@ uint8_t svga_read_common(uint32_t addr, void *p, uint8_t linear)
 	uint32_t ret, real_addr;
 
 	if (!svga->enablevram)  return 0xFF;
-	if (!(svga->seqregs[0] & 2))  return 0xFF;
+	// if (!(svga->seqregs[0] & 2))  return 0xFF;
 
         cycles -= video_timing_b;
         cycles_lost += video_timing_b;

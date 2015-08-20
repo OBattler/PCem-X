@@ -3271,7 +3271,7 @@ static void *s3_virge_init()
 
         virge->is_375 = 0;
         
-        pci_add(s3_virge_pci_read, s3_virge_pci_write, virge);
+        gfxpciid = pci_add(s3_virge_pci_read, s3_virge_pci_write, virge);
         
         virge->wake_render_thread = thread_create_event();
         virge->wake_main_thread = thread_create_event();
@@ -3363,7 +3363,7 @@ static void *s3_virge_375_init()
         
         virge->is_375 = 1;
         
-        pci_add(s3_virge_pci_read, s3_virge_pci_write, virge);
+        gfxpciid = pci_add(s3_virge_pci_read, s3_virge_pci_write, virge);
  
         virge->wake_render_thread = thread_create_event();
         virge->wake_main_thread = thread_create_event();

@@ -365,6 +365,7 @@ void loadnvr()
                 case ROM_AMI386:     f = romfopen("ami386.nvr",     "rb"); nvrmask = 127; break;
                 case ROM_DESKPRO_386: f = romfopen("deskpro386.nvr", "rb"); break;
                 case ROM_PX386:      f = romfopen("px386.nvr",      "rb"); break;
+                case ROM_DTK386:     f = romfopen("dtk386.nvr",     "rb"); break;
                 case ROM_AMI486:     f = romfopen("ami486.nvr",     "rb"); nvrmask = 127; break;
                 case ROM_WIN486:     f = romfopen("win486.nvr",     "rb"); nvrmask = 127; break;
                 case ROM_PCI486:     f = romfopen("hot-433.nvr",    "rb"); nvrmask = 127; break;
@@ -374,6 +375,9 @@ void loadnvr()
                 case ROM_430FX:      f = romfopen("430fx.nvr",      "rb"); nvrmask = 127; break;
                 case ROM_430VX:      f = romfopen("430vx.nvr",      "rb"); nvrmask = 127; break;
                 case ROM_430TX:      f = romfopen("430tx.nvr",      "rb"); nvrmask = 127; break;
+                case ROM_440FX:      f = romfopen("440fx.nvr",      "rb"); nvrmask = 127; break;
+                case ROM_440BX:      f = romfopen("440bx.nvr",      "rb"); nvrmask = 127; break;
+                case ROM_VPC2007:    f = romfopen("vpc2007.nvr",    "rb"); nvrmask = 127; break;
                 case ROM_REVENGE:    f = romfopen("revenge.nvr",    "rb"); nvrmask = 127; break;
                 case ROM_ENDEAVOR:   f = romfopen("endeavor.nvr",   "rb"); nvrmask = 127; break;
                 default: return;
@@ -412,6 +416,7 @@ void savenvr()
                 case ROM_AMI386:     f = romfopen("ami386.nvr",     "wb"); break;
                 case ROM_DESKPRO_386: f = romfopen("deskpro386.nvr", "wb"); break;
                 case ROM_PX386:      f = romfopen("px386.nvr",      "wb"); break;
+                case ROM_DTK386:     f = romfopen("dtk386.nvr",     "wb"); break;
                 case ROM_AMI486:     f = romfopen("ami486.nvr",     "wb"); break;
                 case ROM_WIN486:     f = romfopen("win486.nvr",     "wb"); break;
                 case ROM_PCI486:     f = romfopen("hot-433.nvr",    "wb"); break;
@@ -421,6 +426,9 @@ void savenvr()
                 case ROM_430FX:      f = romfopen("430fx.nvr",      "wb"); break;
                 case ROM_430VX:      f = romfopen("430vx.nvr",      "wb"); break;
                 case ROM_430TX:      f = romfopen("430tx.nvr",      "wb"); break;
+                case ROM_440FX:      f = romfopen("440fx.nvr",      "wb"); break;
+                case ROM_440BX:      f = romfopen("440bx.nvr",      "wb"); break;
+                case ROM_VPC2007:    f = romfopen("vpc2007.nvr",    "wb"); break;
                 case ROM_REVENGE:    f = romfopen("revenge.nvr",    "wb"); break;
                 case ROM_ENDEAVOR:   f = romfopen("endeavor.nvr",   "wb"); break;
                 default: return;

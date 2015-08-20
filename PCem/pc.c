@@ -293,11 +293,15 @@ void initpc()
         device_init();
 
         mem_init();
+	pclog("Loading BIOS...\n");
         loadbios();
+	pclog("Adding BIOS...\n");
         mem_add_bios();
+	pclog("Initializing video...\n");
         initvideo();
+	pclog("Done...\n");
 
-	voodoo_generate_filter();
+	// voodoo_generate_filter();
 
         loaddisc(0,discfns[0]);
         loaddisc(1,discfns[1]);
@@ -650,6 +654,7 @@ void loadconfig(char *fn)
         cpu = config_get_int(NULL, "cpu", 0);
 
         gfxcard = config_get_int(NULL, "gfxcard", 0);
+        gfxcardpci = config_get_int(NULL, "gfxcardpci", 0);
         video_speed = config_get_int(NULL, "video_speed", 3);
         sound_card_current = config_get_int(NULL, "sndcard", SB2);
 #ifndef __MINGW64__
@@ -724,6 +729,7 @@ void saveconfig()
         config_set_int(NULL, "cpu", cpu);
 
         config_set_int(NULL, "gfxcard", gfxcard);
+        config_set_int(NULL, "gfxcardpci", gfxcard);
         config_set_int(NULL, "video_speed", video_speed);
         config_set_int(NULL, "sndcard", sound_card_current);
 

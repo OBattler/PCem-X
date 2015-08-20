@@ -78,6 +78,8 @@ uint8_t mda_in(uint16_t addr, void *p)
 void mda_write(uint32_t addr, uint8_t val, void *p)
 {
         mda_t *mda = (mda_t *)p;
+	if ((cs == 0xE0000) && (pc == 0xBF2F) && (romset == ROM_440FX))  return;
+	if ((cs == 0xE0000) && (pc == 0xBF77) && (romset == ROM_440FX))  return;
         egawrites++;
         mda->vram[addr & 0xfff] = val;
 }
@@ -85,6 +87,8 @@ void mda_write(uint32_t addr, uint8_t val, void *p)
 uint8_t mda_read(uint32_t addr, void *p)
 {
         mda_t *mda = (mda_t *)p;
+	if ((cs == 0xE0000) && (pc == 0xBF2F) && (romset == ROM_440FX))  return 0xff;
+	if ((cs == 0xE0000) && (pc == 0xBF77) && (romset == ROM_440FX))  return 0xff;
         egareads++;
         return mda->vram[addr & 0xfff];
 }

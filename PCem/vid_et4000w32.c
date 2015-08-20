@@ -1043,7 +1043,7 @@ void *et4000w32p_init()
 
         et4000w32p_io_set(et4000);
         
-        pci_add(et4000w32p_pci_read, et4000w32p_pci_write, et4000);
+        gfxpciid = pci_add(et4000w32p_pci_read, et4000w32p_pci_write, et4000);
 
         et4000->pci_regs[0x04] = 7;
         

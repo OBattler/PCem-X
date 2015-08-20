@@ -37,7 +37,7 @@ static INT_PTR CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
         char temp_str[256];
         HWND h;
         int c, d;
-        int rom, gfx, mem, fpu;
+        int rom, gfx, gfxpci, mem, fpu;
         int temp_cpu, temp_cpu_m, temp_model;
         int temp_GAMEBLASTER, temp_GUS, temp_SSI2001, temp_voodoo, temp_ps1xtide, temp_sound_card_current;
         int temp_network_card_current;
@@ -68,20 +68,22 @@ static INT_PTR CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
                         c++;
                 }
                 SendMessage(h, CB_SETCURSEL, modeltolist[model], 0);
+		/* Set this by default for the purpose of the video stuff. */
+		temp_model = model;
 
                 h = GetDlgItem(hdlg, IDC_COMBOVID);
                 c = d = 0;
                 while (1)
                 {
-                        char *s = video_card_getname(c);
+                        char *s = video_card_getname(c, models[model].pci_only);
 
                         if (!s[0])
                                 break;
 
-                        if (video_card_available(c) && gfx_present[video_new_to_old(c)])
+                        if (video_card_available(c, models[model].pci_only) && gfx_present[video_new_to_old(c, models[model].pci_only)])
                         {
                                 SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)s);
-                                if (video_new_to_old(c) == gfxcard)
+                                if (video_new_to_old(c, models[model].pci_only) == (models[model].pci_only ? gfxcardpci : gfxcard))
                                         SendMessage(h, CB_SETCURSEL, d, 0);                                
 
                                 d++;
@@ -250,7 +252,7 @@ static INT_PTR CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
                 SendMessage(h, UDM_SETPOS, 0, mem_size);
 
                 h = GetDlgItem(hdlg, IDC_CONFIGUREVID);
-                if (video_card_has_config(video_old_to_new(gfxcard)))
+                if (video_card_has_config(video_old_to_new(models[temp_model].pci_only ? gfxcardpci : gfxcard, models[temp_model].pci_only), models[temp_model].pci_only))
                         EnableWindow(h, TRUE);
                 else
                         EnableWindow(h, FALSE);
@@ -292,7 +294,10 @@ static INT_PTR CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
 
                         h = GetDlgItem(hdlg, IDC_COMBOVID);
                         SendMessage(h, CB_GETLBTEXT, SendMessage(h, CB_GETCURSEL, 0, 0), (LPARAM)temp_str);
-                        gfx = video_new_to_old(video_card_getid(temp_str));
+			if (models[temp_model].pci_only)
+	                        gfxpci = video_new_to_old(video_card_getid(temp_str, 1), 1);
+			else
+	                        gfx = video_new_to_old(video_card_getid(temp_str, 0), 0);
 
                         h = GetDlgItem(hdlg, IDC_COMBOCPUM);
                         temp_cpu_m = SendMessage(h, CB_GETCURSEL, 0, 0);
@@ -333,9 +338,9 @@ static INT_PTR CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
                         temp_fdtype_b_current = SendMessage(h, CB_GETCURSEL, 0, 0);
 
 #ifndef __MINGW64__
-                        if (temp_model != model || gfx != gfxcard || mem != mem_size || fpu != hasfpu || temp_GAMEBLASTER != GAMEBLASTER || temp_GUS != GUS || temp_SSI2001 != SSI2001 || temp_sound_card_current != sound_card_current || temp_network_card_current != network_card_current || temp_fdtype_a_current != int_from_config(0) || temp_fdtype_b_current != int_from_config(1) || temp_voodoo != voodoo_enabled || temp_ps1xtide != ps1xtide)
+                        if (temp_model != model || gfx != gfxcard || gfxpci != gfxcardpci || mem != mem_size || fpu != hasfpu || temp_GAMEBLASTER != GAMEBLASTER || temp_GUS != GUS || temp_SSI2001 != SSI2001 || temp_sound_card_current != sound_card_current || temp_network_card_current != network_card_current || temp_fdtype_a_current != int_from_config(0) || temp_fdtype_b_current != int_from_config(1) || temp_voodoo != voodoo_enabled || temp_ps1xtide != ps1xtide)
 #else
-                        if (temp_model != model || gfx != gfxcard || mem != mem_size || fpu != hasfpu || temp_GAMEBLASTER != GAMEBLASTER || temp_GUS != GUS || temp_SSI2001 != SSI2001 || temp_sound_card_current != sound_card_current || temp_fdtype_a_current != int_from_config(0) || temp_fdtype_b_current != int_from_config(1) || temp_voodoo != voodoo_enabled || temp_ps1xtide != ps1xtide)
+                        if (temp_model != model || gfx != gfxcard || gfxpci != gfxcardpci || mem != mem_size || fpu != hasfpu || temp_GAMEBLASTER != GAMEBLASTER || temp_GUS != GUS || temp_SSI2001 != SSI2001 || temp_sound_card_current != sound_card_current || temp_fdtype_a_current != int_from_config(0) || temp_fdtype_b_current != int_from_config(1) || temp_voodoo != voodoo_enabled || temp_ps1xtide != ps1xtide)
 #endif
                         {
                                 if (MessageBox(NULL,"This will reset PCem-X!\nAre you sure you want to continue?","PCem",MB_OKCANCEL)==IDOK)
@@ -343,6 +348,7 @@ static INT_PTR CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
                                         model = temp_model;
                                         romset = model_getromset();
                                         gfxcard = gfx;
+					gfxcardpci = gfxpci;
                                         mem_size = mem;
                                         cpu_manufacturer = temp_cpu_m;
                                         cpu = temp_cpu;
@@ -405,9 +411,35 @@ static INT_PTR CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
                                 h = GetDlgItem(hdlg, IDC_COMBOVID);
                                 if (!models[temp_model].fixed_gfxcard)
                                 {
-                                        char *s = video_card_getname(video_old_to_new(gfxcard));
+                                        char *s = video_card_getname(video_old_to_new(models[temp_model].pci_only ? gfxcardpci : gfxcard, models[temp_model].pci_only), models[temp_model].pci_only);
                                         
                                         EnableWindow(h, TRUE);
+
+					if ((models[temp_model].pci_only != models[model].pci_only) || (models[temp_model].fixed_gfxcard != models[model].fixed_gfxcard))
+					{
+				                c = d = 0;
+
+						SendDlgItemMessage(hdlg, IDC_COMBOVID, CB_RESETCONTENT, 0, 0);
+
+				                while (1)
+				                {
+                				        char *s = video_card_getname(c, models[temp_model].pci_only);
+
+				                        if (!s[0])
+        				                        break;
+
+				                        if (video_card_available(c, models[temp_model].pci_only) && gfx_present[video_new_to_old(c, models[model].pci_only)])
+			        	                {
+			                	                SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)s);
+		        	                	        if (video_new_to_old(c, models[model].pci_only) == (models[model].pci_only ? gfxcardpci : gfxcard))
+		                	                	        SendMessage(h, CB_SETCURSEL, d, 0);
+
+				                                d++;
+        				                }
+
+				                        c++;
+        				        }
+					}
                                         
                                         c = 0;
                                         while (1)
@@ -478,16 +510,19 @@ static INT_PTR CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
                         h = GetDlgItem(hdlg, IDC_COMBOVID);
                         SendMessage(h, CB_GETLBTEXT, SendMessage(h, CB_GETCURSEL, 0, 0), (LPARAM)temp_str);
                         
-                        deviceconfig_open(hdlg, (void *)video_card_getdevice(video_card_getid(temp_str)));
+                        deviceconfig_open(hdlg, (void *)video_card_getdevice(video_card_getid(temp_str, models[temp_model].pci_only), models[temp_model].pci_only));
                         break;
                         
                         case IDC_COMBOVID:
                         h = GetDlgItem(hdlg, IDC_COMBOVID);
                         SendMessage(h, CB_GETLBTEXT, SendMessage(h, CB_GETCURSEL, 0, 0), (LPARAM)temp_str);
-                        gfx = video_card_getid(temp_str);
+			if (models[temp_model].pci_only)
+	                        gfxpci = video_card_getid(temp_str, 1);
+			else
+	                        gfx = video_card_getid(temp_str, 0);
                         
                         h = GetDlgItem(hdlg, IDC_CONFIGUREVID);
-                        if (video_card_has_config(gfx))
+                        if (video_card_has_config(gfx, models[temp_model].pci_only))
                                 EnableWindow(h, TRUE);
                         else
                                 EnableWindow(h, FALSE);

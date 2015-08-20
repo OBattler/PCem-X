@@ -630,7 +630,7 @@ static void *riva128_init()
   riva128->pci_regs[0x2e] = 0x00;
   riva128->pci_regs[0x2f] = 0x03;
 
-  pci_add(riva128_pci_read, riva128_pci_write, riva128);
+  gfxpciid = pci_add(riva128_pci_read, riva128_pci_write, riva128);
 
   return riva128;
 }

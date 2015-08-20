@@ -1968,7 +1968,7 @@ static void *s3_init(char *bios_fn, int chip)
 
         s3_io_set(s3);
 
-        pci_add(s3_pci_read, s3_pci_write, s3);
+        gfxpciid = pci_add(s3_pci_read, s3_pci_write, s3);
 
         s3->pci_regs[0x04] = 7;
 

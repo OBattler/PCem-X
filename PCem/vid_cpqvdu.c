@@ -101,6 +101,8 @@ void cpqvdu_write(uint32_t addr, uint8_t val, void *p)
 {
         cpqvdu_t *cpqvdu = (cpqvdu_t *)p;
 //        pclog("cpqvdu_WRITE %04X %02X\n", addr, val);
+	if ((cs == 0xE0000) && (pc == 0xBF2F) && (romset == ROM_440FX))  return;
+	if ((cs == 0xE0000) && (pc == 0xBF77) && (romset == ROM_440FX))  return;
         cpqvdu->vram[addr & 0x3fff] = val;
 	if (cpqvdu->cpqvdumode & 1) {}
 	else if (!(cpqvdu->cpqvdumode & 2)) {}
@@ -119,6 +121,8 @@ void cpqvdu_write(uint32_t addr, uint8_t val, void *p)
 uint8_t cpqvdu_read(uint32_t addr, void *p)
 {
         cpqvdu_t *cpqvdu = (cpqvdu_t *)p;
+	if ((cs == 0xE0000) && (pc == 0xBF2F) && (romset == ROM_440FX))  return 0xff;
+	if ((cs == 0xE0000) && (pc == 0xBF77) && (romset == ROM_440FX))  return 0xff;
 	if (cpqvdu->cpqvdumode & 1) {}
 	else if (!(cpqvdu->cpqvdumode & 2)) {}
 	else

@@ -572,22 +572,34 @@ int WINAPI WinMain (HINSTANCE hThisInstance,
                 }
         }
 
-
         for (c = 0; c < GFX_MAX; c++)
-                gfx_present[c] = video_card_available(video_old_to_new(c));
+                gfx_present[c] = video_card_available(video_old_to_new(c, models[model].pci_only), models[model].pci_only);
 
-        if (!video_card_available(video_old_to_new(gfxcard)))
+        if (!video_card_available(video_old_to_new(gfxcard, models[model].pci_only), models[model].pci_only))
         {
                 if (romset!=-1) MessageBox(hwnd,"Configured video BIOS not available.\nDefaulting to available romset.","PCem error",MB_OK);
                 for (c = GFX_MAX-1; c >= 0; c--)
                 {
-                        if (gfx_present[c])
-                        {
-                                gfxcard = c;
-                                saveconfig();
-                                resetpchard();
-                                break;
-                        }
+			if (models[model].pci_only)
+			{
+	                        if (gfx_present[c])
+        	                {
+                	                gfxcardpci = c;
+                        	        saveconfig();
+                                	resetpchard();
+	                                break;
+        	                }
+			}
+			else
+			{
+	                        if (gfx_present[c])
+        	                {
+                	                gfxcard = c;
+                        	        saveconfig();
+                                	resetpchard();
+	                                break;
+        	                }
+			}
                 }
         }
 

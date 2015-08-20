@@ -338,7 +338,13 @@ enum
         ROM_430FX,
 	ROM_COLORBOOK,
 	ROM_PX386,
+	ROM_DTK386,
+	ROM_PXXT,
+	ROM_JUKOPC,
 	ROM_430TX,
+	ROM_440FX,
+	ROM_440BX,
+	ROM_VPC2007,
         
         ROM_MAX
 };
@@ -395,6 +401,7 @@ enum
 extern int gfx_present[GFX_MAX];
 
 int gfxcard;
+int gfxcardpci;
 
 int cpuspeed;
 
@@ -553,3 +560,5 @@ extern int supports_slave;
 extern int has_pc87306;
 
 extern int ps1xtide;
+
+extern int gfxpciid;

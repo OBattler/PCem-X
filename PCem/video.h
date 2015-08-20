@@ -29,13 +29,13 @@ typedef RGB PALETTE[256];
 
 extern BITMAP *buffer, *buffer32;
 
-int video_card_available(int card);
-char *video_card_getname(int card);
-struct device_t *video_card_getdevice(int card);
-int video_card_has_config(int card);
-int video_card_getid(char *s);
-int video_old_to_new(int card);
-int video_new_to_old(int card);
+int video_card_available(int card, int po);
+char *video_card_getname(int card, int po);
+struct device_t *video_card_getdevice(int card, int po);
+int video_card_has_config(int card, int po);
+int video_card_getid(char *s, int po);
+int video_old_to_new(int card, int po);
+int video_new_to_old(int card, int po);
 
 extern int video_fullscreen, video_fullscreen_scale, video_fullscreen_first;
 

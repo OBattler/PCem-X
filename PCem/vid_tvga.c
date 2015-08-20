@@ -236,9 +236,16 @@ void tvga_recalctimings(svga_t *svga)
                 svga->hdisp_time *= 2;
         }
 	   
-        svga->interlace = svga->crtc[0x1e] & 4;
-        if (svga->interlace)
+        // svga->interlace = svga->crtc[0x1e] & 4;
+        if (svga->crtc[0x1e] & 4)
+	{
                 svga->rowoffset >>= 1;
+		svga->vtotal *= 2;
+		svga->dispend *= 2;
+		svga->vblankstart *= 2;
+		svga->vsyncstart *= 2;
+		svga->split *= 2;
+	}
 
         switch (((svga->miscout >> 2) & 3) | ((tvga->newctrl2 << 2) & 4))
         {

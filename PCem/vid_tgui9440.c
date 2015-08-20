@@ -495,7 +495,7 @@ void *tgui9440_init()
         io_sethandler(0x03c0, 0x0020, tgui_in, NULL, NULL, tgui_out, NULL, NULL, tgui);
         io_sethandler(0x43c8, 0x0002, tgui_in, NULL, NULL, tgui_out, NULL, NULL, tgui);
 
-        pci_add(tgui_pci_read, tgui_pci_write, tgui);
+        gfxpciid = pci_add(tgui_pci_read, tgui_pci_write, tgui);
 
         return tgui;
 }

@@ -83,64 +83,118 @@ static VIDEO_CARD video_cards[] =
         {"",                                       NULL,                        0}
 };
 
-int video_card_available(int card)
+static VIDEO_CARD video_cards_pci[] =
 {
-        if (video_cards[card].device)
-                return device_available(video_cards[card].device);
+        {"ATI Graphics Pro Turbo (Mach64 GX)",     &mach64gx_device,            GFX_MACH64GX},
+        {"Diamond Stealth 32 (Tseng ET4000/w32p)", &et4000w32p_device,          GFX_ET4000W32},
+        {"Diamond Stealth 3D 2000 (S3 ViRGE)",     &s3_virge_device,            GFX_VIRGE},
+        {"Number Nine 9FX (S3 Trio64)",            &s3_9fx_device,              GFX_N9_9FX},
+        {"nVidia RIVA 128",                        &riva128_device,             GFX_RIVA128},
+        {"Paradise Bahamas 64 (S3 Vision864)",     &s3_bahamas64_device,        GFX_BAHAMAS64},
+        {"Phoenix S3 Trio32",                      &s3_phoenix_trio32_device,   GFX_PHOENIX_TRIO32},
+        {"Phoenix S3 Trio64",                      &s3_phoenix_trio64_device,   GFX_PHOENIX_TRIO64},
+        {"Phoenix S3 Vision964",                   &s3_phoenix_vision964_device,GFX_PHOENIX_VISION964},
+        {"S3 ViRGE/DX",                            &s3_virge_375_device,        GFX_VIRGEDX},
+        {"Trident TGUI9440",                       &tgui9440_device,            GFX_TGUI9440},
+        {"",                                       NULL,                        0}
+};
+
+int video_card_available(int card, int po)
+{
+	if (po)
+	{
+	        if (video_cards_pci[card].device)
+        	        return device_available(video_cards_pci[card].device);
+	}
+	else
+	{
+	        if (video_cards[card].device)
+        	        return device_available(video_cards[card].device);
+	}
 
         return 1;
 }
 
-char *video_card_getname(int card)
+char *video_card_getname(int card, int po)
 {
+	if (po)  return video_cards_pci[card].name;
         return video_cards[card].name;
 }
 
-device_t *video_card_getdevice(int card)
+device_t *video_card_getdevice(int card, int po)
 {
+	if (po)  return video_cards_pci[card].device;
         return video_cards[card].device;
 }
 
-int video_card_has_config(int card)
+int video_card_has_config(int card, int po)
 {
+	if (po)  return video_cards_pci[card].device->config ? 1 : 0;
         return video_cards[card].device->config ? 1 : 0;
 }
 
-int video_card_getid(char *s)
+int video_card_getid(char *s, int po)
 {
         int c = 0;
 
-        while (video_cards[c].device)
-        {
-                if (!strcmp(video_cards[c].name, s))
-                        return c;
-                c++;
-        }
+	if (po)
+	{
+	        while (video_cards_pci[c].device)
+        	{
+                	if (!strcmp(video_cards_pci[c].name, s))
+	                        return c;
+        	        c++;
+	        }
+	}
+	else
+	{
+	        while (video_cards[c].device)
+        	{
+                	if (!strcmp(video_cards[c].name, s))
+	                        return c;
+        	        c++;
+	        }
+	}
 
         return 0;
 }
 
-int video_old_to_new(int card)
+int video_old_to_new(int card, int po)
 {
         int c = 0;
 
-        while (video_cards[c].device)
-        {
-                if (video_cards[c].legacy_id == card)
-                        return c;
-                c++;
-        }
+	if (po)
+	{
+	        while (video_cards_pci[c].device)
+        	{
+                	if (video_cards_pci[c].legacy_id == card)
+                        	return c;
+	                c++;
+	        }
+	}
+	else
+	{
+	        while (video_cards[c].device)
+        	{
+                	if (video_cards[c].legacy_id == card)
+                        	return c;
+	                c++;
+	        }
+	}
 
         return 0;
 }
 
-int video_new_to_old(int card)
+int video_new_to_old(int card, int po)
 {
+	if (po)  return video_cards_pci[card].legacy_id;
         return video_cards[card].legacy_id;
 }
 
 int video_fullscreen = 0, video_fullscreen_scale, video_fullscreen_first;
 uint32_t *video_15to32, *video_16to32;
+
+int gfxpciid;
 
 int egareads=0,egawrites=0;
 int changeframecount=2;
@@ -283,8 +337,13 @@ void video_init()
                 case ROM_IBMPS1_2011:
                 device_add(&ps1vga_device);
                 return;
+
+		case ROM_440BX:
+		case ROM_VPC2007:
+		device_add(video_cards_pci[video_old_to_new(gfxcardpci, 1)].device);
+		return;
         }
-        device_add(video_cards[video_old_to_new(gfxcard)].device);
+        device_add(video_cards[video_old_to_new(gfxcard, 0)].device);
 }
 
 
