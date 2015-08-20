@@ -2336,6 +2336,9 @@ static void tri(virge_t *virge, s3d_t *s3d_tri, s3d_state_t *state, int yc, int3
         
         uint32_t dest_offset, z_offset;
 
+		dest_offset = s3d_tri->dest_base + (state->y * s3d_tri->dest_str);
+        z_offset = s3d_tri->z_base + (state->y * s3d_tri->z_str);
+		
         if (s3d_tri->cmd_set & CMD_SET_HC)
         {
                 if (state->y < s3d_tri->clip_t)
@@ -2366,9 +2369,6 @@ static void tri(virge_t *virge, s3d_t *s3d_tri, s3d_state_t *state, int yc, int3
                 if ((state->y - y_count) < s3d_tri->clip_t)
                         y_count = state->y - s3d_tri->clip_t;
         }
-
-        dest_offset = s3d_tri->dest_base + (state->y * s3d_tri->dest_str);
-        z_offset = s3d_tri->z_base + (state->y * s3d_tri->z_str);
         
         for (; y_count > 0; y_count--)
         {

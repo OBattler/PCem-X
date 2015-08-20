@@ -314,11 +314,7 @@ void loadfont(char *s, int format, uint8_t fontdat[256][8], uint8_t fontdatm[256
         // FILE *f=romfopen(s,"rb");
         FILE *f=fopen(s,"rb");
         int c,d;
-        if (!f)
-	{
-	   fclose(f);
-           return;
-	}
+        if (!f) return;
 
 	fseek(f, 0, SEEK_SET);
         if (!format)
@@ -390,11 +386,7 @@ void cga_loadfont(char *s, int format)
         // FILE *f=romfopen(s,"rb");
         FILE *f=fopen(s,"rb");
         int c,d;
-        if (!f)
-	{
-	   fclose(f);
-           return;
-	}
+        if (!f) return;
 
 	fseek(f, 0, SEEK_SET);
         if (!format)
@@ -466,11 +458,7 @@ void pc1512_loadfont(char *s, int format)
         // FILE *f=romfopen(s,"rb");
         FILE *f=fopen(s,"rb");
         int c,d;
-        if (!f)
-	{
-	   fclose(f);
-           return;
-	}
+        if (!f) return;
 
 	fseek(f, 0, SEEK_SET);
         if (!format)

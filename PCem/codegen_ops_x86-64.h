@@ -3374,7 +3374,6 @@ static void FP_FXCH(int reg)
         addbyte(0x89);
         addbyte(0x0c);
         addbyte(0xde);
-        reg = reg;
 }
 
 
