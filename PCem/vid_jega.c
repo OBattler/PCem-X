@@ -1324,7 +1324,6 @@ void jega_render_graphics(jega_t *jega)
 void jega_poll(void *p)
 {
         jega_t *jega = (jega_t *)p;
-	jega_t *jega_bak = (jega_t *) malloc(sizeof(jega_t));
         uint8_t chr, nchr, nchrpos, dat, attr;
         uint32_t charaddr;
         int x, xx;
@@ -1479,8 +1478,8 @@ endblit();
 
                         frames++;
                         
-                        jega->video_res_x = wx;
-                        jega->video_res_y = wy + 1;
+                        jega->video_res_x = xsize;
+                        jega->video_res_y = ysize + 1;
                         if (!(jega->gdcreg[6] & 1) || (jega->cr[7] & 32)) /*Text and virtual text modes*/
                         {
                                 jega->video_res_x /= (jega->seqregs[1] & 1) ? 8 : 9;

@@ -69,6 +69,7 @@ void clgd_out(uint16_t addr, uint8_t val, void *p)
                 svga->seqaddr = val;
                 break;
                 case 0x3c5:
+						old = svga->seqregs[svga->seqaddr & 0x1f];
                         switch (svga->seqaddr & 0x1f)
                         {
 				case 0x00: case 0x01: case 0x02: case 0x03:

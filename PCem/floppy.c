@@ -1579,7 +1579,6 @@ drive_disabled:
 		ejectdisc(d);
 		fdd[d].WP = 1;
 		fclose(f);
-		free(f);
 		return;
 	}
 

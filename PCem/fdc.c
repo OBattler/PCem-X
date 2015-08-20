@@ -90,8 +90,16 @@ void savedisc(int d)
 	if (fdd[d].XDF)  return;
         f=fopen(discfns[d],"wb");
         if (!f) return;
-	if (fdd[d].IMGTYPE == IMGT_NONE)  return;
-	if (fdd[d].IMGTYPE != IMGT_RAW)  return;
+	if (fdd[d].IMGTYPE == IMGT_NONE)
+	{
+		fclose(f);
+		return;
+	}
+	if (fdd[d].IMGTYPE != IMGT_RAW)
+	{
+		fclose(f);
+		return;
+	}
 	if(fdd[d].IMGTYPE == IMGT_PEF)
 	{
 		putc('P',f);
@@ -673,7 +681,6 @@ void fdc_seek()
 {
 	uint8_t rel = (fdc.command & 0x80) ? 1 : 0;
 	uint8_t dir = (fdc.command & 0x40) ? 1 : 0;
-	uint8_t step = 1;
 	uint8_t i = 0;
 	uint8_t max = 0;
 	uint8_t eos = 0;

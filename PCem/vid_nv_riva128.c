@@ -106,10 +106,10 @@ static uint8_t riva128_pfb_read(uint32_t addr, void *p)
   switch(addr)
   {
   case 0x100000: ret = 0x06; break;
-  case 0x100200: ret = riva128->pfb.config_0 & 0xff;
-  case 0x100201: ret = (riva128->pfb.config_0 >> 8) & 0xff;
-  case 0x100202: ret = (riva128->pfb.config_0 >> 16) & 0xff;
-  case 0x100203: ret = (riva128->pfb.config_0 >> 24) & 0xff;
+  case 0x100200: ret = riva128->pfb.config_0 & 0xff; break;
+  case 0x100201: ret = (riva128->pfb.config_0 >> 8) & 0xff; break;
+  case 0x100202: ret = (riva128->pfb.config_0 >> 16) & 0xff; break;
+  case 0x100203: ret = (riva128->pfb.config_0 >> 24) & 0xff; break;
   }
 
   return ret;
@@ -146,10 +146,10 @@ static uint8_t riva128_pramdac_read(uint32_t addr, void *p)
 
   switch(addr)
   {
-  case 0x680600: ret = riva128->pramdac.gen_ctrl & 0xff;
-  case 0x680601: ret = (riva128->pramdac.gen_ctrl >> 8) & 0xff;
-  case 0x680602: ret = (riva128->pramdac.gen_ctrl >> 16) & 0xff;
-  case 0x680603: ret = (riva128->pramdac.gen_ctrl >> 24) & 0xff;
+  case 0x680600: ret = riva128->pramdac.gen_ctrl & 0xff; break;
+  case 0x680601: ret = (riva128->pramdac.gen_ctrl >> 8) & 0xff; break;
+  case 0x680602: ret = (riva128->pramdac.gen_ctrl >> 16) & 0xff; break;
+  case 0x680603: ret = (riva128->pramdac.gen_ctrl >> 24) & 0xff; break;
   }
 
   return ret;
@@ -230,6 +230,9 @@ static void riva128_mmio_write_l(uint32_t addr, uint32_t val, void *p)
   case 0x100000 ... 0x100fff:
   riva128_pfb_write(addr, val, riva128);
   break;
+  case 0x680000 ... 0x680fff:
+  riva128_pramdac_write(addr, val, riva128);
+  break;
   }
 }
 
@@ -297,8 +300,8 @@ static void riva128_rma_out(uint16_t addr, uint8_t val, void *p)
   case 0x0b: case 0x0f: case 0x13: case 0x17:
   riva128->rma.data &= ~0xff000000;
   riva128->rma.data |= (val << 24);
-  if(!(riva128->rma.addr & 0x1000000)) riva128_mmio_write_l(riva128->rma.addr, riva128->rma.data, riva128);
-  else svga_writel_linear(riva128->rma.addr - 0x1000000, riva128->rma.data, svga);
+  if(riva128->rma.addr < 0x1000000) riva128_mmio_write_l(riva128->rma.addr & 0xffffff, riva128->rma.data, riva128);
+  else svga_writel_linear((riva128->rma.addr - 0x1000000) & svga->vrammask, riva128->rma.data, svga);
   break;
   }
 

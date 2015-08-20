@@ -3528,9 +3528,9 @@ static uint32_t voodoo_readl(uint32_t addr, void *p)
         voodoo->rd_count++;
         addr &= 0xffffff;
         
-        if (addr & 0x800000) /*Texture*/
-        {
-        }
+        //if (addr & 0x800000) /*Texture*/
+        //{
+        //}
         else if (addr & 0x400000) /*Framebuffer*/
         {
                 voodoo->flush = 1;
