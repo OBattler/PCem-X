@@ -3531,7 +3531,7 @@ static uint32_t voodoo_readl(uint32_t addr, void *p)
         //if (addr & 0x800000) /*Texture*/
         //{
         //}
-        else if (addr & 0x400000) /*Framebuffer*/
+        if (addr & 0x400000) /*Framebuffer*/
         {
                 voodoo->flush = 1;
                 while (!FIFO_EMPTY)
@@ -3544,7 +3544,7 @@ static uint32_t voodoo_readl(uint32_t addr, void *p)
                 
                 temp = voodoo_fb_readl(addr, voodoo);
         }
-        else switch (addr & 0x3fc)
+        else if (!(addr & 0x800000))  switch (addr & 0x3fc)
         {
                 case SST_status:
                 fifo_size = 0xffff - FIFO_ENTRIES;
