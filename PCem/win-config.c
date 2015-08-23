@@ -530,7 +530,7 @@ static INT_PTR CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
 	                        gfx = video_card_getid(temp_str, 0);
                         
                         h = GetDlgItem(hdlg, IDC_CONFIGUREVID);
-                        if (video_card_has_config(gfx, models[temp_model].pci_only))
+                        if (video_card_has_config(models[temp_model].pci_only ? gfxpci : gfx, models[temp_model].pci_only))
                                 EnableWindow(h, TRUE);
                         else
                                 EnableWindow(h, FALSE);
