@@ -12,7 +12,8 @@ enum
         CMD_ERASE_SETUP = 0x20,
         CMD_ERASE_CONFIRM = 0xd0,
         CMD_ERASE_SUSPEND = 0xb0,
-        CMD_PROGRAM_SETUP = 0x40
+        CMD_PROGRAM_SETUP = 0x40,
+	CMD_PROGRAM_ALT_SETUP = 0x10
 };
 
 typedef struct flash_t
@@ -22,6 +23,9 @@ typedef struct flash_t
 } flash_t;
 
 static flash_t flash;
+
+static char *path;
+static char *fn;
 
 static uint8_t flash_read(uint32_t addr, void *p)
 {
@@ -42,6 +46,7 @@ static uint8_t flash_read(uint32_t addr, void *p)
 static void flash_write(uint32_t addr, uint8_t val, void *p)
 {
         flash_t *flash = (flash_t *)p;
+	int q = ((romset == ROM_REVENGE) || (romset == ROM_ENDEAVOR));
 //        pclog("flash_write : addr=%08x val=%02x command=%02x %04x:%08x\n", addr, val, flash->command, CS, pc);        
         switch (flash->command)
         {
@@ -49,21 +54,37 @@ static void flash_write(uint32_t addr, uint8_t val, void *p)
                 if (val == CMD_ERASE_CONFIRM)
                 {
 //                        pclog("flash_write: erase %05x\n", addr & 0x1ffff);
-                        if ((addr & 0x1f000) == 0x0d000)
-                                memset(&rom[0x0d000], 0xff, 0x1000);
-                        if ((addr & 0x1f000) == 0x0c000)
-                                memset(&rom[0x0c000], 0xff, 0x1000);
-                        if ((addr & 0x1f000) < 0x0c000 || (addr & 0x1f000) >= 0x10000)
-                        {
-                                memset(rom, 0xff, 0xc000);
-                                memset(&rom[0x10000], 0xff, 0x10000);
-                        }
-                        flash->status = 0x80;
+			if (q)
+			{
+	                        if ((addr & 0x1f000) == 0x0d000)
+        	                        memset(&rom[0x0d000], 0xff, 0x1000);
+                	        /* if ((addr & 0x1f000) == 0x0c000)
+                        	        memset(&rom[0x0c000], 0xff, 0x1000); */
+	                        if ((addr & 0x1f000) < 0x0d000 || (addr & 0x1f000) >= 0x0e000)
+        	                {
+                	                memset(rom, 0xff, 0x0c000);
+                        	        memset(&rom[0x0e000], 0xff, 0x12000);
+	                        }
+			}
+			else
+			{
+	                        if ((addr & 0x1f000) == 0x1d000)
+        	                        memset(&rom[0x1d000], 0xff, 0x1000);
+                	        /* if ((addr & 0x1f000) == 0x1c000)
+                        	        memset(&rom[0x1c000], 0xff, 0x1000); */
+	                        if ((addr & 0x1f000) < 0x1d000 || (addr & 0x1f000) >= 0x1e000)
+        	                {
+                	                memset(rom, 0xff, 0x1d000);
+                        	        memset(&rom[0x1e000], 0xff, 0x2000);
+	                        }
+			}
+       	                flash->status = 0x80;
                 }
                 flash->command = CMD_READ_STATUS;
                 break;
                 
                 case CMD_PROGRAM_SETUP:
+                case CMD_PROGRAM_ALT_SETUP:
 //                pclog("flash_write: program %05x %02x\n", addr & 0x1ffff, val);
                 if ((addr & 0x1e000) != 0x0e000)
                         rom[addr & 0x1ffff] = val;
@@ -129,58 +150,120 @@ static void flash_write(uint32_t addr, uint8_t val, void *p)
         }
 }
 
+void configure_path()
+{
+	switch(romset)
+	{
+		case ROM_REVENGE:
+			path = "roms/revenge/";
+			break;
+		case ROM_ENDEAVOR:
+			path = "roms/endeavor/";
+			break;
+		case ROM_430FX:
+			path = "roms/430fx/";
+			break;
+		case ROM_430VX:
+			path = "roms/430vx/";
+			break;
+		case ROM_430TX:
+			path = "roms/430tx/";
+			break;
+		case ROM_440FX:
+			path = "roms/440fx/";
+			break;
+		case ROM_440BX:
+			path = "roms/440bx/";
+			break;
+		case ROM_VPC2007:
+			path = "roms/vpc2007/";
+			break;
+	}
+}
+
+void flash_1mbit_readfiles()
+{
+        FILE *f;
+	int q = ((romset == ROM_REVENGE) || (romset == ROM_ENDEAVOR));
+
+        memset(&rom[q ? 0xd000 : 0x1d000], 0xFF, 0x1000);
+
+	configure_path();
+	fn = (char *) malloc(255);
+	/* strcpy(fn, path);
+	strcat(fn, "oemlogo.bin");
+        f = romfopen(fn, "rb");
+        if (f)
+        {
+                fread(&rom[0x1c000], 0x1000, 1, f);
+                fclose(f);
+        } */
+	strcpy(fn, path);
+	strcat(fn, "escd.bin");
+        f = romfopen(fn, "rb");
+        if (f)
+        {
+                fread(&rom[q ? 0xd000 : 0x1d000], 0x1000, 1, f);
+                fclose(f);
+        }
+}
+
 void *intel_flash_init()
 {
         FILE *f;
         flash_t *flash = malloc(sizeof(flash_t));
+	int q = ((romset == ROM_REVENGE) || (romset == ROM_ENDEAVOR));
         memset(flash, 0, sizeof(flash_t));
 
-	if (romset == ROM_440BX)
+	/* if (romset == ROM_440BX)
 	{
 	        mem_mapping_add(&flash->read_mapping,
-        	            0xc0000, 
-                	    0x40000,
-        	            flash_read, NULL, NULL,
-	                    NULL, NULL, NULL,
-                	    NULL, MEM_MAPPING_EXTERNAL, (void *)flash);
-	        mem_mapping_add(&flash->write_mapping,
-	                    0xc0000, 
-        	            0x40000,
-        	            NULL, NULL, NULL,
-	                    flash_write, NULL, NULL,
-        	            NULL, MEM_MAPPING_EXTERNAL, (void *)flash);
-	}
-	else
-	{
-	        mem_mapping_add(&flash->read_mapping,
-        	            0xe0000, 
+        	            0x80000, 
                 	    0x20000,
         	            flash_read, NULL, NULL,
 	                    NULL, NULL, NULL,
                 	    NULL, MEM_MAPPING_EXTERNAL, (void *)flash);
 	        mem_mapping_add(&flash->write_mapping,
-	                    0xe0000, 
+	                    0x80000, 
         	            0x20000,
         	            NULL, NULL, NULL,
 	                    flash_write, NULL, NULL,
         	            NULL, MEM_MAPPING_EXTERNAL, (void *)flash);
-	}
+	} */
+        mem_mapping_add(&flash->read_mapping,
+       	            0xe0000, 
+               	    0x20000,
+       	            flash_read, NULL, NULL,
+                    NULL, NULL, NULL,
+               	    NULL, MEM_MAPPING_EXTERNAL, (void *)flash);
+        mem_mapping_add(&flash->write_mapping,
+                    0xe0000, 
+       	            0x20000,
+       	            NULL, NULL, NULL,
+                    flash_write, NULL, NULL,
+       	            NULL, MEM_MAPPING_EXTERNAL, (void *)flash);
         mem_mapping_disable(&flash->read_mapping);
         flash->command = CMD_READ_ARRAY;
         flash->status = 0;
         
-        memset(&rom[0xc000], 0, 0x2000);
-        
-        f = romfopen("roms/endeavor/oemlogo.bin", "rb");
+        memset(&rom[q ? 0xd000 : 0x1d000], 0xFF, 0x1000);
+
+	configure_path();
+	fn = (char *) malloc(255);
+	/* strcpy(fn, path);
+	strcat(fn, "oemlogo.bin");
+        f = romfopen(fn, "rb");
         if (f)
         {
-                fread(&rom[0xc000], 0x1000, 1, f);
+                fread(&rom[0x1c000], 0x1000, 1, f);
                 fclose(f);
-        }
-        f = romfopen("roms/endeavor/ecsd.bin", "rb");
+        } */
+	strcpy(fn, path);
+	strcat(fn, "escd.bin");
+        f = romfopen(fn, "rb");
         if (f)
         {
-                fread(&rom[0xd000], 0x1000, 1, f);
+                fread(&rom[q ? 0xd000 : 0x1d000], 0x1000, 1, f);
                 fclose(f);
         }
         
@@ -191,12 +274,19 @@ void intel_flash_close(void *p)
 {
         FILE *f;
         flash_t *flash = (flash_t *)p;
+	int q = ((romset == ROM_REVENGE) || (romset == ROM_ENDEAVOR));
 
-        f = romfopen("roms/endeavor/oemlogo.bin", "wb");
-        fwrite(&rom[0xc000], 0x1000, 1, f);
-        fclose(f);
-        f = romfopen("roms/endeavor/ecsd.bin", "wb");
-        fwrite(&rom[0xd000], 0x1000, 1, f);
+	configure_path();
+	fn = (char *) malloc(255);
+	/* strcpy(fn, path);
+	strcat(fn, "oemlogo.bin");
+        f = romfopen(fn, "wb");
+        fwrite(&rom[0x1c000], 0x1000, 1, f);
+        fclose(f); */
+	strcpy(fn, path);
+	strcat(fn, "escd.bin");
+        f = romfopen(fn, "wb");
+        fwrite(&rom[q ? 0xd000 : 0x1d000], 0x1000, 1, f);
         fclose(f);
 
         free(flash);

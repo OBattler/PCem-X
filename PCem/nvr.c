@@ -9,7 +9,7 @@
 
 int oldromset;
 int nvrmask=63;
-uint8_t nvrram[128];
+uint8_t nvrram[256];
 int nvraddr;
 
 int nvr_dosave = 0;
@@ -367,27 +367,29 @@ void loadnvr()
                 case ROM_PX386:      f = romfopen("px386.nvr",      "rb"); break;
                 case ROM_DTK386:     f = romfopen("dtk386.nvr",     "rb"); break;
                 case ROM_AMI486:     f = romfopen("ami486.nvr",     "rb"); nvrmask = 127; break;
+                case ROM_PX486:      f = romfopen("px486.nvr",      "rb"); nvrmask = 127; break;
                 case ROM_WIN486:     f = romfopen("win486.nvr",     "rb"); nvrmask = 127; break;
                 case ROM_PCI486:     f = romfopen("hot-433.nvr",    "rb"); nvrmask = 127; break;
                 case ROM_SIS471:     f = romfopen("sis471.nvr",     "rb"); nvrmask = 127; break;
+                case ROM_PXSIS471:   f = romfopen("pxsis471.nvr",   "rb"); nvrmask = 127; break;
                 case ROM_COLORBOOK:  f = romfopen("colorbook.nvr",  "rb"); nvrmask = 127; break;
                 case ROM_SIS496:     f = romfopen("sis496.nvr",     "rb"); nvrmask = 127; break;
-                case ROM_430FX:      f = romfopen("430fx.nvr",      "rb"); nvrmask = 127; break;
+                case ROM_430FX:      f = romfopen("430fx.nvr",      "rb"); nvrmask = 255; break;
                 case ROM_430VX:      f = romfopen("430vx.nvr",      "rb"); nvrmask = 127; break;
-                case ROM_430TX:      f = romfopen("430tx.nvr",      "rb"); nvrmask = 127; break;
-                case ROM_440FX:      f = romfopen("440fx.nvr",      "rb"); nvrmask = 127; break;
-                case ROM_440BX:      f = romfopen("440bx.nvr",      "rb"); nvrmask = 127; break;
-                case ROM_VPC2007:    f = romfopen("vpc2007.nvr",    "rb"); nvrmask = 127; break;
+                case ROM_430TX:      f = romfopen("430tx.nvr",      "rb"); nvrmask = 255; break;
+                case ROM_440FX:      f = romfopen("440fx.nvr",      "rb"); nvrmask = 255; break;
+                case ROM_440BX:      f = romfopen("440bx.nvr",      "rb"); nvrmask = 255; break;
+                case ROM_VPC2007:    f = romfopen("vpc2007.nvr",    "rb"); nvrmask = 255; break;
                 case ROM_REVENGE:    f = romfopen("revenge.nvr",    "rb"); nvrmask = 127; break;
-                case ROM_ENDEAVOR:   f = romfopen("endeavor.nvr",   "rb"); nvrmask = 127; break;
+                case ROM_ENDEAVOR:   f = romfopen("endeavor.nvr",   "rb"); nvrmask = 255; break;
                 default: return;
         }
         if (!f)
         {
-                memset(nvrram,0xFF,128);
+                memset(nvrram,0xFF,(nvrmask == 255) ? 256 : 128);
                 return;
         }
-        fread(nvrram,128,1,f);
+        fread(nvrram,(nvrmask == 255) ? 256 : 128,1,f);
         fclose(f);
         // nvrram[0xA]=6;
         // nvrram[0xB]=0;
@@ -418,9 +420,11 @@ void savenvr()
                 case ROM_PX386:      f = romfopen("px386.nvr",      "wb"); break;
                 case ROM_DTK386:     f = romfopen("dtk386.nvr",     "wb"); break;
                 case ROM_AMI486:     f = romfopen("ami486.nvr",     "wb"); break;
+                case ROM_PX486:      f = romfopen("px486.nvr",      "wb"); break;
                 case ROM_WIN486:     f = romfopen("win486.nvr",     "wb"); break;
                 case ROM_PCI486:     f = romfopen("hot-433.nvr",    "wb"); break;
                 case ROM_SIS471:     f = romfopen("sis471.nvr",     "wb"); break;
+                case ROM_PXSIS471:   f = romfopen("pxsis471.nvr",   "wb"); break;
                 case ROM_COLORBOOK:  f = romfopen("colorbook.nvr",  "wb"); break;
                 case ROM_SIS496:     f = romfopen("sis496.nvr",     "wb"); break;
                 case ROM_430FX:      f = romfopen("430fx.nvr",      "wb"); break;
@@ -433,7 +437,7 @@ void savenvr()
                 case ROM_ENDEAVOR:   f = romfopen("endeavor.nvr",   "wb"); break;
                 default: return;
         }
-        fwrite(nvrram,128,1,f);
+        fwrite(nvrram,(nvrmask == 255) ? 256 : 128,1,f);
 	if(AMSTRAD)  nvrram[0x20] = 0x19;
         fclose(f);
 }

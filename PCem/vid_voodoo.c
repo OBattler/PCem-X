@@ -263,7 +263,9 @@ typedef struct voodoo_t
         int flush;
 
         int scrfilter;
-        
+
+        uint32_t last_write_addr;
+                
         rgb_t clutData[33];
         int clutData_dirty;
         rgb_t clutData256[256];
@@ -3503,6 +3505,8 @@ static uint16_t voodoo_readw(uint32_t addr, void *p)
 
         addr &= 0xffffff;
 
+        cycles -= pci_nonburst_time;
+        
         if ((addr & 0xc00000) == 0x400000) /*Framebuffer*/
         {
                 voodoo->flush = 1;
@@ -3528,10 +3532,12 @@ static uint32_t voodoo_readl(uint32_t addr, void *p)
         voodoo->rd_count++;
         addr &= 0xffffff;
         
-        //if (addr & 0x800000) /*Texture*/
-        //{
-        //}
-        if (addr & 0x400000) /*Framebuffer*/
+        cycles -= pci_nonburst_time;
+        
+        if (addr & 0x800000) /*Texture*/
+        {
+        }
+        else if (addr & 0x400000) /*Framebuffer*/
         {
                 voodoo->flush = 1;
                 while (!FIFO_EMPTY)
@@ -3544,7 +3550,7 @@ static uint32_t voodoo_readl(uint32_t addr, void *p)
                 
                 temp = voodoo_fb_readl(addr, voodoo);
         }
-        else if (!(addr & 0x800000))  switch (addr & 0x3fc)
+        else switch (addr & 0x3fc)
         {
                 case SST_status:
                 fifo_size = 0xffff - FIFO_ENTRIES;
@@ -3606,6 +3612,12 @@ static void voodoo_writew(uint32_t addr, uint16_t val, void *p)
         voodoo->wr_count++;
         addr &= 0xffffff;
 
+        if (addr == voodoo->last_write_addr+4)
+                cycles -= pci_burst_time;
+        else
+                cycles -= pci_nonburst_time;
+        voodoo->last_write_addr = addr;
+
         if ((addr & 0xc00000) == 0x400000) /*Framebuffer*/
                 queue_command(voodoo, addr | FIFO_WRITEW_FB, val);
 }
@@ -3639,6 +3651,12 @@ static void voodoo_writel(uint32_t addr, uint32_t val, void *p)
         voodoo_t *voodoo = (voodoo_t *)p;
         voodoo->wr_count++;
         addr &= 0xffffff;
+
+        if (addr == voodoo->last_write_addr+4)
+                cycles -= pci_burst_time;
+        else
+                cycles -= pci_nonburst_time;
+        voodoo->last_write_addr = addr;
 
         if (addr & 0x800000) /*Texture*/
         {

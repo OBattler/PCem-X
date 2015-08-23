@@ -41,6 +41,7 @@
 #include "nvr.h"
 #include "olivetti_m24.h"
 #include "pc87306.h"
+#include "pc87309.h"
 #include "pci.h"
 #include "pic.h"
 #include "piix.h"
@@ -123,8 +124,10 @@ MODEL models[] =
         {"Phoenix 386 clone",   ROM_PX386,       { "Intel", cpus_i386,    "AMD", cpus_Am386,   "Cyrix", cpus_486SDLC}, 0,0,  	    at_init},
         {"AMI 486 clone",       ROM_AMI486,    { "Intel", cpus_i486,    "AMD", cpus_Am486,   "Cyrix", cpus_Cx486},   0,0,   at_ali1429_init},
         {"AMI WinBIOS 486",     ROM_WIN486,    { "Intel", cpus_i486,    "AMD", cpus_Am486,   "Cyrix", cpus_Cx486},   0,0,   at_ali1429_init},
+        {"Phoenix 486 clone",   ROM_PX486,     { "Intel", cpus_i486,    "AMD", cpus_Am486,   "Cyrix", cpus_Cx486},   0,0,   at_ali1429_init},
         {"AMI WinBIOS 486 PCI", ROM_PCI486,    { "Intel", cpus_i486,    "AMD", cpus_Am486, "Cyrix", cpus_Cx486},   0,0,   at_um8881f_init},
         {"Award SiS 471",       ROM_SIS471,    { "Intel", cpus_i486,    "AMD", cpus_Am486,   "Cyrix", cpus_Cx486},   0,0,    at_sis471_init},
+        {"Phoenix SiS 471",     ROM_PXSIS471,  { "Intel", cpus_i486,    "AMD", cpus_Am486,   "Cyrix", cpus_Cx486},   0,0,    at_sis471_init},
         {"Gateway 2000 Colorbook",ROM_COLORBOOK, { "Intel", cpus_i486,    "AMD", cpus_Am486,   "Cyrix", cpus_Cx486},   0,0, at_colorbook_init},
         {"Award SiS 496/497",   ROM_SIS496,    { "Intel", cpus_i486,    "AMD", cpus_Am486,   "Cyrix", cpus_Cx486},   0,0,    at_sis496_init},
 #ifdef DYNAREC
@@ -134,8 +137,10 @@ MODEL models[] =
         {"Award 430VX PCI",     ROM_430VX,     { "Intel", cpus_Pentium, "IDT", cpus_WinChip, "",      NULL},         0,0,    at_i430vx_init},
         {"Award 430TX PCI",     ROM_430TX,     { "Intel", cpus_Pentium, "IDT", cpus_WinChip, "",      NULL},         0,0,    at_i430tx_init},
         {"Award 440FX PCI",     ROM_440FX,     { "Intel", cpus_PentiumPro,"Intel P2",    cpus_Pentium2,         "",      NULL},         0,0,    at_i440fx_init},
-        {"Award 440BX PCI",     ROM_440BX,     { "Intel", cpus_Pentium2,"",    NULL,         "",      NULL},         0,1,    at_i440bx_init},
+#ifdef BROKEN_CHIPSETS
+        {"Award 440BX PCI",     ROM_440BX,     { "Intel", cpus_Pentium2,"",    NULL,         "",      NULL},         0,0,    at_i440bx_init},
         {"Virtual PC 2007",     ROM_VPC2007,   { "Intel", cpus_Pentium2,"",    NULL,         "",      NULL},         0,1,    at_vpc2007_init},
+#endif
 #else
         {"Intel Advanced/EV",   ROM_ENDEAVOR,  { "IDT", cpus_WinChip,   "",    NULL,         "",      NULL},         0,0,  at_endeavor_init},
         {"Award 430FX PCI",     ROM_430FX,     { "IDT", cpus_WinChip,   "",    NULL,         "",      NULL},         0,0,  at_i430fx_init},
@@ -469,6 +474,7 @@ void at_batman_init()
         i430lx_init();
 	fdc37c665_init();
         intel_batman_init();
+        device_add(&intel_flash_device);
 }
 
 void at_endeavor_init()
@@ -522,6 +528,7 @@ void at_i430vx_init()
         // um8669f_init();
 	/* Note by OBattler: Switched to a BIOS using that Super I/O chip because it's better than UMC. */
 	fdc37c932fr_init();
+        device_add(&intel_flash_device);
 }
 
 void at_i430tx_init()
@@ -576,8 +583,9 @@ void at_i440bx_init()
         piix_init(7);
         // um8669f_init();
 	/* Note by OBattler: Switched to a BIOS using that Super I/O chip because it's better than UMC. */
-	fdc37c932fr_init();
-        device_add(&intel_flash_device);
+	// fdc37c932fr_init();
+	pc87309_init();
+	has_pc87306 = 1;
 }
 
 void at_vpc2007_init()

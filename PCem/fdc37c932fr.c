@@ -419,11 +419,6 @@ uint8_t fdc37c932fr_read(uint16_t port, void *priv)
 	}
 }
 
-uint8_t ap5t_read(uint16_t port, void *priv)
-{
-	return 0xfe;
-}
-
 void fdc37c932fr_init()
 {
 	int i = 0;
@@ -512,6 +507,5 @@ void fdc37c932fr_init()
 	densel_force = 0;
 	fdc_setswap(0);
         io_sethandler(0x3f0, 0x0002, fdc37c932fr_read, NULL, NULL, fdc37c932fr_write, NULL, NULL,  NULL);
-        io_sethandler(0x92, 0x0001, ap5t_read, NULL, NULL, NULL, NULL, NULL,  NULL);
         fdc37c932fr_locked = 0;
 }

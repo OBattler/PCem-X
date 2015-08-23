@@ -338,7 +338,7 @@ void video_init()
                 device_add(&ps1vga_device);
                 return;
 
-		case ROM_440BX:
+		// case ROM_440BX:
 		case ROM_VPC2007:
 		device_add(video_cards_pci[video_old_to_new(gfxcardpci, 1)].device);
 		return;

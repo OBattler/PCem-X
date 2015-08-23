@@ -39,6 +39,7 @@ static INT_PTR CALLBACK status_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
                 uint64_t status_diff = new_time - status_time;
                 status_time = new_time;
                 sprintf(device_s,
+                        "PCI gfx   : %08X\n"
                         "CPU speed : %f MIPS\n"
                         "FPU speed : %f MFLOPS\n\n"
 #ifndef DYNAREC
@@ -55,7 +56,7 @@ static INT_PTR CALLBACK status_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
                         "Flushes : %i\nEvicted : %i\nReused : %i\nRemoved : %i\nReal speed : %f MIPS"
 //                        "\nFully recompiled ins %% : %f%%"
 #endif
-                        ,mips,
+                        ,(uint32_t) gfxcardpci, mips,
                         flops,
 #ifndef DYNAREC
                         sreadlnum,

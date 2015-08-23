@@ -44,6 +44,7 @@ static INT_PTR CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
 	int temp_network_interface_current;
 	int temp_fdtype_a_current;
 	int temp_fdtype_b_current;
+	int temp_enable_dynarec;
 //        pclog("Dialog msg %i %08X\n",message,message);
         switch (message)
         {
@@ -187,6 +188,9 @@ static INT_PTR CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
                 h=GetDlgItem(hdlg, IDC_CHECKPS1XTIDE);
                 SendMessage(h, BM_SETCHECK, ps1xtide, 0);
 
+                h=GetDlgItem(hdlg, IDC_CHECKDYNAREC);
+                SendMessage(h, BM_SETCHECK, enable_dynarec, 0);
+
                 h = GetDlgItem(hdlg, IDC_COMBOFDA);
                 SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"3.5\" 720 kB DD");
                 SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)"Invalid (1)");
@@ -323,6 +327,9 @@ static INT_PTR CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
                         h = GetDlgItem(hdlg, IDC_CHECKPS1XTIDE);
                         temp_ps1xtide = SendMessage(h, BM_GETCHECK, 0, 0);
 
+                        h = GetDlgItem(hdlg, IDC_CHECKDYNAREC);
+                        temp_enable_dynarec = SendMessage(h, BM_GETCHECK, 0, 0);
+
                         h = GetDlgItem(hdlg, IDC_COMBOSND);
                         temp_sound_card_current = settings_list_to_sound[SendMessage(h, CB_GETCURSEL, 0, 0)];
 
@@ -338,9 +345,9 @@ static INT_PTR CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
                         temp_fdtype_b_current = SendMessage(h, CB_GETCURSEL, 0, 0);
 
 #ifndef __MINGW64__
-                        if (temp_model != model || gfx != gfxcard || gfxpci != gfxcardpci || mem != mem_size || fpu != hasfpu || temp_GAMEBLASTER != GAMEBLASTER || temp_GUS != GUS || temp_SSI2001 != SSI2001 || temp_sound_card_current != sound_card_current || temp_network_card_current != network_card_current || temp_fdtype_a_current != int_from_config(0) || temp_fdtype_b_current != int_from_config(1) || temp_voodoo != voodoo_enabled || temp_ps1xtide != ps1xtide)
+                        if (temp_model != model || gfx != gfxcard || gfxpci != gfxcardpci || mem != mem_size || fpu != hasfpu || temp_GAMEBLASTER != GAMEBLASTER || temp_GUS != GUS || temp_SSI2001 != SSI2001 || temp_sound_card_current != sound_card_current || temp_network_card_current != network_card_current || temp_fdtype_a_current != int_from_config(0) || temp_fdtype_b_current != int_from_config(1) || temp_voodoo != voodoo_enabled || temp_ps1xtide != ps1xtide || temp_enable_dynarec != temp_enable_dynarec)
 #else
-                        if (temp_model != model || gfx != gfxcard || gfxpci != gfxcardpci || mem != mem_size || fpu != hasfpu || temp_GAMEBLASTER != GAMEBLASTER || temp_GUS != GUS || temp_SSI2001 != SSI2001 || temp_sound_card_current != sound_card_current || temp_fdtype_a_current != int_from_config(0) || temp_fdtype_b_current != int_from_config(1) || temp_voodoo != voodoo_enabled || temp_ps1xtide != ps1xtide)
+                        if (temp_model != model || gfx != gfxcard || gfxpci != gfxcardpci || mem != mem_size || fpu != hasfpu || temp_GAMEBLASTER != GAMEBLASTER || temp_GUS != GUS || temp_SSI2001 != SSI2001 || temp_sound_card_current != sound_card_current || temp_fdtype_a_current != int_from_config(0) || temp_fdtype_b_current != int_from_config(1) || temp_voodoo != voodoo_enabled || temp_ps1xtide != ps1xtide || temp_enable_dynarec != temp_enable_dynarec)
 #endif
                         {
                                 if (MessageBox(NULL,"This will reset PCem-X!\nAre you sure you want to continue?","PCem",MB_OKCANCEL)==IDOK)
@@ -358,6 +365,7 @@ static INT_PTR CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
                                         sound_card_current = temp_sound_card_current;
 					voodoo_enabled = temp_voodoo;
 					ps1xtide = temp_ps1xtide;
+					enable_dynarec = temp_enable_dynarec;
 #ifndef __MINGW64__
                                         network_card_current = temp_network_card_current;
 #endif

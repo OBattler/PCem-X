@@ -17,9 +17,9 @@ extern uint8_t edatlookup[4][4];
 
 uint8_t svga_rotate[8][256];
 
-uint8_t mask_gdc[9] = {0x0F, 0x0F, 0x0F, 0x1F, 0x03, 0x7B, 0x0F, 0x0F, 0xFF};
+static uint8_t mask_gdc[9] = {0x0F, 0x0F, 0x0F, 0x1F, 0x03, 0x7B, 0x0F, 0x0F, 0xFF};
 uint8_t mask_crtc[0x19] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F, 0xFF, 0x3F, 0x7F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xCF, 0xFF, 0xFF, 0x7F, 0xFF, 0x7F, 0xEF, 0xFF};
-uint8_t mask_seq[5] = {0x03, 0x3D, 0x0F, 0x3F, 0x0E};
+static uint8_t mask_seq[5] = {0x03, 0x3D, 0x0F, 0x3F, 0x0E};
 
 /*Primary SVGA device. As multiple video cards are not yet supported this is the
   only SVGA device.*/
@@ -263,6 +263,10 @@ uint8_t svga_in(uint16_t addr, void *p)
                 case 0x3CE:
                 return svga->gdcaddr;
                 case 0x3CF:
+		if (svga->gdcaddr == 0xF8)  return (svga->latch & 0xFF);
+		if (svga->gdcaddr == 0xF9)  return ((svga->latch & 0xFF00) >> 8);
+		if (svga->gdcaddr == 0xFA)  return ((svga->latch & 0xFF0000) >> 16);
+		if (svga->gdcaddr == 0xFB)  return ((svga->latch & 0xFF000000) >> 24);
                 return svga->gdcreg[svga->gdcaddr & 0xf];
                 case 0x3DA:
                 svga->attrff = 0;
@@ -787,14 +791,6 @@ static const uint32_t mask16[16] = {
 	0xffffffff
 };
 
-uint8_t supports_oddeven()
-{
-	if ((gfxcard == GFX_VGAEDGE16) || (gfxcard == GFX_VGACHARGER) || (gfxcard == GFX_OTI067) || (gfxcard == GFX_CL_GD6235))  return 0;
-	return 1;
-}
-
-uint8_t is_cirrus_bank = 0;
-
 void svga_write_common(uint32_t addr, uint8_t val, void *p, uint8_t linear)
 {
         svga_t *svga = (svga_t *)p;
@@ -1000,6 +996,7 @@ uint8_t svga_read_common(uint32_t addr, void *p, uint8_t linear)
 	if (!svga->enablevram)  return 0xFF;
 	// if (!(svga->seqregs[0] & 2))  return 0xFF;
 
+        egareads++;
         cycles -= video_timing_b;
         cycles_lost += video_timing_b;
 
@@ -1085,25 +1082,21 @@ uint8_t svga_read_common(uint32_t addr, void *p, uint8_t linear)
 
 void svga_write(uint32_t addr, uint8_t val, void *p)
 {
-	is_cirrus_bank = 0;
 	svga_write_common(addr, val, p, 0);
 }
 
 uint8_t svga_read(uint32_t addr, void *p)
 {
-	is_cirrus_bank = 0;
 	return svga_read_common(addr, p, 0);
 }
 
 void svga_write_linear(uint32_t addr, uint8_t val, void *p)
 {
-	is_cirrus_bank = 0;
 	svga_write_common(addr, val, p, 1);
 }
 
 uint8_t svga_read_linear(uint32_t addr, void *p)
 {
-	is_cirrus_bank = 0;
 	return svga_read_common(addr, p, 1);
 }
 

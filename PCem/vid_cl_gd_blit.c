@@ -24,7 +24,7 @@
 #define glue(a,b) glue_hidden(a,b)
 #define glue_hidden(a,b) a ## b
 
-int ABS(int sval)
+int cl_gd_ABS(int sval)
 {
 	if (sval < 0)
 	{
@@ -460,10 +460,10 @@ void cirrus_do_copy(clgd_t *clgd, svga_t *svga, int dst, int src, int w, int h)
 		height = svga->video_res_y;
 
 		/* extra x, y */
-		sx = (src % ABS(clgd->blt.src_pitch)) / depth;
-		sy = (src / ABS(clgd->blt.src_pitch));
-		dx = (dst % ABS(clgd->blt.dst_pitch)) / depth;
-		dy = (dst / ABS(clgd->blt.dst_pitch));
+		sx = (src % cl_gd_ABS(clgd->blt.src_pitch)) / depth;
+		sy = (src / cl_gd_ABS(clgd->blt.src_pitch));
+		dx = (dst % cl_gd_ABS(clgd->blt.dst_pitch)) / depth;
+		dy = (dst / cl_gd_ABS(clgd->blt.dst_pitch));
 
 		/* normalize width */
 		w /= depth;

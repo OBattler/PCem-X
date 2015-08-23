@@ -17,6 +17,7 @@ typedef struct ega_t
         int vidclock;
 
         uint8_t la, lb, lc, ld;
+	uint32_t latch;
         
         uint8_t stat;
         
@@ -24,6 +25,8 @@ typedef struct ega_t
         uint8_t colourcompare, colournocare;
         int readmode, writemode, readplane;
         int chain4, chain2;
+	int oddeven_page;
+	int enablevram, extvram;
         uint8_t writemask;
         uint32_t charseta, charsetb;
         

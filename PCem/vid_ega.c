@@ -19,6 +19,10 @@ static uint32_t pallook16[256], pallook64[256];
 /*3C2 controls default mode on EGA. On VGA, it determines monitor type (mono or colour)*/
 int egaswitchread,egaswitches=9; /*7=CGA mode (200 lines), 9=EGA mode (350 lines), 8=EGA mode (200 lines)*/
 
+static uint8_t mask_gdc[9] = {0x0F, 0x0F, 0x0F, 0x1F, 0x03, 0x3B, 0x0F, 0x0F, 0xFF};
+static uint8_t ega_mask_crtc[0x19] = {0xFF, 0xFF, 0xFF, 0x7F, 0xFF, 0xFF, 0xFF, 0x1F, 0x1F, 0x1F, 0x1F, 0x7F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F, 0xFF, 0xFF, 0x1F, 0xFF, 0x1F, 0x7F, 0xFF};
+static uint8_t mask_seq[5] = {0x03, 0x1F, 0x0F, 0x0F, 0x06};
+
 void ega_out(uint16_t addr, uint8_t val, void *p)
 {
         ega_t *ega = (ega_t *)p;
@@ -55,12 +59,15 @@ void ega_out(uint16_t addr, uint8_t val, void *p)
                 ega->vres = !(val & 0x80);
                 ega->pallook = ega->vres ? pallook16 : pallook64;
                 ega->vidclock = val & 4; /*printf("3C2 write %02X\n",val);*/
+		ega->enablevram = (val & 2) ? 1 : 0;
+		ega->oddeven_page = (val & 0x20) ? 0 : 1;
                 ega->miscout=val;
                 break;
                 case 0x3c4: 
                 ega->seqaddr = val; 
                 break;
                 case 0x3c5:
+		if (ega->seqaddr <= 4)  val &= mask_seq[ega->seqaddr];
                 o = ega->seqregs[ega->seqaddr & 0xf];
                 ega->seqregs[ega->seqaddr & 0xf] = val;
                 if (o != val && (ega->seqaddr & 0xf) == 1) 
@@ -79,12 +86,16 @@ void ega_out(uint16_t addr, uint8_t val, void *p)
                         ega->charsetb = (((val >> 2) & 3) * 0x10000) + 2;
                         ega->charseta = ((val & 3)        * 0x10000) + 2;
                         break;
+			case 4:
+			ega->extvram = (val & 2) ? 1 : 0;
+			break;
                 }
                 break;
                 case 0x3ce: 
                 ega->gdcaddr = val; 
                 break;
                 case 0x3cf:
+		if (ega->seqaddr <= 8)  val &= mask_gdc[ega->gdcaddr];
                 ega->gdcreg[ega->gdcaddr & 15] = val;
                 switch (ega->gdcaddr & 15)
                 {
@@ -130,6 +141,7 @@ void ega_out(uint16_t addr, uint8_t val, void *p)
 //                        pclog("Write 3d5 %02X %02X %02X\n", ega->crtcreg, val, ega->crtc[0x11]);
 //                if (ega->crtcreg == 1 && val == 0x14)
 //                        fatal("Here\n");
+		if (ega->crtcreg <= 0x18)  val &= ega_mask_crtc[ega->crtcreg];
                 if (ega->crtcreg <= 7 && ega->crtc[0x11] & 0x80) return;
                 old = ega->crtc[ega->crtcreg];
                 ega->crtc[ega->crtcreg] = val;
@@ -178,6 +190,10 @@ if (addr != 0x3da && addr != 0x3ba)
                 case 0x3ce: 
                 return ega->gdcaddr;
                 case 0x3cf:
+		if (ega->gdcaddr == 0xF8)  return (ega->latch & 0xFF);
+		if (ega->gdcaddr == 0xF9)  return ((ega->latch & 0xFF00) >> 8);
+		if (ega->gdcaddr == 0xFA)  return ((ega->latch & 0xFF0000) >> 16);
+		if (ega->gdcaddr == 0xFB)  return ((ega->latch & 0xFF000000) >> 24);
                 return ega->gdcreg[ega->gdcaddr & 0xf];
                 case 0x3d4:
                 return ega->crtcreg;
@@ -284,6 +300,7 @@ void ega_poll(void *p)
         int offset;
         uint8_t edat[4];
         int drawcursor = 0;
+	uint32_t addr_ex = 0;
 
         if (!ega->linepos)
         {
@@ -325,8 +342,9 @@ void ega_poll(void *p)
                                         for (x = 0; x < ega->hdisp; x++)
                                         {
                                                 drawcursor = ((ega->ma == ega->ca) && ega->con && ega->cursoron);
-                                                chr  = ega->vram[(ega->ma << 1) & ega->vrammask];
-                                                attr = ega->vram[((ega->ma << 1) + 1) & ega->vrammask];
+						addr_ex = (ega->oddeven_page ? 0x10000 : 0);
+						chr = ega->vram[(ega->ma << 1) | addr_ex];
+						attr = ega->vram[((ega->ma << 1) + 1) | addr_ex];
 
                                                 if (attr & 8) charaddr = ega->charsetb + (chr * 128);
                                                 else          charaddr = ega->charseta + (chr * 128);
@@ -477,12 +495,12 @@ void ega_poll(void *p)
                                                 if (ega->sc & 1 && !(ega->crtc[0x17] & 1))
                                                 {
                                                         edat[0] = ega->vram[(ega->ma << 1) + 0x8000];
-                                                        edat[1] = ega->vram[(ega->ma << 1) + 0x8004];
+                                                        edat[1] = ega->vram[(ega->ma << 1) + 0x8001];
                                                 }
                                                 else
                                                 {
                                                         edat[0] = ega->vram[(ega->ma << 1)];
-                                                        edat[1] = ega->vram[(ega->ma << 1) + 4];
+                                                        edat[1] = ega->vram[(ega->ma << 1) + 1];
                                                 }
                                                 ega->ma += 4; 
                                                 ega->ma &= ega->vrammask;
@@ -635,138 +653,185 @@ endblit();
         }
 }
 
+#define GET_PLANE(data, p) (((data) >> ((p) * 8)) & 0xff)
+
+static const uint32_t mask16[16] = {
+	0x00000000,
+
+	0x000000ff,
+
+	0x0000ff00,
+
+	0x0000ffff,
+
+	0x00ff0000,
+
+	0x00ff00ff,
+
+	0x00ffff00,
+
+	0x00ffffff,
+
+	0xff000000,
+
+	0xff0000ff,
+
+	0xff00ff00,
+
+	0xff00ffff,
+
+	0xffff0000,
+
+	0xffff00ff,
+
+	0xffffff00,
+
+	0xffffffff
+};
 
 void ega_write(uint32_t addr, uint8_t val, void *p)
 {
         ega_t *ega = (ega_t *)p;
-        uint8_t vala, valb, valc, vald;
-	int writemask2 = ega->writemask;
+        uint8_t vala, valb, valc, vald, wm = ega->writemask;
+        int writemask2 = ega->writemask;
+	uint32_t raddr = addr;
+	uint32_t ex = (1 << 13);
+	uint32_t val32 = (uint32_t) val;
+
+	int memory_map_mode, plane, write_mode, b, func_select, mask;
+	uint32_t write_mask, bit_mask, set_mask, real_addr, real_mask;
+
+	if (!ega->enablevram)  return;
+	// if (!(ega->seqregs[0] & 2))  return;
 
         egawrites++;
+
         cycles -= video_timing_b;
-        cycles_lost += video_timing_b;
-        
-        if (addr >= 0xB0000) addr &= 0x7fff;
-        else                 addr &= 0xffff;
+       	cycles_lost += video_timing_b;
 
-        if (ega->chain2)
-        {
-                writemask2 &= ~0xa;
-                if (addr & 1)
-                        writemask2 <<= 1;
-                addr &= ~1;
-        }
+        if (!(ega->gdcreg[6] & 1)) fullchange=2;
 
-        addr <<= 2;
+	/* from here on, code is ported by OBattler from QEMU */
+	memory_map_mode = (ega->gdcreg[6] >> 2) & 3;
 
-	if (!(ega->gdcreg[6] & 1)) 
-                fullchange = 2;
+	addr &= 0x1ffff;
 
-//        pclog("%i %08X %i %i %02X   %02X %02X %02X %02X\n",chain4,addr,writemode,writemask,gdcreg[8],vram[0],vram[1],vram[2],vram[3]);
-        switch (ega->writemode)
-        {
-                case 1:
-                if (writemask2 & 1) ega->vram[addr]       = ega->la;
-                if (writemask2 & 2) ega->vram[addr | 0x1] = ega->lb;
-                if (writemask2 & 4) ega->vram[addr | 0x2] = ega->lc;
-                if (writemask2 & 8) ega->vram[addr | 0x3] = ega->ld;
-                break;
-                case 0:
-                if (ega->gdcreg[3] & 7) 
-                        val = ega_rotate[ega->gdcreg[3] & 7][val];
-                        
-                if (ega->gdcreg[8] == 0xff && !(ega->gdcreg[3] & 0x18) && !ega->gdcreg[1])
-                {
-                        if (writemask2 & 1) ega->vram[addr]       = val;
-                        if (writemask2 & 2) ega->vram[addr | 0x1] = val;
-                        if (writemask2 & 4) ega->vram[addr | 0x2] = val;
-                        if (writemask2 & 8) ega->vram[addr | 0x3] = val;
-                }
-                else
-                {
-                        if (ega->gdcreg[1] & 1) vala = (ega->gdcreg[0] & 1) ? 0xff : 0;
-                        else                    vala = val;
-                        if (ega->gdcreg[1] & 2) valb = (ega->gdcreg[0] & 2) ? 0xff : 0;
-                        else                    valb = val;
-                        if (ega->gdcreg[1] & 4) valc = (ega->gdcreg[0] & 4) ? 0xff : 0;
-                        else                    valc = val;
-                        if (ega->gdcreg[1] & 8) vald = (ega->gdcreg[0] & 8) ? 0xff : 0;
-                        else                    vald = val;
-//                                pclog("Write %02X %01X %02X %02X %02X %02X  %02X\n",gdcreg[3]&0x18,writemask,vala,valb,valc,vald,gdcreg[8]);
-                        switch (ega->gdcreg[3] & 0x18)
-                        {
-                                case 0: /*Set*/
-                                if (writemask2 & 1) ega->vram[addr]       = (vala & ega->gdcreg[8]) | (ega->la & ~ega->gdcreg[8]);
-                                if (writemask2 & 2) ega->vram[addr | 0x1] = (valb & ega->gdcreg[8]) | (ega->lb & ~ega->gdcreg[8]);
-                                if (writemask2 & 4) ega->vram[addr | 0x2] = (valc & ega->gdcreg[8]) | (ega->lc & ~ega->gdcreg[8]);
-                                if (writemask2 & 8) ega->vram[addr | 0x3] = (vald & ega->gdcreg[8]) | (ega->ld & ~ega->gdcreg[8]);
-                                break;
-                                case 8: /*AND*/
-                                if (writemask2 & 1) ega->vram[addr]       = (vala | ~ega->gdcreg[8]) & ega->la;
-                                if (writemask2 & 2) ega->vram[addr | 0x1] = (valb | ~ega->gdcreg[8]) & ega->lb;
-                                if (writemask2 & 4) ega->vram[addr | 0x2] = (valc | ~ega->gdcreg[8]) & ega->lc;
-                                if (writemask2 & 8) ega->vram[addr | 0x3] = (vald | ~ega->gdcreg[8]) & ega->ld;
-                                break;
-                                case 0x10: /*OR*/
-                                if (writemask2 & 1) ega->vram[addr]       = (vala & ega->gdcreg[8]) | ega->la;
-                                if (writemask2 & 2) ega->vram[addr | 0x1] = (valb & ega->gdcreg[8]) | ega->lb;
-                                if (writemask2 & 4) ega->vram[addr | 0x2] = (valc & ega->gdcreg[8]) | ega->lc;
-                                if (writemask2 & 8) ega->vram[addr | 0x3] = (vald & ega->gdcreg[8]) | ega->ld;
-                                break;
-                                case 0x18: /*XOR*/
-                                if (writemask2 & 1) ega->vram[addr]       = (vala & ega->gdcreg[8]) ^ ega->la;
-                                if (writemask2 & 2) ega->vram[addr | 0x1] = (valb & ega->gdcreg[8]) ^ ega->lb;
-                                if (writemask2 & 4) ega->vram[addr | 0x2] = (valc & ega->gdcreg[8]) ^ ega->lc;
-                                if (writemask2 & 8) ega->vram[addr | 0x3] = (vald & ega->gdcreg[8]) ^ ega->ld;
-                                break;
-                        }
-//                                pclog("- %02X %02X %02X %02X   %08X\n",vram[addr],vram[addr|0x1],vram[addr|0x2],vram[addr|0x3],addr);
-                }
-                break;
-                case 2:
-                if (!(ega->gdcreg[3] & 0x18) && !ega->gdcreg[1])
-                {
-                        if (writemask2 & 1) ega->vram[addr]       = (((val & 1) ? 0xff : 0) & ega->gdcreg[8]) | (ega->la & ~ega->gdcreg[8]);
-                        if (writemask2 & 2) ega->vram[addr | 0x1] = (((val & 2) ? 0xff : 0) & ega->gdcreg[8]) | (ega->lb & ~ega->gdcreg[8]);
-                        if (writemask2 & 4) ega->vram[addr | 0x2] = (((val & 4) ? 0xff : 0) & ega->gdcreg[8]) | (ega->lc & ~ega->gdcreg[8]);
-                        if (writemask2 & 8) ega->vram[addr | 0x3] = (((val & 8) ? 0xff : 0) & ega->gdcreg[8]) | (ega->ld & ~ega->gdcreg[8]);
-                }
-                else
-                {
-                        vala = ((val & 1) ? 0xff : 0);
-                        valb = ((val & 2) ? 0xff : 0);
-                        valc = ((val & 4) ? 0xff : 0);
-                        vald = ((val & 8) ? 0xff : 0);
-                        switch (ega->gdcreg[3] & 0x18)
-                        {
-                                case 0: /*Set*/
-                                if (writemask2 & 1) ega->vram[addr]       = (vala & ega->gdcreg[8]) | (ega->la & ~ega->gdcreg[8]);
-                                if (writemask2 & 2) ega->vram[addr | 0x1] = (valb & ega->gdcreg[8]) | (ega->lb & ~ega->gdcreg[8]);
-                                if (writemask2 & 4) ega->vram[addr | 0x2] = (valc & ega->gdcreg[8]) | (ega->lc & ~ega->gdcreg[8]);
-                                if (writemask2 & 8) ega->vram[addr | 0x3] = (vald & ega->gdcreg[8]) | (ega->ld & ~ega->gdcreg[8]);
-                                break;
-                                case 8: /*AND*/
-                                if (writemask2 & 1) ega->vram[addr]       = (vala | ~ega->gdcreg[8]) & ega->la;
-                                if (writemask2 & 2) ega->vram[addr | 0x1] = (valb | ~ega->gdcreg[8]) & ega->lb;
-                                if (writemask2 & 4) ega->vram[addr | 0x2] = (valc | ~ega->gdcreg[8]) & ega->lc;
-                                if (writemask2 & 8) ega->vram[addr | 0x3] = (vald | ~ega->gdcreg[8]) & ega->ld;
-                                break;
-                                case 0x10: /*OR*/
-                                if (writemask2 & 1) ega->vram[addr]       = (vala & ega->gdcreg[8]) | ega->la;
-                                if (writemask2 & 2) ega->vram[addr | 0x1] = (valb & ega->gdcreg[8]) | ega->lb;
-                                if (writemask2 & 4) ega->vram[addr | 0x2] = (valc & ega->gdcreg[8]) | ega->lc;
-                                if (writemask2 & 8) ega->vram[addr | 0x3] = (vald & ega->gdcreg[8]) | ega->ld;
-                                break;
-                                case 0x18: /*XOR*/
-                                if (writemask2 & 1) ega->vram[addr]       = (vala & ega->gdcreg[8]) ^ ega->la;
-                                if (writemask2 & 2) ega->vram[addr | 0x1] = (valb & ega->gdcreg[8]) ^ ega->lb;
-                                if (writemask2 & 4) ega->vram[addr | 0x2] = (valc & ega->gdcreg[8]) ^ ega->lc;
-                                if (writemask2 & 8) ega->vram[addr | 0x3] = (vald & ega->gdcreg[8]) ^ ega->ld;
-                                break;
-                        }
-                }
-                break;
-        }
+	switch (memory_map_mode)
+	{
+		case 0:
+			break;
+		case 1:
+			if (addr >= 0x10000)
+				return;
+			break;
+		case 2:
+			addr -= 0x10000;
+			if (addr >= 0x8000)
+				return;
+			break;
+		default:
+		case 3:
+			addr -= 0x18000;
+			if (addr >= 0x8000)
+				return;
+			break;
+	}
+
+	// if ((!ega->extvram) && (addr >= 0x10000))  return;
+	/* Horrible hack, I know, but it's the only way to fix the 440FX BIOS filling the VRAM with garbage until Tom fixes the memory emulation. */
+	if ((cs == 0xE0000) && (pc == 0xBF2F) && (romset == ROM_440FX))  return;
+	if ((cs == 0xE0000) && (pc == 0xBF77) && (romset == ROM_440FX))  return;
+
+	if (!(ega->seqregs[4] & 4))
+	{
+		/* odd/even mode (aka text mode mapping) */
+		plane = (ega->readplane & 2) | (addr & 1);
+		mask = (1 << plane);
+		if (ega->seqregs[2] & mask)
+		{
+			addr = ((addr & ~1) << 2) | plane | (ega->oddeven_page ? 0x10000 : 0);
+			real_addr = addr;
+			if ((!ega->extvram) && (real_addr >= 0x10000))  return;
+	                if (real_addr >= 0x40000)  return;
+			if ((raddr <= 0xA0000) && (raddr >= 0xBFFFF))  return;
+			ega->vram[real_addr] = val32;
+		}
+	}
+	else
+	{
+		/* standard EGA latched access */
+		func_select = (ega->gdcreg[3] >> 3) & 3;
+
+		write_mode = ega->gdcreg[5] & 3;
+
+		switch (write_mode)
+		{
+			default:
+			case 0:
+				/* rotate */
+		                if (ega->gdcreg[3] & 7)
+		                        val32 = ega_rotate[ega->gdcreg[3] & 7][val32];
+
+				/* apply set/reset mask */
+				bit_mask = ega->gdcreg[8];
+
+				val32 |= (val32 << 8);
+				val32 |= (val32 << 16);
+
+				if (ega->gdcreg[8] == 0xff && !(ega->gdcreg[3] & 0x18) && !ega->gdcreg[1])  goto do_write;
+
+				set_mask = mask16[ega->gdcreg[1]];
+				val32 = (val32 & ~set_mask) | (mask16[ega->gdcreg[0]] & set_mask);
+				break;
+			case 1:
+				val32 = ega->latch;
+				goto do_write;
+			case 2:
+				val32 = mask16[val32 & 0x0f];
+				bit_mask = ega->gdcreg[8];
+				if (!(ega->gdcreg[3] & 0x18) && !ega->gdcreg[1])  func_select = 0;
+				break;
+		}
+
+		/* apply bit mask */
+		bit_mask |= bit_mask << 8;
+		bit_mask |= bit_mask << 16;
+
+		/* apply logical operation */
+		switch(func_select)
+		{
+			case 0:
+			default:
+				/* set */
+				val32 &= bit_mask;
+				val32 |= (ega->latch & ~bit_mask);
+				break;
+			case 1:
+				/* and */
+				val32 |= ~bit_mask;
+				val32 &= ega->latch;
+				break;
+			case 2:
+				/* or */
+				val32 &= bit_mask;
+				val32 |= ega->latch;
+				break;
+			case 3:
+				/* xor */
+				val32 &= bit_mask;
+				val32 ^= ega->latch;
+				break;
+		}
+
+do_write:
+		/* mask data according to sr[2] */
+		mask = ega->seqregs[2];
+		write_mask = mask16[mask];
+		real_addr = addr;
+		if ((!ega->extvram) && (real_addr >= 0x4000))  return;
+                if ((real_addr << 2) >= 0x40000)  return;
+		((uint32_t *)(ega->vram))[real_addr] = (((uint32_t *)(ega->vram))[real_addr] & ~write_mask) | (val32 & write_mask);
+	}
 }
 
 uint8_t ega_read(uint32_t addr, void *p)
@@ -774,43 +839,81 @@ uint8_t ega_read(uint32_t addr, void *p)
         ega_t *ega = (ega_t *)p;
         uint8_t temp, temp2, temp3, temp4;
 	int readplane = ega->readplane;
+	uint32_t raddr = addr;
+	uint32_t ex = (1 << 13);
+	int memory_map_mode, plane;
+	uint32_t ret, real_addr;
+
+	if (!ega->enablevram)  return 0xFF;
+	// if (!(ega->seqregs[0] & 2))  return 0xFF;
 
         egareads++;
         cycles -= video_timing_b;
         cycles_lost += video_timing_b;
-//        pclog("Readega %06X   ",addr);
-        if (addr >= 0xb0000) addr &= 0x7fff;
-        else                 addr &= 0xffff;
 
-        if (ega->chain2)
-        {
-                readplane = (readplane & 2) | (addr & 1);
-                addr &= ~1;
-        }
+	/* from here on, code is ported by OBattler from QEMU */
+	memory_map_mode = (ega->gdcreg[6] >> 2) & 3;
 
-	addr <<= 2;
+	addr &= 0x1ffff;
 
-        ega->la = ega->vram[addr];
-        ega->lb = ega->vram[addr | 0x1];
-        ega->lc = ega->vram[addr | 0x2];
-        ega->ld = ega->vram[addr | 0x3];
-        if (ega->readmode)
-        {
-                temp   = (ega->colournocare & 1)  ? 0xff : 0;
-                temp  &= ega->la;
-                temp  ^= (ega->colourcompare & 1) ? 0xff : 0;
-                temp2  = (ega->colournocare & 2)  ? 0xff : 0;
-                temp2 &= ega->lb;
-                temp2 ^= (ega->colourcompare & 2) ? 0xff : 0;
-                temp3  = (ega->colournocare & 4)  ? 0xff : 0;
-                temp3 &= ega->lc;
-                temp3 ^= (ega->colourcompare & 4) ? 0xff : 0;
-                temp4  = (ega->colournocare & 8)  ? 0xff : 0;
-                temp4 &= ega->ld;
-                temp4 ^= (ega->colourcompare & 8) ? 0xff : 0;
-                return ~(temp | temp2 | temp3 | temp4);
-        }
-        return ega->vram[addr | readplane];
+	switch(memory_map_mode)
+	{
+		case 0:
+			break;
+		case 1:
+			if (addr >= 0x10000)
+				return 0xff;
+			break;
+		case 2:
+			addr -= 0x10000;
+			if (addr >= 0x8000)
+				return 0xff;
+			break;
+		default:
+		case 3:
+			addr -= 0x18000;
+			if (addr >= 0x8000)
+				return 0xff;
+			break;
+	}
+
+	// if ((!ega->extvram) && (addr >= 0x10000))  return 0xff;
+
+	if (ega->gdcreg[5] & 0x10)
+	{
+		/* odd/even mode (aka text mode mapping) */
+		plane = (ega->readplane & 2) | (addr & 1);
+		addr = ((addr & ~1) << 2) | plane | (ega->oddeven_page ? 0x10000 : 0);
+		real_addr = addr;
+		if ((!ega->extvram) && (real_addr >= 0x10000))  return 0xff;
+                if (real_addr >= 0x40000)  return 0xff;
+		ret = ega->vram[real_addr];
+	}
+	else
+	{
+		/* standard VGA latched access */
+		real_addr = addr;
+		if ((!ega->extvram) && (real_addr >= 0x4000))  return;
+                if ((real_addr << 2) >= 0x40000)  return 0xff;
+		ega->latch = ((uint32_t *)(ega->vram))[real_addr];
+
+		if (!(ega->gdcreg[5] & 8))
+		{
+			/* read mode 0 */
+			plane = ega->gdcreg[4];
+			ret = GET_PLANE(ega->latch, plane);
+		}
+		else
+		{
+			/* read mode 1 */
+			ret = (ega->latch ^ mask16[ega->gdcreg[2]]) & mask16[ega->gdcreg[7]];
+			ret |= ret >> 16;
+			ret |= ret >> 8;
+			ret = (~ret) & 0xff;
+		}
+	}
+
+	return ret;
 }
 
 void ega_init(ega_t *ega)
@@ -854,6 +957,16 @@ void ega_init(ega_t *ega)
         ega->pallook = pallook16;
 }
 
+void ega_common_defaults(ega_t *ega)
+{
+	ega->miscout |= 0x22;
+	ega->enablevram = 1;
+	ega->oddeven_page = 0;
+
+	ega->seqregs[4] |= 2;
+	ega->extvram = 1;
+}
+
 void *ega_standalone_init()
 {
         int c, d, e;
@@ -884,6 +997,8 @@ void *ega_standalone_init()
 
         ega_init(ega);        
 	// ega->attrregs[0x10] |= 0xF7;
+
+	ega_common_defaults(ega);
 
         mem_mapping_add(&ega->mapping, 0xa0000, 0x20000, ega_read, NULL, NULL, ega_write, NULL, NULL, NULL, 0, ega);
         timer_add(ega_poll, &ega->vidtime, TIMER_ALWAYS_ENABLED, ega);
@@ -921,6 +1036,8 @@ void *cpqega_standalone_init()
         ega_init(ega);        
 	// ega->attrregs[0x10] |= 0xF7;
 
+	ega_common_defaults(ega);
+
         mem_mapping_add(&ega->mapping, 0xa0000, 0x20000, ega_read, NULL, NULL, ega_write, NULL, NULL, NULL, 0, ega);
         timer_add(ega_poll, &ega->vidtime, TIMER_ALWAYS_ENABLED, ega);
         vramp = ega->vram;
@@ -956,6 +1073,8 @@ void *sega_standalone_init()
 
         ega_init(ega);        
 	// ega->attrregs[0x10] |= 0xF7;
+
+	ega_common_defaults(ega);
 
         mem_mapping_add(&ega->mapping, 0xa0000, 0x20000, ega_read, NULL, NULL, ega_write, NULL, NULL, NULL, 0, ega);
         timer_add(ega_poll, &ega->vidtime, TIMER_ALWAYS_ENABLED, ega);

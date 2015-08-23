@@ -1703,7 +1703,7 @@ void fdd_init()
 		fdd[i].BIGFLOPPY = 0;
 		fdd[i].DENSITY = 2;
 		fdd[i].TOTAL = 65535;
-		fdd[i].IMGTYPE = 0;
+		fdd[i].IMGTYPE = IMGT_NONE;
 		fdd[i].RAWOFFS = 0;
 		fdd[i].sstates = 0;
 		fdd[i].XDF = 0;

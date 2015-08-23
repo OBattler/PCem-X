@@ -28,7 +28,7 @@ void configure_comp(double h, uint8_t n, uint8_t bw, uint8_t b1)
 	is_bpp1 = b1;
 }
 
-uint8_t get_color(uint8_t index, uint8_t cyc, uint8_t col)
+uint8_t cga_comp_get_color(uint8_t index, uint8_t cyc, uint8_t col)
 {
 	uint8_t ind = (index & 0x3F) | ((cyc & 1) == 0 ? 0x30 : 0x80) | ((cyc & 2) == 0 ? 0x40 : 0);
 	return comp_pal[ind][col];

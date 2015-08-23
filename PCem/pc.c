@@ -23,8 +23,10 @@
 #include "keyboard.h"
 #include "model.h"
 #include "mouse.h"
+#ifndef __unix
 #ifndef __MINGW64__
 #include "nethandler.h"
+#endif
 #endif
 #include "nvr.h"
 #include "pc.h"
@@ -66,26 +68,28 @@ int intcount;
 int output;
 int atfullspeed;
 
+int enable_dynarec = 1;
+
 void saveconfig();
 int infocus;
 int mousecapture;
 void pclog(const char *format, ...)
 {
 #ifndef RELEASE_BUILD
-   char buf[1024];
+   // char buf[1024];
    //return;
    /* if (!pclogf)
       pclogf=fopen("pclog.txt","wt"); */
-   pclogf=fopen("pclog.txt","at");
-   if (pclogf==NULL)  pclogf=fopen("pclog.txt","wt");
-   if (pclogf==NULL)  return;
+   // pclogf=fopen("pclog.txt","at");
+   // if (pclogf==NULL)  return;
 //return;
    va_list ap;
    va_start(ap, format);
-   vsprintf(buf, format, ap);
+   vprintf(format, ap);
    va_end(ap);
-   fputs(buf,pclogf);
-   fclose(pclogf);
+   // fputs(buf, stdout);
+   // fputs(buf,pclogf);
+   // fclose(pclogf);
 
 #ifdef REAL_TIME_LOG
    if (!rtlog)
@@ -109,24 +113,24 @@ void pclog(const char *format, ...)
 
 void fatal(const char *format, ...)
 {
-   char buf[256];
+   // char buf[256];
 //   return;
    /* if (!pclogf)
       pclogf=fopen("pclog.txt","wt"); */
-   pclogf=fopen("pclog.txt","at");
-   if (pclogf==NULL)  pclogf=fopen("pclog.txt","wt");
-   if (pclogf==NULL)  return;
+   // pclogf=fopen("pclog.txt","at");
+   // if (pclogf==NULL)  pclogf=fopen("pclog.txt","wt");
+   // if (pclogf==NULL)  return;
 //return;
    va_list ap;
    va_start(ap, format);
-   vsprintf(buf, format, ap);
+   vprintf(format, ap);
    va_end(ap);
-   fputs(buf,pclogf);
-   fflush(pclogf);
+   // fputs(buf,stdout);
+   // fflush(pclogf);
    // free(rtlog);
    dumppic();
    dumpregs();
-   fclose(pclogf);
+   // fclose(pclogf);
    exit(-1);
 }
 
@@ -308,8 +312,10 @@ void initpc()
 
         timer_reset();
         sound_reset();
+#ifndef __unix
 #ifndef __MINGW64__
         vlan_reset();
+#endif
 #endif
 	fdc_init();
 
@@ -327,8 +333,10 @@ void initpc()
         video_init();
         speaker_init();
         sound_card_init(sound_card_current);
+#ifndef __unix
 #ifndef __MINGW64__
         network_card_init(network_card_current);
+#endif
 #endif
         if (GUS)
                 device_add(&gus_device);
@@ -380,8 +388,10 @@ void resetpchard()
 
         timer_reset();
         sound_reset();
+#ifndef __unix
 #ifndef __MINGW64__
         vlan_reset();
+#endif
 #endif
         mem_resize();
         fdc_hard_reset();
@@ -389,8 +399,10 @@ void resetpchard()
         video_init();
         speaker_init();
         sound_card_init(sound_card_current);
+#ifndef __unix
 #ifndef __MINGW64__
         network_card_init(network_card_current);
+#endif
 #endif
 	pclog("GUS...\n");
         if (GUS)
@@ -467,11 +479,18 @@ void runpc()
 
         startblit();
         clockrate = models[model].cpu[cpu_manufacturer].cpus[cpu].rspeed;
-                if (is486)   exec386(models[model].cpu[cpu_manufacturer].cpus[cpu].rspeed / 100);
 #ifdef DYNAREC
+                if (is486)
+		{
+			if (enable_dynarec)
+				exec386(models[model].cpu[cpu_manufacturer].cpus[cpu].rspeed / 100);
+			else
+				exec386i(models[model].cpu[cpu_manufacturer].cpus[cpu].rspeed / 100);
+		}
                 else if (is386) exec386i(models[model].cpu[cpu_manufacturer].cpus[cpu].rspeed / 100);
                 else if (AT || is_nonat_286()) exec286(models[model].cpu[cpu_manufacturer].cpus[cpu].rspeed / 100);
 #else
+                if (is486)  exec386(models[model].cpu[cpu_manufacturer].cpus[cpu].rspeed / 100);
                 else if (AT || is_nonat_286()) exec386(models[model].cpu[cpu_manufacturer].cpus[cpu].rspeed / 100);
 #endif
                 else         execx86(models[model].cpu[cpu_manufacturer].cpus[cpu].rspeed / 100);
@@ -535,7 +554,10 @@ void runpc()
                         win_title_update=0;
 			if (is486)
 			{
-                        	sprintf(s, "PCem-X v9 [DYN] - %i%% - %s - %s - %s", fps, model_getname(), models[model].cpu[cpu_manufacturer].cpus[cpu].name, (!mousecapture) ? "Click to capture mouse" : "Press CTRL-END or middle button to release mouse");
+				if (enable_dynarec)
+	                        	sprintf(s, "PCem-X v9 [DYN] - %i%% - %s - %s - %s", fps, model_getname(), models[model].cpu[cpu_manufacturer].cpus[cpu].name, (!mousecapture) ? "Click to capture mouse" : "Press CTRL-END or middle button to release mouse");
+				else
+                        		sprintf(s, "PCem-X v9 [INT 386] - %i%% - %s - %s - %s", fps, model_getname(), models[model].cpu[cpu_manufacturer].cpus[cpu].name, (!mousecapture) ? "Click to capture mouse" : "Press CTRL-END or middle button to release mouse");
 			}
 			else
 			{
@@ -639,11 +661,13 @@ void loadconfig(char *fn)
 
         model = config_get_int(NULL, "model", 14);
 
+#ifndef __unix
 #ifndef __MINGW64__
         ethif = config_get_int(NULL, "netinterface", 1);
 
         if (ethif >= inum)
                 inum = ethif + 1;
+#endif
 #endif
 
         if (model >= model_count())
@@ -652,13 +676,16 @@ void loadconfig(char *fn)
         romset = model_getromset();
         cpu_manufacturer = config_get_int(NULL, "cpu_manufacturer", 0);
         cpu = config_get_int(NULL, "cpu", 0);
+        enable_dynarec = config_get_int(NULL, "enable_dynarec", 1);
 
         gfxcard = config_get_int(NULL, "gfxcard", 0);
         gfxcardpci = config_get_int(NULL, "gfxcardpci", 0);
         video_speed = config_get_int(NULL, "video_speed", 3);
         sound_card_current = config_get_int(NULL, "sndcard", SB2);
+#ifndef __unix
 #ifndef __MINGW64__
         network_card_current = config_get_int(NULL, "netcard", 0);
+#endif
 #endif
 
         p = (char *)config_get_string(NULL, "disc_a", "");
@@ -720,21 +747,26 @@ void saveconfig()
         config_set_int(NULL, "ssi2001", SSI2001);
         config_set_int(NULL, "voodoo", voodoo_enabled);
 
+#ifndef __unix
 #ifndef __MINGW64__
         config_set_int(NULL, "netinterface", ethif);
+#endif
 #endif
 
         config_set_int(NULL, "model", model);
         config_set_int(NULL, "cpu_manufacturer", cpu_manufacturer);
         config_set_int(NULL, "cpu", cpu);
+        config_set_int(NULL, "enable_dynarec", enable_dynarec);
 
         config_set_int(NULL, "gfxcard", gfxcard);
         config_set_int(NULL, "gfxcardpci", gfxcard);
         config_set_int(NULL, "video_speed", video_speed);
         config_set_int(NULL, "sndcard", sound_card_current);
 
+#ifndef __unix
 #ifndef __MINGW64__
         config_set_int(NULL, "netcard", network_card_current);
+#endif
 #endif
         config_set_int(NULL, "cpu_speed", cpuspeed);
         config_set_int(NULL, "has_fpu", hasfpu);

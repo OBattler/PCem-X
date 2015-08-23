@@ -74,9 +74,9 @@ static INT_PTR CALLBACK hdnew_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LP
                                 MessageBox(ghwnd, "Drive has too many sectors (maximum is 63)", "PCem error", MB_OK);
                                 return TRUE;
                         }
-                        if (hd_new_hpc > 128)
+                        if (hd_new_hpc > 16)
                         {
-                                MessageBox(ghwnd, "Drive has too many heads (maximum is 128)", "PCem error", MB_OK);
+                                MessageBox(ghwnd, "Drive has too many heads (maximum is 16)", "PCem error", MB_OK);
                                 return TRUE;
                         }
                         if (hd_new_cyl > 16383)
@@ -180,9 +180,9 @@ INT_PTR CALLBACK hdsize_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPARAM l
                                 MessageBox(ghwnd,"Drive has too many sectors (maximum is 63)","PCem error",MB_OK);
                                 return TRUE;
                         }
-                        if (hd_new_hpc > 128)
+                        if (hd_new_hpc > 16)
                         {
-                                MessageBox(ghwnd,"Drive has too many heads (maximum is 128)","PCem error",MB_OK);
+                                MessageBox(ghwnd,"Drive has too many heads (maximum is 16)","PCem error",MB_OK);
                                 return TRUE;
                         }
                         if (hd_new_cyl > 16383)

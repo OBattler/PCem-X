@@ -88,18 +88,10 @@ void savedisc(int d)
         if (!fdd[d].discmodified) return;
         if (fdd[d].WP) return;
 	if (fdd[d].XDF)  return;
+	if (fdd[d].IMGTYPE == IMGT_NONE)  return;
+	if (fdd[d].IMGTYPE != IMGT_RAW)  return;
         f=fopen(discfns[d],"wb");
         if (!f) return;
-	if (fdd[d].IMGTYPE == IMGT_NONE)
-	{
-		fclose(f);
-		return;
-	}
-	if (fdd[d].IMGTYPE != IMGT_RAW)
-	{
-		fclose(f);
-		return;
-	}
 	if(fdd[d].IMGTYPE == IMGT_PEF)
 	{
 		putc('P',f);
@@ -165,9 +157,12 @@ void savedisc(int d)
                 {
                         for (s=0;s<fdd[d].SECTORS;s++)
                         {
-				if ((ISSPECIAL && !(t & 1)) || !ISSPECIAL)
+				printf("Saving? Is special: %s!\n", ISSPECIAL ? "Yes" : "No");
+				if ((ISSPECIAL && !(t & 1)) || !(ISSPECIAL))
 				{
+					printf("Saving: C%02X, H%02X, R%02X...\n", h, t, s);
 					if (fdd[d].scid[h][t][s][3] >= 1)
+					printf("Sector code in sector ID is valid...\n");
 					{
 	        	                        for (b=0;b<(128 << fdd[d].scid[h][t][s][3]);b++)
 	                	                {
@@ -1178,7 +1173,7 @@ int fifo_buf_read()
 void fdc_write(uint16_t addr, uint8_t val, void *priv)
 {
 	// printf("Write FDC %04X %02X %04X:%04X %i %02X %i rate=%i\n",addr,val,cs>>4,pc,ins,fdc.st0,ins,fdc.rate);
-	// printf("OUT 0x%04X, %02X\n", addr, val);
+	printf("OUT 0x%04X, %02X\n", addr, val);
         switch (addr&7)
         {
 		case 0: /*Configuration*/
@@ -1462,25 +1457,12 @@ bad_fdc_command:
 								}
 								if (fdd[vfdd[fdc.drive]].track >= fdd[vfdd[fdc.drive]].TRACKS)
 								{
-									if (VF_CLS < CLASS_800)
-									{
-										if (fdd[vfdd[fdc.drive]].track < 43)
-											fdd[vfdd[fdc.drive]].TRACKS++;
-										else
-										{
-											fdc_fail(0x101);
-											goto end_of_dwrite;
-										}
-									}
+									if (fdd[vfdd[fdc.drive]].track <= (is_48tpi(vfdd[fdc.drive]) ? 42 : 85))
+										fdd[vfdd[fdc.drive]].TRACKS++;
 									else
 									{
-										if (fdd[vfdd[fdc.drive]].track < 86)
-											fdd[vfdd[fdc.drive]].TRACKS++;
-										else
-										{
-											fdc_fail(0x101);
-											goto end_of_dwrite;
-										}
+										fdc_fail(0x101);
+										goto end_of_dwrite;
 									}
 								}
 								fdd[vfdd[fdc.drive]].spt[fdd[vfdd[fdc.drive]].track] = fdc.params[2];
@@ -1599,7 +1581,7 @@ uint8_t fdc_read(uint16_t addr, void *priv)
 			// printf("Bad read FDC %04X\n",addr);
         }
 	// /*if (addr!=0x3f4) */printf("%02X rate=%i\n",temp,fdc.rate);
-	// printf("IN 0x%04X, %02X\n", addr, temp);
+	printf("IN 0x%04X, %02X\n", addr, temp);
         return temp;
 }
 
@@ -1699,6 +1681,29 @@ void fdc_readwrite(int mode)
 			else
 			{
 				fdc_implied_seek(fdc.track[fdc.drive]);
+			}
+		}
+		else
+		{
+			if (FDDSPECIAL)
+			{
+				if((fdc.track[fdc.drive] << 1) != fdc.pcn[fdc.drive])
+				{
+					pclog("Wrong cylinder\n");
+					discint = 0x102;
+					fdc_poll();
+					return;
+				}
+			}
+			else
+			{
+				if(fdc.track[fdc.drive] != fdc.pcn[fdc.drive])
+				{
+					pclog("Wrong cylinder\n");
+					discint = 0x102;
+					fdc_poll();
+					return;
+				}
 			}
 		}
 
@@ -1913,14 +1918,25 @@ void fdc_readwrite(int mode)
 						fdc.head[fdc.drive] ^= 1;
 						if ((fdc.head[fdc.drive] == 0) || (fdd[vfdd[fdc.drive]].SIDES == 1))
 						{
-							fdc.pos[fdc.drive] = rbps;
+							fdc.sector[fdc.drive] = 1;
+							fdc.head[fdc.drive] = 0;
+							fdc.pos[fdc.drive] = 0;
+							fdc.track[fdc.drive]++;
 							fdc.abort[fdc.drive] = 1;
 						}
 					}
 					else
 					{
 end_of_track:
-						fdc.pos[fdc.drive] = rbps;
+						fdc.sector[fdc.drive] = 1;
+						if (fdc.head[fdc.drive])
+						{
+							fdc.head[fdc.drive] = 0;
+							fdc.track[fdc.drive]++;
+						}
+						else
+							fdc.head[fdc.drive] = 1;
+						fdc.pos[fdc.drive] = 0;
 						fdc.abort[fdc.drive] = 1;
 					}
 				}
@@ -2280,7 +2296,10 @@ no_track_0:
 	                fdc.stat = 0x10;
 	                disctime = 0;
 	                return;
-                case 0xFF: /*Wrong rate*/
+                case 0xFF: /*Sector not found*/
+                case 0x102: /*Wrong cylinder*/
+                case 0x103: /*Bad cylinder*/
+                case 0x104: /*No sectors*/
 	                fdc.stat = 0x10;
 	               	disctime=0;
 	               	discint=-2;
@@ -2290,7 +2309,14 @@ no_track_0:
 			fdc.res[4]|=0x40;
 			fdc.st0=fdc.res[4];
 	               	fdc.res[5]=5;
-	               	fdc.res[6]=0;
+			if (discint == 0xFF)
+		               	fdc.res[6]=0;
+			else if (discint == 0x102)
+		               	fdc.res[6]=0x10;
+			else if (discint == 0x103)
+		               	fdc.res[6]=2;
+			else if (discint == 0x104)
+		               	fdc.res[6]=1;
 	               	fdc.res[7]=0;
 	               	fdc.res[8]=0;
 	               	fdc.res[9]=0;

@@ -341,10 +341,12 @@ enum
 	ROM_DTK386,
 	ROM_PXXT,
 	ROM_JUKOPC,
+	ROM_PX486,
 	ROM_430TX,
 	ROM_440FX,
 	ROM_440BX,
 	ROM_VPC2007,
+	ROM_PXSIS471,
         
         ROM_MAX
 };
@@ -562,3 +564,5 @@ extern int has_pc87306;
 extern int ps1xtide;
 
 extern int gfxpciid;
+
+extern int enable_dynarec;

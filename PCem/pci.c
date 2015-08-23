@@ -9,6 +9,7 @@ uint8_t  (*pci_card_read[32])(int func, int addr, void *priv);
 void           *pci_priv[32];
 static int pci_index, pci_func, pci_card, pci_bus, pci_enable, pci_key;
 static int pci_min_card, pci_max_card;
+int pci_burst_time, pci_nonburst_time;
 
 void pci_cf8_write(uint16_t port, uint32_t val, void *p)
 {
@@ -135,8 +136,6 @@ void pci_init(int type, int min_card, int max_card)
         
         pci_min_card = min_card;
         pci_max_card = max_card;
-
-	PCI = 1;
 }
 
 void pci_add_specific(int card, uint8_t (*read)(int func, int addr, void *priv), void (*write)(int func, int addr, uint8_t val, void *priv), void *priv)
@@ -146,7 +145,7 @@ void pci_add_specific(int card, uint8_t (*read)(int func, int addr, void *priv),
               pci_priv[card] = priv;
 }
 
-uint8_t pci_add(uint8_t (*read)(int func, int addr, void *priv), void (*write)(int func, int addr, uint8_t val, void *priv), void *priv)
+int pci_add(uint8_t (*read)(int func, int addr, void *priv), void (*write)(int func, int addr, uint8_t val, void *priv), void *priv)
 {
         int c;
         
@@ -160,4 +159,6 @@ uint8_t pci_add(uint8_t (*read)(int func, int addr, void *priv), void (*write)(i
                         return c;
                 }
         }
+
+	return -1;
 }

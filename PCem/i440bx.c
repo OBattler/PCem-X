@@ -88,6 +88,8 @@ void i440bx_write(int func, int addr, uint8_t val, void *priv)
                 pclog("i440bx_write : PAM6 write %02X\n", val);
                 break;
         }
+
+	if (addr == 0xA9)  return;
                 
         card_i440bx[addr] = val;
 }
@@ -107,18 +109,19 @@ void i440bx_init()
         
         memset(card_i440bx, 0, 256);
         card_i440bx[0x00] = 0x86; card_i440bx[0x01] = 0x80; /*Intel*/
-        card_i440bx[0x02] = 0x90; card_i440bx[0x03] = 0x71; /*82443BX*/
+        card_i440bx[0x02] = 0x92; card_i440bx[0x03] = 0x71; /*82443BX*/
         card_i440bx[0x04] = 0x06; card_i440bx[0x05] = 0x00;
         card_i440bx[0x06] = 0x00; card_i440bx[0x07] = 0x02;
         card_i440bx[0x08] = 0x01; /*A0 stepping*/
         card_i440bx[0x09] = 0x00; card_i440bx[0x0a] = 0x00; card_i440bx[0x0b] = 0x06;
         card_i440bx[0x52] = 0x42; /*256kb PLB cache*/
-        card_i440bx[0x57] = 0x20; /*DRAM control*/
-        card_i440bx[0x58] = 0x03;
+        card_i440bx[0x57] = 0x01;
         card_i440bx[0x60] = 0x01;
         card_i440bx[0x67] = 0x80;
         card_i440bx[0x71] = 0x1F;
         card_i440bx[0x72] = 0x02;
+        card_i440bx[0x74] = 0x0e;
+        card_i440bx[0x78] = 0x23;
         card_i440bx[0x7B] = 0x38;
         card_i440bx[0x90] = 0x80;
         card_i440bx[0x94] = 0x04;

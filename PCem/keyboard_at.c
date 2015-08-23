@@ -566,10 +566,12 @@ uint8_t keyboard_at_read(uint16_t port, void *priv)
 
 void keyboard_at_reset()
 {
+	int q = ((romset == ROM_ENDEAVOR) || (romset == ROM_REVENGE));
+
         keyboard_at.initialised = 0;
         keyboard_at.status = STAT_LOCK | STAT_CD;
-        keyboard_at.mem[0] = 0x51;
-	mode = 0x42;
+        keyboard_at.mem[0] = 0x11 | (q ? 0 : 0x40);
+	mode = q ? 0x01 : 0x42;
         keyboard_at.wantirq = 0;
         keyboard_at.output_port = 0;
         keyboard_at.input_port = 0xb0;
@@ -593,7 +595,6 @@ void keyboard_at_init()
         keyboard_send = keyboard_at_adddata_keyboard;
         keyboard_poll = keyboard_at_poll;
         mouse_write = NULL;
-	mode = 0x42;
 	sc_or = 0;
         
         timer_add(keyboard_at_poll, &keybsenddelay, TIMER_ALWAYS_ENABLED,  NULL);

@@ -1,0 +1,2 @@
+include Makefile_internal.linux64
+CFLAGS = $(basecflags) -g

@@ -48,6 +48,7 @@
 #define IDC_DSBAR 1066
 #define IDC_DEBUGTEXT 1067
 #endif
+#define IDC_CHECKDYNAREC 1068
 #define IDC_CHECK1 1010
 #define IDC_CHECK2 1011
 #define IDC_CHECK3 1012
