@@ -190,6 +190,9 @@ static uint8_t riva128_mmio_read(uint32_t addr, void *p)
   case 0x100000 ... 0x100fff:
   ret = riva128_pfb_read(addr, riva128);
   break;
+  case 0x680000 ... 0x680fff:
+  ret = riva128_pramdac_read(addr, riva128);
+  break;
   }
   return ret;
 }
