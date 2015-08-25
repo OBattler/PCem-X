@@ -6,6 +6,7 @@
 #include "ibm.h"
 #include "device.h"
 #include "video.h"
+#include "keyboard.h"
 #include "resources.h"
 #include "win.h"
 #ifdef DYNAREC
@@ -39,7 +40,9 @@ static INT_PTR CALLBACK status_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
                 uint64_t status_diff = new_time - status_time;
                 status_time = new_time;
                 sprintf(device_s,
-                        "PCI gfx   : %08X\n"
+                        "Keyboard  :\n"
+			"Translat. : %s\n"
+			"Sc. set   : %i\n\n"
                         "CPU speed : %f MIPS\n"
                         "FPU speed : %f MFLOPS\n\n"
 #ifndef DYNAREC
@@ -56,7 +59,9 @@ static INT_PTR CALLBACK status_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
                         "Flushes : %i\nEvicted : %i\nReused : %i\nRemoved : %i\nReal speed : %f MIPS"
 //                        "\nFully recompiled ins %% : %f%%"
 #endif
-                        ,(uint32_t) gfxcardpci, mips,
+                        , (mode & 0x40) ? "ON" : "OFF",
+			mode & 3,
+			mips,
                         flops,
 #ifndef DYNAREC
                         sreadlnum,

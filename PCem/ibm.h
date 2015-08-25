@@ -566,3 +566,19 @@ extern int ps1xtide;
 extern int gfxpciid;
 
 extern int enable_dynarec;
+
+#define BIOS_NONE	0
+#define BIOS_AWARD	1
+#define BIOS_AMI	2
+#define BIOS_PHOENIX	3
+#define BIOS_OTHER	4
+
+extern int biostype;
+
+extern uint64_t pmc[2];
+
+extern uint16_t temp_seg_data[4];
+
+extern uint16_t cs_msr;
+extern uint32_t esp_msr;
+extern uint32_t eip_msr;

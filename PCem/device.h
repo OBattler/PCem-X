@@ -2,6 +2,7 @@
 #define CONFIG_INT 1
 #define CONFIG_BINARY 2
 #define CONFIG_SELECTION 3
+#define CONFIG_MIDI 4
 
 typedef struct device_config_selection_t
 {
@@ -47,4 +48,3 @@ enum
 {
         DEVICE_NOT_WORKING = 1 /*Device does not currently work correctly and will be disabled in a release build*/
 };
-

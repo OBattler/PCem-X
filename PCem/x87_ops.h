@@ -288,6 +288,7 @@ typedef union
         } while (0)
 
 #include "x87_ops_arith.h"
+#include "x87_ops_i686.h"
 #include "x87_ops_misc.h"
 #include "x87_ops_loadstore.h"
 
@@ -434,10 +435,10 @@ OpFn OP_TABLE(fpu_da_a16)[256] =
         opFDIVil_a16,  opFDIVil_a16,  opFDIVil_a16,  opFDIVil_a16,  opFDIVil_a16,  opFDIVil_a16,  opFDIVil_a16,  opFDIVil_a16,
         opFDIVRil_a16, opFDIVRil_a16, opFDIVRil_a16, opFDIVRil_a16, opFDIVRil_a16, opFDIVRil_a16, opFDIVRil_a16, opFDIVRil_a16,
 
-        ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,
-        ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,
-        ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,
-        ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,
+        opFCMOVB0,     opFCMOVB1,     opFCMOVB2,     opFCMOVB3,     opFCMOVB4,     opFCMOVB5,     opFCMOVB6,     opFCMOVB7,
+        opFCMOVE0,     opFCMOVE1,     opFCMOVE2,     opFCMOVE3,     opFCMOVE4,     opFCMOVE5,     opFCMOVE6,     opFCMOVE7,
+        opFCMOVBE0,    opFCMOVBE1,    opFCMOVBE2,    opFCMOVBE3,    opFCMOVBE4,    opFCMOVBE5,    opFCMOVBE6,    opFCMOVBE7,
+        opFCMOVU0,     opFCMOVU1,     opFCMOVU2,     opFCMOVU3,     opFCMOVU4,     opFCMOVU5,     opFCMOVU6,     opFCMOVU7,
         ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,
         ILLEGAL,       opFUCOMPP,     ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,
         ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,
@@ -472,10 +473,10 @@ OpFn OP_TABLE(fpu_da_a32)[256] =
         opFDIVil_a32,  opFDIVil_a32,  opFDIVil_a32,  opFDIVil_a32,  opFDIVil_a32,  opFDIVil_a32,  opFDIVil_a32,  opFDIVil_a32,
         opFDIVRil_a32, opFDIVRil_a32, opFDIVRil_a32, opFDIVRil_a32, opFDIVRil_a32, opFDIVRil_a32, opFDIVRil_a32, opFDIVRil_a32,
 
-        ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,
-        ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,
-        ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,
-        ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,
+        opFCMOVB0,     opFCMOVB1,     opFCMOVB2,     opFCMOVB3,     opFCMOVB4,     opFCMOVB5,     opFCMOVB6,     opFCMOVB7,
+        opFCMOVE0,     opFCMOVE1,     opFCMOVE2,     opFCMOVE3,     opFCMOVE4,     opFCMOVE5,     opFCMOVE6,     opFCMOVE7,
+        opFCMOVBE0,    opFCMOVBE1,    opFCMOVBE2,    opFCMOVBE3,    opFCMOVBE4,    opFCMOVBE5,    opFCMOVBE6,    opFCMOVBE7,
+        opFCMOVU0,     opFCMOVU1,     opFCMOVU2,     opFCMOVU3,     opFCMOVU4,     opFCMOVU5,     opFCMOVU6,     opFCMOVU7,
         ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,
         ILLEGAL,       opFUCOMPP,     ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,
         ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,
@@ -511,13 +512,13 @@ OpFn OP_TABLE(fpu_db_a16)[256] =
         ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,
         opFSTPe_a16,   opFSTPe_a16,   opFSTPe_a16,   opFSTPe_a16,   opFSTPe_a16,   opFSTPe_a16,   opFSTPe_a16,   opFSTPe_a16,
 
-        ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,
-        ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,
-        ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,
-        ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,
+        opFCMOVNB0,    opFCMOVNB1,    opFCMOVNB2,    opFCMOVNB3,    opFCMOVNB4,    opFCMOVNB5,    opFCMOVNB6,    opFCMOVNB7,
+        opFCMOVNE0,    opFCMOVNE1,    opFCMOVNE2,    opFCMOVNE3,    opFCMOVNE4,    opFCMOVNE5,    opFCMOVNE6,    opFCMOVNE7,
+        opFCMOVNBE0,   opFCMOVNBE1,   opFCMOVNBE2,   opFCMOVNBE3,   opFCMOVNBE4,   opFCMOVNBE5,   opFCMOVNBE6,   opFCMOVNBE7,
+        opFCMOVNU0,    opFCMOVNU1,    opFCMOVNU2,    opFCMOVNU3,    opFCMOVNU4,    opFCMOVNU5,    opFCMOVNU6,    opFCMOVNU7,
         ILLEGAL,       opFNOP,        opFCLEX,       opFINIT,       opFNOP,        opFNOP,        ILLEGAL,       ILLEGAL,
-        ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,
-        ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,
+        opFUCOMI0,     opFUCOMI1,     opFUCOMI2,     opFUCOMI3,     opFUCOMI4,     opFUCOMI5,     opFUCOMI6,     opFUCOMI7,
+        opFCOMI0,      opFCOMI1,      opFCOMI2,      opFCOMI3,      opFCOMI4,      opFCOMI5,      opFCOMI6,      opFCOMI7,
         ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,
 };
 OpFn OP_TABLE(fpu_db_a32)[256] =
@@ -549,13 +550,13 @@ OpFn OP_TABLE(fpu_db_a32)[256] =
         ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,
         opFSTPe_a32,   opFSTPe_a32,   opFSTPe_a32,   opFSTPe_a32,   opFSTPe_a32,   opFSTPe_a32,   opFSTPe_a32,   opFSTPe_a32,
 
-        ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,
-        ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,
-        ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,
-        ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,
+        opFCMOVNB0,    opFCMOVNB1,    opFCMOVNB2,    opFCMOVNB3,    opFCMOVNB4,    opFCMOVNB5,    opFCMOVNB6,    opFCMOVNB7,
+        opFCMOVNE0,    opFCMOVNE1,    opFCMOVNE2,    opFCMOVNE3,    opFCMOVNE4,    opFCMOVNE5,    opFCMOVNE6,    opFCMOVNE7,
+        opFCMOVNBE0,   opFCMOVNBE1,   opFCMOVNBE2,   opFCMOVNBE3,   opFCMOVNBE4,   opFCMOVNBE5,   opFCMOVNBE6,   opFCMOVNBE7,
+        opFCMOVNU0,    opFCMOVNU1,    opFCMOVNU2,    opFCMOVNU3,    opFCMOVNU4,    opFCMOVNU5,    opFCMOVNU6,    opFCMOVNU7,
         ILLEGAL,       opFNOP,        opFCLEX,       opFINIT,       opFNOP,        opFNOP,        ILLEGAL,       ILLEGAL,
-        ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,
-        ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,
+        opFUCOMI0,     opFUCOMI1,     opFUCOMI2,     opFUCOMI3,     opFUCOMI4,     opFUCOMI5,     opFUCOMI6,     opFUCOMI7,
+        opFCOMI0,      opFCOMI1,      opFCOMI2,      opFCOMI3,      opFCOMI4,      opFCOMI5,      opFCOMI6,      opFCOMI7,
         ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,
 };
 
@@ -763,8 +764,8 @@ OpFn OP_TABLE(fpu_df_a16)[256] =
         ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,
         ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,
         opFSTSW_AX,    ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,
-        ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,
-        ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,
+        opFUCOMIP0,    opFUCOMIP1,    opFUCOMIP2,    opFUCOMIP3,    opFUCOMIP4,    opFUCOMIP5,    opFUCOMIP6,    opFUCOMIP7,
+        opFCOMIP0,     opFCOMIP1,     opFCOMIP2,     opFCOMIP3,     opFCOMIP4,     opFCOMIP5,     opFCOMIP6,     opFCOMIP7,
         ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,
 };
 OpFn OP_TABLE(fpu_df_a32)[256] =
@@ -801,8 +802,8 @@ OpFn OP_TABLE(fpu_df_a32)[256] =
         ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,
         ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,
         opFSTSW_AX,    ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,
-        ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,
-        ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,
+        opFUCOMIP0,    opFUCOMIP1,    opFUCOMIP2,    opFUCOMIP3,    opFUCOMIP4,    opFUCOMIP5,    opFUCOMIP6,    opFUCOMIP7,
+        opFCOMIP0,     opFCOMIP1,     opFCOMIP2,     opFCOMIP3,     opFCOMIP4,     opFCOMIP5,     opFCOMIP6,     opFCOMIP7,
         ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,       ILLEGAL,
 };
 

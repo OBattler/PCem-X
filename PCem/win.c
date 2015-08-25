@@ -351,6 +351,8 @@ UINT16 convert_scan_code(UINT16 scan_code)
 		return 0xF001;
 		case 0xE002:
 		return 0xF002;
+		case 0xE0AA:
+		return 0xF003;
 		case 0xE005:
 		return 0xF005;
 		case 0xE006:
@@ -509,9 +511,6 @@ int WINAPI WinMain (HINSTANCE hThisInstance,
 	get_registry_key_map();
 
         ghwnd=hwnd;
-
-        midi_init();
-        atexit(midi_close);
 
         initpc();
 #ifndef __MINGW64__

@@ -62,6 +62,8 @@ int cachesize=256;
 uint8_t *ram,*rom,*vram;
 uint8_t romext[32768];
 
+int biostype = BIOS_NONE;
+
 static void mem_load_xtide_bios()
 {
         FILE *f;
@@ -126,6 +128,8 @@ int loadbios()
         memset(rom, 0xff, 0x40000);
         
         pclog("Starting with romset %i\n", romset);
+
+	biostype = BIOS_OTHER;
         
         switch (romset)
         {
@@ -363,6 +367,7 @@ int loadbios()
                 if (!f) break;
                 fread(rom,65536,1,f);
                 fclose(f);
+		biostype = BIOS_AMI;
                 return 1;
 
                 case ROM_DESKPRO_386:
@@ -398,6 +403,7 @@ int loadbios()
                 fread(rom,65536,1,f);
                 fclose(f);
 //                memset(romext,0x63,0x8000);
+		biostype = BIOS_AMI;
                 return 1;
 
                 case ROM_EUROPC:
@@ -455,6 +461,7 @@ int loadbios()
                 fread(rom,65536,1,f);
                 fclose(f);
                 //is486=1;
+		biostype = BIOS_AMI;
                 return 1;
                 
                 case ROM_WIN486:
@@ -464,6 +471,7 @@ int loadbios()
                 fread(rom,65536,1,f);
                 fclose(f);
                 //is486=1;
+		biostype = BIOS_AMI;
                 return 1;
 
                 case ROM_PX486:
@@ -472,6 +480,7 @@ int loadbios()
                 fread(rom,65536,1,f);
                 fclose(f);
                 //is486=1;
+		biostype = BIOS_PHOENIX;
                 return 1;
                 
                 case ROM_PCI486:
@@ -481,6 +490,7 @@ int loadbios()
                 fclose(f);
                 biosmask = 0x1ffff;
                 //is486=1;
+		biostype = BIOS_AMI;
                 return 1;
 
                 case ROM_SIS471:
@@ -490,6 +500,7 @@ int loadbios()
                 fclose(f);
                 // biosmask = 0x1ffff;
                 // pclog("Load SIS496 %x %x\n", rom[0x1fff0], rom[0xfff0]);
+		biostype = BIOS_AWARD;
                 return 1;
                 
                 case ROM_PXSIS471:
@@ -499,6 +510,7 @@ int loadbios()
                 fclose(f);
                 // biosmask = 0x1ffff;
                 // pclog("Load SIS496 %x %x\n", rom[0x1fff0], rom[0xfff0]);
+		biostype = BIOS_PHOENIX;
                 return 1;
                 
                 case ROM_COLORBOOK:
@@ -518,6 +530,7 @@ int loadbios()
                 fclose(f);
                 biosmask = 0x1ffff;
                 pclog("Load SIS496 %x %x\n", rom[0x1fff0], rom[0xfff0]);
+		biostype = BIOS_AWARD;
                 return 1;
                 
                 case ROM_430FX:
@@ -532,6 +545,7 @@ int loadbios()
                 biosmask = 0x1ffff;
                 //is486=1;
 		flash_1mbit_readfiles();
+		biostype = BIOS_AWARD;
                 return 1;
 
                 case ROM_430VX:
@@ -547,6 +561,7 @@ int loadbios()
                 biosmask = 0x1ffff;
                 //is486=1;
 		flash_1mbit_readfiles();
+		biostype = BIOS_AWARD;
                 return 1;
 
                 case ROM_430TX:
@@ -558,6 +573,7 @@ int loadbios()
                 biosmask = 0x1ffff;
                 //is486=1;
 		flash_1mbit_readfiles();
+		biostype = BIOS_AWARD;
                 return 1;
 
                 case ROM_440FX:
@@ -570,6 +586,7 @@ int loadbios()
                 biosmask = 0x1ffff;
                 //is486=1;
 		flash_1mbit_readfiles();
+		biostype = BIOS_AWARD;
                 return 1;
 
 #ifdef BROKEN_CHIPSETS
@@ -580,6 +597,7 @@ int loadbios()
                 fclose(f);
                 biosmask = 0x3ffff;
                 //is486=1;
+		biostype = BIOS_AMI;
                 return 1;
 
                 case ROM_VPC2007:
@@ -589,6 +607,7 @@ int loadbios()
                 fclose(f);
                 biosmask = 0x3ffff;
                 //is486=1;
+		biostype = BIOS_AMI;
                 return 1;
 #endif
 
@@ -606,6 +625,7 @@ int loadbios()
                 biosmask = 0x1ffff;
                 //is486=1;
 		flash_1mbit_readfiles();
+		biostype = BIOS_AMI;
                 return 1;
                 case ROM_ENDEAVOR:
                 f = romfopen("roms/endeavor/1006CB0_.BIO", "rb");
@@ -621,6 +641,7 @@ int loadbios()
                 biosmask = 0x1ffff;
                 //is486=1;
 		flash_1mbit_readfiles();
+		biostype = BIOS_AMI;
                 return 1;
 
                 case ROM_AMIXT:
@@ -629,6 +650,7 @@ int loadbios()
                 fread(rom + 0xE000, 8192, 1, f);
                 fclose(f);
                 mem_load_xtide_bios();
+		biostype = BIOS_AMI;
                 return 1;
 
                 case ROM_LTXT:
@@ -659,6 +681,7 @@ int loadbios()
                 fclose(ff);
                 fclose(f);
                 mem_load_atide_bios();
+		biostype = BIOS_PHOENIX;
                 return 1;
 
                 case ROM_DTK386: /*Uses NEAT chipset*/
@@ -675,6 +698,7 @@ int loadbios()
                 fread(rom + 0xE000, 8192, 1, f);
                 fclose(f);
                 mem_load_xtide_bios();
+		biostype = BIOS_PHOENIX;
                 return 1;
 
                 case ROM_JUKOPC:

@@ -452,10 +452,10 @@ static uint32_t opcode_timings_0f[256] =
         INVALID,                INVALID,                        INVALID,                        INVALID,
         INVALID,                INVALID,                        INVALID,                        INVALID,
 
-/*40*/  INVALID,                INVALID,                        INVALID,                        INVALID,        
-        INVALID,                INVALID,                        INVALID,                        INVALID,        
-        INVALID,                INVALID,                        INVALID,                        INVALID,
-        INVALID,                INVALID,                        INVALID,                        INVALID,
+/*40*/  PAIR_UV | CYCLES_REG | DSTDEP_REG, PAIR_UV | CYCLES_REG | DSTDEP_REG, PAIR_UV | CYCLES_REG | DSTDEP_REG, PAIR_UV | CYCLES_REG | DSTDEP_REG,
+        PAIR_UV | CYCLES_REG | DSTDEP_REG, PAIR_UV | CYCLES_REG | DSTDEP_REG, PAIR_UV | CYCLES_REG | DSTDEP_REG, PAIR_UV | CYCLES_REG | DSTDEP_REG,
+        PAIR_UV | CYCLES_REG | DSTDEP_REG, PAIR_UV | CYCLES_REG | DSTDEP_REG, PAIR_UV | CYCLES_REG | DSTDEP_REG, PAIR_UV | CYCLES_REG | DSTDEP_REG,
+        PAIR_UV | CYCLES_REG | DSTDEP_REG, PAIR_UV | CYCLES_REG | DSTDEP_REG, PAIR_UV | CYCLES_REG | DSTDEP_REG, PAIR_UV | CYCLES_REG | DSTDEP_REG,
         
 /*50*/  INVALID,                INVALID,                        INVALID,                        INVALID,
         INVALID,                INVALID,                        INVALID,                        INVALID,

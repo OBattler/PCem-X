@@ -74,6 +74,14 @@ uint64_t cpu_CR4_mask;
 
 uint64_t tsc = 0;
 
+uint64_t pmc[2] = {0, 0};
+
+uint16_t temp_seg_data[4] = {0, 0, 0, 0};
+
+uint16_t cs_msr = 0;
+uint32_t esp_msr = 0;
+uint32_t eip_msr = 0;
+
 int timing_rr;
 int timing_mr, timing_mrl;
 int timing_rm, timing_rml;
@@ -686,8 +694,6 @@ void cpu_set()
                 break;
 
                 case CPU_PENTIUMMMX:
-                case CPU_PENTIUMPRO:
-                case CPU_PENTIUM2:
                 x86_setopcodes(ops_386, ops_pentiummmx_0f, dynarec_ops_386, dynarec_ops_pentiummmx_0f);
                 timing_rr  = 1; /*register dest - register src*/
                 timing_rm  = 2; /*register dest - memory src*/
@@ -696,6 +702,46 @@ void cpu_set()
                 timing_rml = 2; /*register dest - memory src long*/
                 timing_mrl = 3; /*memory dest   - register src long*/
                 timing_mml = 3;
+                timing_bt  = 0; /*branch taken*/
+                timing_bnt = 1; /*branch not taken*/
+                cpu_hasrdtsc = 1;
+                msr.fcr = (1 << 8) | (1 << 9) | (1 << 12) |  (1 << 16) | (1 << 19) | (1 << 21);
+                cpu_hasMMX = 1;
+                cpu_hasMSR = 1;
+                cpu_hasCR4 = 1;
+                cpu_CR4_mask = CR4_TSD | CR4_DE | CR4_MCE | CR4_PCE;
+                codegen_timing_set(&codegen_timing_pentium);
+                break;
+
+                case CPU_PENTIUMPRO:
+                x86_setopcodes(ops_386, ops_pentiumpro_0f, dynarec_ops_386, dynarec_ops_pentiumpro_0f);
+                timing_rr  = 1; /*register dest - register src*/
+                timing_rm  = 2; /*register dest - memory src*/
+                timing_mr  = 3; /*memory dest   - register src*/
+                timing_mm  = 3;
+                timing_rml = 2; /*register dest - memory src long*/
+                timing_mrl = 3; /*memory dest   - register src long*/
+                timing_mml = 3;
+                timing_bt  = 0; /*branch taken*/
+                timing_bnt = 1; /*branch not taken*/
+                cpu_hasrdtsc = 1;
+                msr.fcr = (1 << 8) | (1 << 9) | (1 << 12) |  (1 << 16) | (1 << 19) | (1 << 21);
+                cpu_hasMMX = 0;
+                cpu_hasMSR = 1;
+                cpu_hasCR4 = 1;
+                cpu_CR4_mask = CR4_TSD | CR4_DE | CR4_MCE | CR4_PCE;
+                codegen_timing_set(&codegen_timing_pentium);
+                break;
+
+                case CPU_PENTIUM2:
+                x86_setopcodes(ops_386, ops_pentium2_0f, dynarec_ops_386, dynarec_ops_pentium2_0f);
+                timing_rr  = 1; /*register dest - register src*/
+                timing_rm  = 1; /*register dest - memory src*/
+                timing_mr  = 1; /*memory dest   - register src*/
+                timing_mm  = 1;
+                timing_rml = 1; /*register dest - memory src long*/
+                timing_mrl = 1; /*memory dest   - register src long*/
+                timing_mml = 1;
                 timing_bt  = 0; /*branch taken*/
                 timing_bnt = 1; /*branch not taken*/
                 cpu_hasrdtsc = 1;
@@ -921,6 +967,16 @@ void cpu_RDMSR()
                 case CPU_PENTIUM:
                 case CPU_PENTIUMMMX:
                 case CPU_PENTIUMPRO:
+                EAX = EDX = 0;
+                switch (ECX)
+                {
+                        case 0x10:
+                        EAX = tsc & 0xffffffff;
+                        EDX = tsc >> 32;
+                        break;
+                }
+                break;
+
                 case CPU_PENTIUM2:
                 EAX = EDX = 0;
                 switch (ECX)
@@ -929,6 +985,15 @@ void cpu_RDMSR()
                         EAX = tsc & 0xffffffff;
                         EDX = tsc >> 32;
                         break;
+			case 0x174:
+			EAX = cs_msr;
+			break;
+			case 0x175:
+			EAX = esp_msr;
+			break;
+			case 0x176:
+			EAX = eip_msr;
+			break;
                 }
                 break;
 #endif
@@ -974,12 +1039,29 @@ void cpu_WRMSR()
                 case CPU_PENTIUM:
                 case CPU_PENTIUMMMX:
                 case CPU_PENTIUMPRO:
+                switch (ECX)
+                {
+                        case 0x10:
+                        tsc = EAX | ((uint64_t)EDX << 32);
+                        break;
+                }
+                break;
+
                 case CPU_PENTIUM2:
                 switch (ECX)
                 {
                         case 0x10:
                         tsc = EAX | ((uint64_t)EDX << 32);
                         break;
+			case 0x174:
+			cs_msr = EAX & 0xFFFF;
+			break;
+			case 0x175:
+			esp_msr = EAX;
+			break;
+			case 0x176:
+			eip_msr = EAX;
+			break;
                 }
                 break;
 #endif

@@ -31,6 +31,8 @@ static INT_PTR CALLBACK deviceconfig_dlgproc(HWND hdlg, UINT message, WPARAM wPa
                                 HWND h = GetDlgItem(hdlg, id);
                                 int val_int;
                                 char *val_string;
+				int num;
+				char s[80];
                                 
                                 switch (config->type)
                                 {
@@ -55,6 +57,21 @@ static INT_PTR CALLBACK deviceconfig_dlgproc(HWND hdlg, UINT message, WPARAM wPa
                                                 c++;
                                         }
                                         
+                                        id += 2;
+                                        break;
+
+                                        case CONFIG_MIDI:
+                                        val_int = config_get_int(NULL, config->name, config->default_int);
+                                        
+                                        num  = midi_get_num_devs();
+                                        for (c = 0; c < num; c++)
+                                        {
+                                                midi_get_dev_name(c, s);
+                                                SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)s);
+                                                if (val_int == c)
+                                                        SendMessage(h, CB_SETCURSEL, c, 0);
+                                        }
+
                                         id += 2;
                                         break;
                                 }
@@ -104,6 +121,17 @@ static INT_PTR CALLBACK deviceconfig_dlgproc(HWND hdlg, UINT message, WPARAM wPa
                                         
                                                 id += 2;
                                                 break;
+
+                                                case CONFIG_MIDI:
+                                                val_int = config_get_int(NULL, config->name, config->default_int);
+
+                                                c = SendMessage(h, CB_GETCURSEL, 0, 0);
+
+                                                if (val_int != c)
+                                                        changed = 1;
+                                        
+                                                id += 2;
+                                                break;
                                         }
                                         config++;
                                 }
@@ -146,6 +174,13 @@ static INT_PTR CALLBACK deviceconfig_dlgproc(HWND hdlg, UINT message, WPARAM wPa
                                         
                                                 id += 2;
                                                 break;
+
+                                                case CONFIG_MIDI:
+                                                c = SendMessage(h, CB_GETCURSEL, 0, 0);
+                                                config_set_int(NULL, config->name, c);
+
+                                                id += 2;
+                                                break;
                                         }
                                         config++;
                                 }
@@ -181,7 +216,7 @@ void deviceconfig_open(HWND hwnd, device_t *device)
         dlg->style = DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU;
         dlg->x  = 10;
         dlg->y  = 10;
-        dlg->cx = 150;
+        dlg->cx = 220;
         dlg->cy = 70;
         
         data = (uint16_t *)(dlg + 1);
@@ -226,13 +261,14 @@ void deviceconfig_open(HWND hwnd, device_t *device)
                         break;
 
                         case CONFIG_SELECTION:
+			case CONFIG_MIDI:
                         /*Combo box*/
                         item = (DLGITEMTEMPLATE *)data;
                         item->x = 70;
                         item->y = y;
                         item->id = id++;
                 
-                        item->cx = 70;
+                        item->cx = 140;
                         item->cy = 150;
 
                         item->style = WS_CHILD | WS_VISIBLE | CBS_DROPDOWN | WS_VSCROLL;

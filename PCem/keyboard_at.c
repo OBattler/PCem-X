@@ -184,7 +184,7 @@ void keyboard_at_adddata_keyboard(uint8_t val)
 	}
         key_queue[key_queue_end] = ((mode & 0x40) ? (nont_to_t[val] | sc_or) : val);
         key_queue_end = (key_queue_end + 1) & 0xf;
-        // pclog("keyboard_at : %02X added to key queue\n", ((mode & 0x40) ? (nont_to_t[val] | sc_or) : val));
+        pclog("keyboard_at : %02X added to key queue\n", ((mode & 0x40) ? (nont_to_t[val] | sc_or) : val));
 	if (sc_or == 0x80)  sc_or = 0;
         return;
 }
@@ -325,20 +325,24 @@ void keyboard_at_write(uint16_t port, uint8_t val, void *priv)
                                 {
 					case 00:
 					keyboard_at_adddata_keyboard(0xfa);
+					pclog("KBC: Zero command\n");
 					break;
 
                                         case 0x05: /*??? - sent by NT 4.0*/
                                         keyboard_at_adddata_keyboard(0xfe);
+					pclog("KBC: ???? - sent by NT 4.0\n");
                                         break;
 
                                         case 0xed: /*Set/reset LEDs*/
                                         keyboard_at.key_wantdata = 1;
                                         keyboard_at_adddata_keyboard(0xfa);
+					pclog("KBC: Set/reset LEDs\n");
                                         break;
 
 					case 0xf0: /*Get/set scan code set*/
 					keyboard_at.key_wantdata = 1;
 					keyboard_at_adddata_keyboard(0xfa);
+					pclog("KBC: Get/set scan code set\n");
 					break;
                                         
                                         case 0xf2: /*Read ID*/
@@ -350,15 +354,18 @@ void keyboard_at_write(uint16_t port, uint8_t val, void *priv)
                                         case 0xf3: /*Set typematic rate/delay*/
                                         keyboard_at.key_wantdata = 1;
                                         keyboard_at_adddata_keyboard(0xfa);
+					pclog("KBC: Set typematic rate/delay\n");
                                         break;
                                         
                                         case 0xf4: /*Enable keyboard*/
                                         keyboard_scan = 1;
                                         keyboard_at_adddata_keyboard(0xfa);
+					pclog("KBC: Enable keyboard\n");
                                         break;
                                         case 0xf5: /*Disable keyboard*/
                                         keyboard_scan = 0;
                                         keyboard_at_adddata_keyboard(0xfa);
+					pclog("KBC: Disable keyboard\n");
                                         break;
                                         
                                         case 0xf6: /*Set defaults*/
@@ -367,33 +374,39 @@ void keyboard_at_write(uint16_t port, uint8_t val, void *priv)
 					memset(set3_flags, 0, 272);
 					mode = (mode & 0xFC) | 2;
                                         keyboard_at_adddata_keyboard(0xfa);
+					pclog("KBC: Set defaults\n");
                                         break;
                                         
                                         case 0xf7: /*Set all keys to repeat*/
 					set3_all_break = 1;
                                         keyboard_at_adddata_keyboard(0xfa);
+					pclog("KBC: Set all keys to repeat\n");
                                         break;
                                         
                                         case 0xf8: /*Set all keys to give make/break codes*/
 					set3_all_break = 1;
                                         keyboard_at_adddata_keyboard(0xfa);
+					pclog("KBC: Set all keys to give make/break codes\n");
                                         break;
                                         
                                         case 0xf9: /*Set all keys to give make codes only*/
 					set3_all_break = 0;
                                         keyboard_at_adddata_keyboard(0xfa);
+					pclog("KBC: Set all keys to give make codes only\n");
                                         break;
                                         
                                         case 0xfa: /*Set all keys to repeat and give make/break codes*/
                                         set3_all_repeat = 1;
 					set3_all_break = 1;
                                         keyboard_at_adddata_keyboard(0xfa);
+					pclog("KBC: Set all keys to repeat and give make/break codes\n");
                                         break;
                                         
                                         case 0xff: /*Reset*/
                                         key_queue_start = key_queue_end = 0; /*Clear key queue*/
                                         keyboard_at_adddata_keyboard(0xfa);
                                         keyboard_at_adddata_keyboard(0xaa);
+					pclog("KBC: Reset\n");
                                         break;
                                         
                                         default:
@@ -556,7 +569,7 @@ uint8_t keyboard_at_read(uint16_t port, void *priv)
                 
                 case 0x64:
                 temp = keyboard_at.status;
-		if (mode & 8)  temp &= 0xEF;
+		if (mode & 8)  temp |= STAT_LOCK;
                 keyboard_at.status &= ~(STAT_RTIMEOUT/* | STAT_TTIMEOUT*/);
                 break;
         }
@@ -566,12 +579,13 @@ uint8_t keyboard_at_read(uint16_t port, void *priv)
 
 void keyboard_at_reset()
 {
-	int q = ((romset == ROM_ENDEAVOR) || (romset == ROM_REVENGE));
+	int q = ((biostype != BIOS_AWARD) && (biostype != BIOS_PHOENIX));
 
         keyboard_at.initialised = 0;
         keyboard_at.status = STAT_LOCK | STAT_CD;
-        keyboard_at.mem[0] = 0x11 | (q ? 0 : 0x40);
+        keyboard_at.mem[0] = q ? 0x11 : 0x51;
 	mode = q ? 0x01 : 0x42;
+	if (biostype == BIOS_PHOENIX)  mode = 0x43;
         keyboard_at.wantirq = 0;
         keyboard_at.output_port = 0;
         keyboard_at.input_port = 0xb0;

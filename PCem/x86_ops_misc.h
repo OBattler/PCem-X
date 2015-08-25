@@ -689,7 +689,47 @@ static int opLOADALL(uint32_t fetchdat)
         ds = readmemw(0, 0x848) | (readmemb(0, 0x84A) << 16);
         CLOCK_CYCLES(195);
         return 0;
-}                                
+}                        
+
+static int opLOADALL386(uint32_t fetchdat)
+{
+	uint32_t la_addr = es + EDI;
+
+        eflags = (readmemw(0, la_addr + 4) & 0xffffffd5) | 2;
+	flags = eflags & 0xffff;
+        flags_extract();
+        pc = readmeml(0, la_addr + 8);
+	EDI = readmeml(0, la_addr + 0xC);
+	ESI = readmeml(0, la_addr + 0x10);
+	EBP = readmeml(0, la_addr + 0x14);
+	ESP = readmeml(0, la_addr + 0x18);
+	EBX = readmeml(0, la_addr + 0x1C);
+	EDX = readmeml(0, la_addr + 0x20);
+	ECX = readmeml(0, la_addr + 0x24);
+	EAX = readmeml(0, la_addr + 0x28);
+	dr[6] = readmeml(0, la_addr + 0x2C);
+	dr[7] = readmeml(0, la_addr + 0x30);
+	tr.seg = readmemw(0, la_addr + 0x34);
+	ldt.seg = readmemw(0, la_addr + 0x38);
+        GS = readmemw(0, la_addr + 0x3C);
+        FS = readmemw(0, la_addr + 0x40);
+        DS = readmemw(0, la_addr + 0x44);
+        SS = readmemw(0, la_addr + 0x48);
+        CS = readmemw(0, la_addr + 0x4C);
+        ES = readmemw(0, la_addr + 0x50);
+	tr.base = readmemw(0, la_addr + 0x54) | (readmemb(0, la_addr + 0x58) << 16);
+	idt.base = readmemw(0, la_addr + 0x60) | (readmemb(0, la_addr + 0x64) << 16);
+	gdt.base = readmemw(0, la_addr + 0x6C) | (readmemb(0, la_addr + 0x70) << 16);
+	ldt.base = readmemw(0, la_addr + 0x78) | (readmemb(0, la_addr + 0x7C) << 16);
+	gs = readmemw(0, la_addr + 0x84) | (readmemb(0, la_addr + 0x88) << 16);
+	seg_fs = readmemw(0, la_addr + 0x90) | (readmemb(0, la_addr + 0x94) << 16);
+	ds = readmemw(0, la_addr + 0x9C) | (readmemb(0, la_addr + 0xA0) << 16);
+	ss = readmemw(0, la_addr + 0xA8) | (readmemb(0, la_addr + 0xAC) << 16);
+	cs = readmemw(0, la_addr + 0xB4) | (readmemb(0, la_addr + 0xB8) << 16);
+	es = readmemw(0, la_addr + 0xC0) | (readmemb(0, la_addr + 0xC4) << 16);
+        CLOCK_CYCLES(122);
+        return 0;
+}
 
 static int opCPUID(uint32_t fetchdat)
 {

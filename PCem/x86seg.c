@@ -6,6 +6,7 @@
 #include "mem.h"
 #include "x86.h"
 #include "386.h"
+#include "x86seg.h"
 
 /*Controls whether the accessed bit in a descriptor is set when CS is loaded. The
   386 PRM is ambiguous on this subject, but BOCHS doesn't set it and Windows 98
@@ -176,7 +177,7 @@ void x86np(char *s, uint16_t error)
 }
 
 
-static void do_seg_load(x86seg *s, uint16_t *segdat)
+void do_seg_load(x86seg *s, uint16_t *segdat)
 {
         s->limit = segdat[0] | ((segdat[3] & 0xF) << 16);
         if (segdat[3] & 0x80)

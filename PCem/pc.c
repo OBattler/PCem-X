@@ -271,10 +271,6 @@ void initpc()
         *p=0;
         pclog("path = %s\n", pcempath);
 
-        keyboard_init();
-        mouse_init();
-        joystick_init();
-
 	fdd_init();
         loadconfig(NULL);
         pclog("Config loaded\n");
@@ -304,6 +300,11 @@ void initpc()
 	pclog("Initializing video...\n");
         initvideo();
 	pclog("Done...\n");
+
+        keyboard_init();
+        mouse_init();
+        joystick_init();
+	midi_init();
 
 	// voodoo_generate_filter();
 
@@ -385,6 +386,9 @@ void resetpchard()
 {
         device_close_all();
         device_init();
+
+	midi_close();
+	midi_init();
 
         timer_reset();
         sound_reset();
@@ -623,6 +627,7 @@ void closepc()
         dumpregs();
         closevideo();
         device_close_all();
+	midi_close();
 }
 
 /*int main()
