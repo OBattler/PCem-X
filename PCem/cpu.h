@@ -33,6 +33,7 @@ extern int cpu, cpu_manufacturer;
 #ifdef DYNAREC
 #define CPU_PENTIUMPRO 17
 #define CPU_PENTIUM2 18
+#define CPU_PENTIUM2D 19
 #endif
 
 #define MANU_INTEL 0
@@ -77,6 +78,7 @@ extern CPU cpus_PentiumS5[];
 extern CPU cpus_Pentium[];
 extern CPU cpus_PentiumPro[];
 extern CPU cpus_Pentium2[];
+extern CPU cpus_Pentium2D[];
 #endif
 
 extern CPU cpus_pcjr[];

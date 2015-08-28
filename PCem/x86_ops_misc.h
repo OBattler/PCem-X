@@ -752,6 +752,7 @@ static int opRDMSR(uint32_t fetchdat)
                 CLOCK_CYCLES(9);
                 return 0;
         }
+inv_rdmsr:
         pc = oldpc;
         x86illegal();
         return 1;
@@ -765,6 +766,7 @@ static int opWRMSR(uint32_t fetchdat)
                 CLOCK_CYCLES(9);
                 return 0;
         }
+inv_wrmsr:
         pc = oldpc;
         x86illegal();
         return 1;

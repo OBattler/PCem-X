@@ -24,7 +24,7 @@ void piix_write(int func, int addr, uint8_t val, void *priv)
 
 	if ((addr & 0xff) < 4)  return;
 
-	if ((func == 2) && ((romset == ROM_430VX) || (romset == ROM_430TX) || (romset == ROM_440FX) || (romset == ROM_440BX) || (romset == ROM_VPC2007))) /*USB*/
+	if ((func == 2) && ((romset == ROM_430VX) || (romset == ROM_430TX) || (romset == ROM_440BX) || (romset == ROM_VPC2007))) /*USB*/
 	{
 		card_piix_usb[addr & 0xff] = val;
 		return;
@@ -111,7 +111,7 @@ uint8_t piix_read(int func, int addr, void *priv)
 {
 //        pclog("piix_read: func=%d addr=%02x %04x:%08x\n", func, addr, CS, pc);
 
-	if ((func == 2) && ((romset == ROM_430VX) || (romset == ROM_430TX) || (romset == ROM_440FX) || (romset == ROM_440BX) || (romset == ROM_VPC2007))) /*USB*/
+	if ((func == 2) && ((romset == ROM_430VX) || (romset == ROM_430TX) || (romset == ROM_440BX) || (romset == ROM_VPC2007))) /*USB*/
 	{
                 return card_piix_usb[addr];
 	}
@@ -330,7 +330,7 @@ void piix_init(int card)
 	        card_piix[0x02] = 0x2e; card_piix[0x03] = 0x12; /*82371FB (PIIX)*/
 	}
         card_piix[0x04] = 0x07; card_piix[0x05] = 0x00;
-	if (romset == ROM_430TX)
+	if ((romset == ROM_430TX) || (romset == ROM_440BX) || (romset == ROM_VPC2007))
 	{
         	card_piix[0x06] = 0x80; card_piix[0x07] = 0x02;
 	}
@@ -396,7 +396,7 @@ void piix_init(int card)
         
         ide_set_bus_master(piix_bus_master_sector_read, piix_bus_master_sector_write, piix_bus_master_set_irq);
 
-	if ((romset == ROM_430VX) || (romset == ROM_430TX) || (romset == ROM_440FX) || (romset == ROM_440BX) || (romset == ROM_VPC2007))
+	if ((romset == ROM_430VX) || (romset == ROM_430TX) || (romset == ROM_440BX) || (romset == ROM_VPC2007))
 	{
 	        card_piix_usb[0x00] = 0x86; card_piix_usb[0x01] = 0x80; /*Intel*/
 

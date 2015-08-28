@@ -582,3 +582,5 @@ extern uint16_t temp_seg_data[4];
 extern uint16_t cs_msr;
 extern uint32_t esp_msr;
 extern uint32_t eip_msr;
+
+#define FPU_CW_Reserved_Bits (0xe0c0)

@@ -136,10 +136,10 @@ MODEL models[] =
         {"Award 430FX PCI",     ROM_430FX,     { "Intel", cpus_PentiumS5,"IDT", cpus_WinChip, "",      NULL},         0,0,    at_i430fx_init},
         {"Award 430VX PCI",     ROM_430VX,     { "Intel", cpus_Pentium, "IDT", cpus_WinChip, "",      NULL},         0,0,    at_i430vx_init},
         {"Award 430TX PCI",     ROM_430TX,     { "Intel", cpus_Pentium, "IDT", cpus_WinChip, "",      NULL},         0,0,    at_i430tx_init},
-        {"Award 440FX PCI",     ROM_440FX,     { "Intel", cpus_PentiumPro,"Intel P2",    cpus_Pentium2,         "",      NULL},         0,0,    at_i440fx_init},
+        {"Award 440FX PCI",     ROM_440FX,     { "Intel", cpus_PentiumPro,"Klamath",    cpus_Pentium2,         "Deschut.",      cpus_Pentium2D},         0,0,    at_i440fx_init},
 #ifdef BROKEN_CHIPSETS
-        {"Award 440BX PCI",     ROM_440BX,     { "Intel", cpus_Pentium2,"",    NULL,         "",      NULL},         0,0,    at_i440bx_init},
-        {"Virtual PC 2007",     ROM_VPC2007,   { "Intel", cpus_Pentium2,"",    NULL,         "",      NULL},         0,1,    at_vpc2007_init},
+        {"Award 440BX PCI",     ROM_440BX,     { "Intel", cpus_Pentium2,"Deschut.",    cpus_Pentium2D,         "",      NULL},         0,0,    at_i440bx_init},
+        {"Virtual PC 2007",     ROM_VPC2007,   { "Intel", cpus_Pentium2,"Deschut.",    cpus_pentium2D,         "",      NULL},         0,1,    at_vpc2007_init},
 #endif
 #else
         {"Intel Advanced/EV",   ROM_ENDEAVOR,  { "IDT", cpus_WinChip,   "",    NULL,         "",      NULL},         0,0,  at_endeavor_init},
