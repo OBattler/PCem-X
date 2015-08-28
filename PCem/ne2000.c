@@ -31,7 +31,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include "win-pcap.h"
+
+#include "slirp/slirp.h"
+#include "slirp/queue.h"
+#include <pcap.h>
 
 #include "ibm.h"
 #include "device.h"
@@ -41,6 +44,41 @@
 #include "ne2000.h"
 #include "pic.h"
 #include "timer.h"
+
+//THIS IS THE DEFAULT MAC ADDRESS .... so it wont place nice with multiple VMs. YET.
+uint8_t maclocal[6] = {0xac, 0xde, 0x48, 0x88, 0xbb, 0xaa};
+
+#define NETBLOCKING 0		//we won't block our pcap
+
+static HINSTANCE net_hLib = 0;                      /* handle to DLL */
+static char* net_lib_name = "wpcap.dll";
+pcap_t *net_pcap;
+typedef pcap_t* (__cdecl * PCAP_OPEN_LIVE)(const char *, int, int, int, char *);
+typedef int (__cdecl * PCAP_SENDPACKET)(pcap_t* handle, const u_char* msg, int len);
+typedef int (__cdecl * PCAP_SETNONBLOCK)(pcap_t *, int, char *);
+typedef const u_char*(__cdecl *PCAP_NEXT)(pcap_t *, struct pcap_pkthdr *);
+typedef const char*(__cdecl *PCAP_LIB_VERSION)(void);
+typedef void (__cdecl *PCAP_CLOSE)(pcap_t *);
+typedef int  (__cdecl *PCAP_GETNONBLOCK)(pcap_t *p, char *errbuf);
+typedef int (__cdecl *PCAP_COMPILE)(pcap_t *p, struct bpf_program *fp, const char *str, int optimize, bpf_u_int32 netmask);
+typedef int (__cdecl *PCAP_SETFILTER)(pcap_t *p, struct bpf_program *fp);
+
+PCAP_LIB_VERSION 	_pcap_lib_version;
+PCAP_OPEN_LIVE		_pcap_open_live;
+PCAP_SENDPACKET		_pcap_sendpacket;
+PCAP_SETNONBLOCK	_pcap_setnonblock;
+PCAP_NEXT		_pcap_next;
+PCAP_CLOSE		_pcap_close;
+PCAP_GETNONBLOCK	_pcap_getnonblock;
+PCAP_COMPILE		_pcap_compile;
+PCAP_SETFILTER		_pcap_setfilter;
+
+queueADT	slirpq;
+int net_slirp_inited=0;
+int net_is_slirp=1;	//by default we go with slirp
+int net_is_pcap=0;	//and pretend pcap is dead.
+int fizz=0;
+void slirp_tic();
 
 #define BX_RESET_HARDWARE 0
 #define BX_RESET_SOFTWARE 1
@@ -786,7 +824,15 @@ void ne2000_write(uint32_t address, uint16_t value, void *p)
     // Send the packet to the system driver
 	/* TODO: Transmit packet */
     //BX_NE2K_THIS ethdev->sendpkt(& ne2000->mem[ne2000->tx_page_start*256 - BX_NE2K_MEMSTART], ne2000->tx_bytes);
-	pcap_sendpacket(adhandle,&ne2000->mem[ne2000->tx_page_start*256 - BX_NE2K_MEMSTART], ne2000->tx_bytes);
+	//pcap_sendpacket(adhandle,&ne2000->mem[ne2000->tx_page_start*256 - BX_NE2K_MEMSTART], ne2000->tx_bytes);
+if(net_is_slirp) {
+	slirp_input(&ne2000->mem[ne2000->tx_page_start*256 - BX_NE2K_MEMSTART], ne2000->tx_bytes);
+	pclog("ne2000 slirp sending packet\n");
+	}
+if(net_is_pcap && net_pcap!=NULL) {
+	_pcap_sendpacket(net_pcap, &ne2000->mem[ne2000->tx_page_start*256 - BX_NE2K_MEMSTART], ne2000->tx_bytes);
+	pclog("ne2000 pcap sending packet\n");
+	}
 
     ne2000_tx_event(value, ne2000);
     // Schedule a timer to trigger a tx-complete interrupt
@@ -1278,44 +1324,245 @@ static void ne2000_tx_event(int val, void *p)
 static void ne2000_poller(void *p)
 {
     ne2000_t *ne2000 = (ne2000_t *)p;
+    struct queuepacket *qp;
+    const unsigned char *data;
+    struct pcap_pkthdr h;
+
 
 	int res;
-//#if 0
-	while((res = pcap_next_ex( adhandle, &hdr, (const u_char **)&pktdata)) > 0) {
-		//LOG_MSG("NE2000: Received %d bytes", header->len);
-		// don't receive in loopback modes
-		if((ne2000->DCR.loop == 0) || (ne2000->TCR.loop_cntl != 0))
-			return;
-		ne2000_rx_frame(ne2000, pktdata, hdr->len);
+if(net_is_slirp) {
+	while(QueuePeek(slirpq)>0)
+		{
+		qp=QueueDelete(slirpq);
+                if((ne2000->DCR.loop == 0) || (ne2000->TCR.loop_cntl != 0))
+			{
+			free(qp);
+                        return;
+			}
+                ne2000_rx_frame(ne2000,&qp->data,qp->len); 
+		pclog("ne2000 inQ:%d  got a %dbyte packet @%d\n",QueuePeek(slirpq),qp->len,qp);
+		free(qp);
+		}
+	fizz++;
+	if(fizz>1200){fizz=0;slirp_tic();}
+	}//end slirp
+if(net_is_pcap  && net_pcap!=NULL)
+	{
+	data=_pcap_next(net_pcap,&h);
+	if(data==0x0){goto WTF;}
+	if((memcmp(data+6,maclocal,6))==0)
+	    pclog("ne2000 we just saw ourselves\n");
+	else {
+             if((ne2000->DCR.loop == 0) || (ne2000->TCR.loop_cntl != 0))
+		{
+                return;
+		}
+		pclog("ne2000 pcap received a frame %d bytes\n",h.caplen);
+                ne2000_rx_frame(ne2000,data,h.caplen); 
+	     }
+	WTF:
+		{}
 	}
-//#endif
 }
 
-uint8_t maclocal[6] = {0xac, 0xde, 0x48, 0x88, 0xbb, 0xaa};
 
 void *ne2000_init()
 {
+    struct in_addr myaddr; 
+    int rc;
+    int net_type;
+
     ne2000_t *ne2000 = malloc(sizeof(ne2000_t));
     memset(ne2000, 0, sizeof(ne2000_t));
 
     uint16_t addr = device_get_config_int("addr");
-
     ne2000_setirq(ne2000, device_get_config_int("irq"));
+
+    //net_type
+    //0 pcap
+    //1 slirp
+    //
+    net_is_slirp = config_get_int(NULL, "net_type", 1);
+    pclog("ne2000 pcap device %s\n",config_get_string(NULL,"pcap_device","nothing"));
+    
+    //Check that we have a string setup, otherwise turn pcap off
+    if(!strcmp("nothing",config_get_string(NULL,"pcap_device","nothing"))) {
+	net_is_pcap = 0;
+	}
+    else {
+    if( net_is_slirp == 0) 
+	net_is_pcap = 1;
+    }
 
     io_sethandler(addr, 0x0010, ne2000_read, NULL, NULL, ne2000_write, NULL, NULL, ne2000);
     io_sethandler(addr+0x10, 0x0010, ne2000_asic_read_b, ne2000_asic_read_w, NULL, ne2000_asic_write_b, ne2000_asic_write_w, NULL, ne2000);
     io_sethandler(addr+0x1f, 0x0001, ne2000_reset_read, NULL, NULL, ne2000_reset_write, NULL, NULL, ne2000);
     memcpy(ne2000->physaddr, maclocal, 6);
-	ne2000_reset(BX_RESET_HARDWARE, ne2000);
-	vlan_handler(ne2000_poller, ne2000);
 
-    return ne2000;
+    ne2000_reset(BX_RESET_HARDWARE, ne2000);
+    vlan_handler(ne2000_poller, ne2000);
+
+    pclog("ne2000 init 0x%X %d\tslirp is %d net_is_pcap is %d\n",addr,device_get_config_int("irq"),net_is_slirp,net_is_pcap);
+
+    //need a switch statment for more network types.
+
+    if ( net_is_slirp ) {
+    pclog("ne2000 initalizing SLiRP\n");
+    net_is_pcap=0;
+    rc=slirp_init();
+    pclog("ne2000 slirp_init returned: %d\n",rc);
+    if ( rc == 0 )
+	{
+	pclog("ne2000 slirp initalized!\n");
+	inet_aton("10.0.2.15",&myaddr);
+	//YES THIS NEEDS TO PULL FROM A CONFIG FILE... but for now.
+	rc=slirp_redir(0,42323,myaddr,23);
+	pclog("ne2000 slirp redir returned %d on port 42323 -> 23\n",rc);
+	rc=slirp_redir(0,42380,myaddr,80);
+	pclog("ne2000 slirp redir returned %d on port 42380 -> 80\n",rc);
+	rc=slirp_redir(0,42443,myaddr,443);
+	pclog("ne2000 slirp redir returned %d on port 42443 -> 443\n",rc);
+	rc=slirp_redir(0,42322,myaddr,22);
+	pclog("ne2000 slirp redir returned %d on port 42322 -> 22\n",rc);
+
+	net_slirp_inited=1;
+	slirpq = QueueCreate();
+	net_is_slirp=1;
+        fizz=0;
+	pclog("ne2000 slirpq is %x\n",&slirpq);
+	}
+    else {
+	net_slirp_inited=0;
+	net_is_slirp=0;
+	}
+    }
+    if ( net_is_pcap ) {	//pcap
+    	 char errbuf[32768];
+
+	pclog("ne2000 initalizing libpcap\n");
+	net_is_slirp=0;
+    	 net_hLib = LoadLibraryA(net_lib_name);
+	    if(net_hLib==0)
+	    {
+	    pclog("ne2000 Failed to load %s\n",net_lib_name);
+	    net_is_pcap=0;
+	    //return;
+	    }
+	_pcap_lib_version =(PCAP_LIB_VERSION)GetProcAddress(net_hLib,"pcap_lib_version");
+	_pcap_open_live=(PCAP_OPEN_LIVE)GetProcAddress(net_hLib,"pcap_open_live");		
+	_pcap_sendpacket=(PCAP_SENDPACKET)GetProcAddress(net_hLib,"pcap_sendpacket");		
+	_pcap_setnonblock=(PCAP_SETNONBLOCK)GetProcAddress(net_hLib,"pcap_setnonblock");	
+	_pcap_next=(PCAP_NEXT)GetProcAddress(net_hLib,"pcap_next");		
+	_pcap_close=(PCAP_CLOSE)GetProcAddress(net_hLib,"pcap_close");
+	_pcap_getnonblock=(PCAP_GETNONBLOCK)GetProcAddress(net_hLib,"pcap_getnonblock");
+	_pcap_compile=(PCAP_COMPILE)GetProcAddress(net_hLib,"pcap_compile");
+	_pcap_setfilter=(PCAP_SETFILTER)GetProcAddress(net_hLib,"pcap_setfilter");   
+    
+	if(_pcap_lib_version && _pcap_open_live && _pcap_sendpacket && _pcap_setnonblock && _pcap_next && _pcap_close && _pcap_getnonblock)
+		{
+		pclog("ne2000 Pcap version [%s]\n",_pcap_lib_version());
+
+		//if((net_pcap=_pcap_open_live("\\Device\\NPF_{0CFA803F-F443-4BB9-A83A-657029A98195}",1518,1,15,errbuf))==0)
+		if((net_pcap=_pcap_open_live(config_get_string(NULL,"pcap_device","nothing"),1518,1,15,errbuf))==0)
+			{
+			pclog("ne2000 pcap_open_live error on %s!\n",config_get_string(NULL,"pcap_device","whatever the ethernet is"));
+			net_is_pcap=0; return(ne2000);	//YUCK!!!
+			}
+		}
+		else	{	
+		pclog("%d %d %d %d %d %d %d\n",_pcap_lib_version, _pcap_open_live,_pcap_sendpacket,_pcap_setnonblock,_pcap_next,_pcap_close,_pcap_getnonblock);
+			net_is_pcap=1;
+			}
+
+		//Time to check that we are in non-blocking mode.
+		rc=_pcap_getnonblock(net_pcap,errbuf);
+		pclog("ne2000 pcap is currently in %s mode\n",rc? "non-blocking":"blocking");
+		switch(rc)
+		{
+		case 0:
+			pclog("ne2000 Setting interface to non-blocking mode..");
+			rc=_pcap_setnonblock(net_pcap,1,errbuf);
+			if(rc==0)	{  //no errors!
+					pclog("..");
+					rc=_pcap_getnonblock(net_pcap,errbuf);
+					if(rc==1)	{
+						pclog("..!",rc);
+						net_is_pcap=1;
+						}
+					else{
+						pclog("\tunable to set pcap into non-blocking mode!\nContinuining without pcap.\n");
+						net_is_pcap=0;
+					    }
+					}//end set nonblock
+			else{pclog("There was an unexpected error of [%s]\n\nexiting.\n",errbuf);net_is_pcap=0;}
+			pclog("\n");
+			break;
+		case 1:
+			pclog("non blocking\n");
+			break;
+		default:
+			pclog("this isn't right!!!\n");
+			net_is_pcap=0;
+			break;
+		}
+    if( net_is_pcap ) {
+		if(_pcap_compile && _pcap_setfilter) {	//we can do this!
+		struct bpf_program fp;
+		char filter_exp[255];
+		pclog("ne2000 Building packet filter...");
+		sprintf(filter_exp,"( ((ether dst ff:ff:ff:ff:ff:ff) or (ether dst %02x:%02x:%02x:%02x:%02x:%02x)) and not (ether src %02x:%02x:%02x:%02x:%02x:%02x) )", \
+		maclocal[0], maclocal[1], maclocal[2], maclocal[3], maclocal[4], maclocal[5],\
+		maclocal[0], maclocal[1], maclocal[2], maclocal[3], maclocal[4], maclocal[5]);
+
+		//I'm doing a MAC level filter so TCP/IP doesn't matter.
+		if (_pcap_compile(net_pcap, &fp, filter_exp, 0, 0xffffffff) == -1) {
+			pclog("\nne2000 Couldn't compile filter\n");
+			}
+			else	{
+			pclog("...");
+			if (_pcap_setfilter(net_pcap, &fp) == -1) {
+			pclog("\nError installing pcap filter.\n");
+				}//end of set_filter failure
+			else	{
+				pclog("...!\n");
+				}
+			}
+		pclog("ne2000 Using filter\t[%s]\n",filter_exp);
+		//scanf(filter_exp);	//pause
+		}
+		else
+		{
+		pclog("ne2000 Your platform lacks pcap_compile & pcap_setfilter\n");
+		net_is_pcap=0;
+		}
+	pclog("ne2000 net_is_pcap is %d and net_pcap is %x\n",net_is_pcap,net_pcap);
+        }
+    } //end pcap setup
+
+    //timer_add(slirp_tic,&delay,TIMER_ALWAYS_ENABLED,NULL);
+    //timer_add(keyboard_amstrad_poll, &keybsenddelay, TIMER_ALWAYS_ENABLED,  NULL);
+pclog("ne2000 is_slirp %d is_pcap %d\n",net_is_slirp,net_is_pcap);
+//exit(0);
+return ne2000;
 }
 
 void ne2000_close(void *p)
 {
         ne2000_t *ne2000 = (ne2000_t *)p;
         free(ne2000);
+if(net_is_slirp) {
+	QueueDestroy(slirpq);
+	slirp_exit(0);
+	net_slirp_inited=0;
+	pclog("ne2000 exiting slirp\n");
+	}
+if(net_is_pcap && net_pcap!=NULL)
+	{
+	_pcap_close(net_pcap);
+	FreeLibrary(net_hLib);
+	pclog("ne2000 closing pcap\n");
+	}
+pclog("ne2000 close\n");
 }
 
 static device_config_t ne2000_config[] =
@@ -1406,3 +1653,51 @@ device_t ne2000_device =
         NULL,
         ne2000_config
 };
+
+
+//SLIRP stuff
+int slirp_can_output(void)
+{
+return net_slirp_inited;
+}
+
+void slirp_output (const unsigned char *pkt, int pkt_len)
+{
+struct queuepacket *p;
+p=(struct queuepacket *)malloc(sizeof(struct queuepacket));
+p->len=pkt_len;
+memcpy(p->data,pkt,pkt_len);
+QueueEnter(slirpq,p);
+pclog("ne2000 slirp_output %d @%d\n",pkt_len,p);
+}
+
+// Instead of calling this and crashing some times
+// or experencing jitter, this is called by the 
+// 60Hz clock which seems to do the job.
+void slirp_tic()
+{
+       int ret2,nfds;
+        struct timeval tv;
+        fd_set rfds, wfds, xfds;
+        int timeout;
+        nfds=-1;
+
+      if(net_slirp_inited)
+              {
+        FD_ZERO(&rfds);
+        FD_ZERO(&wfds);
+        FD_ZERO(&xfds);
+       timeout=slirp_select_fill(&nfds,&rfds,&wfds,&xfds); //this can crash
+
+	if(timeout<0)
+		timeout=500;
+       tv.tv_sec=0;
+       tv.tv_usec = timeout;    //basilisk default 10000
+
+       ret2 = select(nfds + 1, &rfds, &wfds, &xfds, &tv);
+        if(ret2>=0){
+       slirp_select_poll(&rfds, &wfds, &xfds);
+          }
+	//pclog("ne2000 slirp_tic()\n");
+       }//end if slirp inited
+}

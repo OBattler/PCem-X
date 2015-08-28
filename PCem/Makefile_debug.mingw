@@ -1,0 +1,2 @@
+include Makefile_internal.mingw 
+CFLAGS = $(basecflags) -g
