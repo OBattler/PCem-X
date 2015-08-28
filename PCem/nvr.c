@@ -374,14 +374,14 @@ void loadnvr()
                 case ROM_PXSIS471:   f = romfopen("pxsis471.nvr",   "rb"); nvrmask = 127; break;
                 case ROM_COLORBOOK:  f = romfopen("colorbook.nvr",  "rb"); nvrmask = 127; break;
                 case ROM_SIS496:     f = romfopen("sis496.nvr",     "rb"); nvrmask = 127; break;
-                case ROM_430FX:      f = romfopen("430fx.nvr",      "rb"); nvrmask = 255; break;
+                case ROM_430FX:      f = romfopen("430fx.nvr",      "rb"); nvrmask = 127; break;
                 case ROM_430VX:      f = romfopen("430vx.nvr",      "rb"); nvrmask = 127; break;
-                case ROM_430TX:      f = romfopen("430tx.nvr",      "rb"); nvrmask = 255; break;
-                case ROM_440FX:      f = romfopen("440fx.nvr",      "rb"); nvrmask = 255; break;
-                case ROM_440BX:      f = romfopen("440bx.nvr",      "rb"); nvrmask = 255; break;
-                case ROM_VPC2007:    f = romfopen("vpc2007.nvr",    "rb"); nvrmask = 255; break;
+                case ROM_430TX:      f = romfopen("430tx.nvr",      "rb"); nvrmask = 127; break;
+                case ROM_440FX:      f = romfopen("440fx.nvr",      "rb"); nvrmask = 127; break;
+                case ROM_440BX:      f = romfopen("440bx.nvr",      "rb"); nvrmask = 127; break;
+                case ROM_VPC2007:    f = romfopen("vpc2007.nvr",    "rb"); nvrmask = 127; break;
                 case ROM_REVENGE:    f = romfopen("revenge.nvr",    "rb"); nvrmask = 127; break;
-                case ROM_ENDEAVOR:   f = romfopen("endeavor.nvr",   "rb"); nvrmask = 255; break;
+                case ROM_ENDEAVOR:   f = romfopen("endeavor.nvr",   "rb"); nvrmask = 127; break;
                 default: return;
         }
         if (!f)

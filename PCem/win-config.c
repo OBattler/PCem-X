@@ -5,9 +5,7 @@
 
 #include <commctrl.h>
 
-#ifndef __MINGW64__
 #include "nethandler.h"
-#endif
 #include "ibm.h"
 #include "cpu.h"
 #include "win-deviceconfig.h"
@@ -139,7 +137,6 @@ static INT_PTR CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
                 }
                 SendMessage(h, CB_SETCURSEL, settings_sound_to_list[sound_card_current], 0);
 
-#ifndef __MINGW64__
                 /*NIC config*/
                 h = GetDlgItem(hdlg, IDC_COMBONET);
                 c = d = 0;
@@ -162,7 +159,6 @@ static INT_PTR CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
                         c++;
                 }
                 SendMessage(h, CB_SETCURSEL, settings_network_to_list[network_card_current], 0);
-#endif
                 
                 h=GetDlgItem(hdlg, IDC_CHECK3);
                 SendMessage(h, BM_SETCHECK, GAMEBLASTER, 0);
@@ -267,13 +263,11 @@ static INT_PTR CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
                 else
                         EnableWindow(h, FALSE);
                         
-#ifndef __MINGW64__
                 h = GetDlgItem(hdlg, IDC_CONFIGURENET);
                 if (network_card_has_config(network_card_current))
                         EnableWindow(h, TRUE);
                 else
                         EnableWindow(h, FALSE);
-#endif
 
                 return TRUE;
                 
@@ -333,10 +327,8 @@ static INT_PTR CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
                         h = GetDlgItem(hdlg, IDC_COMBOSND);
                         temp_sound_card_current = settings_list_to_sound[SendMessage(h, CB_GETCURSEL, 0, 0)];
 
-#ifndef __MINGW64__
                         h = GetDlgItem(hdlg, IDC_COMBONET);
                         temp_network_card_current = settings_list_to_network[SendMessage(h, CB_GETCURSEL, 0, 0)];
-#endif
 
                         h = GetDlgItem(hdlg, IDC_COMBOFDA);
                         temp_fdtype_a_current = SendMessage(h, CB_GETCURSEL, 0, 0);
@@ -344,11 +336,7 @@ static INT_PTR CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
                         h = GetDlgItem(hdlg, IDC_COMBOFDB);
                         temp_fdtype_b_current = SendMessage(h, CB_GETCURSEL, 0, 0);
 
-#ifndef __MINGW64__
                         if (temp_model != model || gfx != gfxcard || gfxpci != gfxcardpci || mem != mem_size || fpu != hasfpu || temp_GAMEBLASTER != GAMEBLASTER || temp_GUS != GUS || temp_SSI2001 != SSI2001 || temp_sound_card_current != sound_card_current || temp_network_card_current != network_card_current || temp_fdtype_a_current != int_from_config(0) || temp_fdtype_b_current != int_from_config(1) || temp_voodoo != voodoo_enabled || temp_ps1xtide != ps1xtide || temp_enable_dynarec != temp_enable_dynarec)
-#else
-                        if (temp_model != model || gfx != gfxcard || gfxpci != gfxcardpci || mem != mem_size || fpu != hasfpu || temp_GAMEBLASTER != GAMEBLASTER || temp_GUS != GUS || temp_SSI2001 != SSI2001 || temp_sound_card_current != sound_card_current || temp_fdtype_a_current != int_from_config(0) || temp_fdtype_b_current != int_from_config(1) || temp_voodoo != voodoo_enabled || temp_ps1xtide != ps1xtide || temp_enable_dynarec != temp_enable_dynarec)
-#endif
                         {
                                 if (MessageBox(NULL,"This will reset PCem-X!\nAre you sure you want to continue?","PCem",MB_OKCANCEL)==IDOK)
                                 {
@@ -366,9 +354,7 @@ static INT_PTR CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
 					voodoo_enabled = temp_voodoo;
 					ps1xtide = temp_ps1xtide;
 					enable_dynarec = temp_enable_dynarec;
-#ifndef __MINGW64__
                                         network_card_current = temp_network_card_current;
-#endif
 
 					reconfigure_from_int(0, temp_fdtype_a_current);
 					reconfigure_from_int(1, temp_fdtype_b_current);
@@ -564,7 +550,6 @@ static INT_PTR CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
                         temp_fdtype_b_current = SendMessage(h, CB_GETCURSEL, 0, 0);
                         break;                                
 
-#ifndef __MINGW64__
                         case IDC_CONFIGURENET:
                         h = GetDlgItem(hdlg, IDC_COMBONET);
                         temp_network_card_current = settings_list_to_network[SendMessage(h, CB_GETCURSEL, 0, 0)];
@@ -582,7 +567,6 @@ static INT_PTR CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
                         else
                                 EnableWindow(h, FALSE);
                         break;
-#endif
 
 			case IDC_CONFIGUREVOODOO:
 			deviceconfig_open(hdlg, (void *)&voodoo_device);

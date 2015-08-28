@@ -48,4 +48,4 @@ clean :
 	$(CPP) $(CFLAGS) -c $<
 
 pc.res: pc.rc
-	$(WINDRES) -i pc.rc --input-format=rc -o pc.res -O coff 
+	$(WINDRES) -i pc.rc --input-format=rc -o pc.res -O coff

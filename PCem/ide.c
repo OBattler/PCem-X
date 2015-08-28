@@ -297,7 +297,7 @@ static void ide_identify(IDE *ide)
 	}
 #endif
 	ide_padstr((char *) (ide->buffer + 10), "", 20); /* Serial Number */
-	ide_padstr((char *) (ide->buffer + 23), "v1.0", 8); /* Firmware */
+	ide_padstr((char *) (ide->buffer + 23), "1.0", 8); /* Firmware */
 #ifdef RPCEMU_IDE
 	ide_padstr((char *) (ide->buffer + 27), "RPCemuHD", 40); /* Model */
 #else
@@ -353,7 +353,7 @@ static void ide_atapi_identify(IDE *ide)
 
 	ide->buffer[0] = 0x8000 | (5<<8) | 0x80 | (2<<5); /* ATAPI device, CD-ROM drive, removable media, accelerated DRQ */
 	ide_padstr((char *) (ide->buffer + 10), "", 20); /* Serial Number */
-	ide_padstr((char *) (ide->buffer + 23), "v1.0", 8); /* Firmware */
+	ide_padstr((char *) (ide->buffer + 23), "1.0", 8); /* Firmware */
 #ifdef RPCEMU_IDE
 	ide_padstr((char *) (ide->buffer + 27), "RPCemuCD", 40); /* Model */
 #else
@@ -1685,6 +1685,9 @@ static void atapicommand(int ide_board)
                 if (!atapi->ready()) { atapi_notready(ide); return; }
 //                if (atapi->ready())
 //                {
+						if (ide->discchanged) /*ATAPI drivers for NT 3.1 rely on this on TEST UNIT READY, READ TOC and READ SUBCHANNEL*/
+							atapi_discchanged();
+						
                         ide->packetstatus=2;
                         idecallback[ide_board]=50*IDE_TIME;
 //                }
@@ -1744,9 +1747,12 @@ static void atapicommand(int ide_board)
                         ide->error = (SENSE_ILLEGAL_REQUEST << 4) | ABRT_ERR;
                         if (ide->discchanged) {
                                 ide->error |= MCR_ERR;
+								atapi_discchanged();
                         }
+						else {
                         ide->discchanged=0;
                         atapi_sense.asc = ASC_ILLEGAL_OPCODE;
+						}
                         ide->packetstatus=0x80;
                         idecallback[ide_board]=50*IDE_TIME;
                         break;
@@ -1964,10 +1970,12 @@ static void atapicommand(int ide_board)
 //                        pclog("Read subchannel check condition %02X\n",idebufferb[3]);
                         ide->atastat = READY_STAT | ERR_STAT;    /*CHECK CONDITION*/
                         ide->error = (SENSE_ILLEGAL_REQUEST << 4) | ABRT_ERR;
-                        if (ide->discchanged) {
+                        if (ide->discchanged) 
+						{
                                 ide->error |= MCR_ERR;
+								ext_ide->discchanged=1;
                         }
-                        ide->discchanged=0;
+						else ide->discchanged=0;
                         atapi_sense.asc = ASC_ILLEGAL_OPCODE;
                         ide->packetstatus=0x80;
                         idecallback[ide_board]=50*IDE_TIME;
@@ -2038,7 +2046,7 @@ static void atapicommand(int ide_board)
                 ide_padstr8(idebufferb + 8, 8, "PCem"); /* Vendor */
                 ide_padstr8(idebufferb + 16, 16, "PCemCD"); /* Product */
 #endif
-                ide_padstr8(idebufferb + 32, 4, "v1.0"); /* Revision */
+                ide_padstr8(idebufferb + 32, 4, "1.0"); /* Revision */
 
                 len=36;
                 ide->packetstatus=3;

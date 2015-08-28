@@ -501,12 +501,10 @@ extern int cdrom_drive;
 extern int idecallback[2];
 extern int cdrom_enabled;
 
-#ifndef __MINGW64__
 /*Networking*/
 #define NE2000      1
 extern uint8_t ethif;
 extern int inum;
-#endif
 
 void pclog(const char *format, ...);
 extern int nmi;

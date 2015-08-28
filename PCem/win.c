@@ -22,9 +22,7 @@
 #include "cpu.h"
 #include "ide.h"
 #include "model.h"
-#ifndef __MINGW64__
 #include "nethandler.h"
-#endif
 #include "sound.h"
 #include "thread.h"
 #include "fdc.h"
