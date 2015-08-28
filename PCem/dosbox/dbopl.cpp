@@ -110,8 +110,8 @@ static const Bit8u KslCreateTable[16] = {
 	 3,  2,  1,  0,
 };
 
-#define M(_X_) ((Bit8u)( (_X_) * 2))
-static const Bit8u FreqCreateTable[16] = {
+#define M(_X_) ((Bit32u)( (_X_) * 2))
+static Bit32u FreqCreateTable[16] = {
 	M(0.5), M(1 ), M(2 ), M(3 ), M(4 ), M(5 ), M(6 ), M(7 ),
 	M(8  ), M(9 ), M(10), M(10), M(12), M(12), M(15), M(15)
 };

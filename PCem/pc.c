@@ -339,6 +339,8 @@ void initpc()
                 device_add(&cms_device);
         if (SSI2001)
                 device_add(&ssi2001_device);
+        if (voodoo_enabled)
+                device_add(&voodoo_device);
 
         pc_reset();
 
@@ -656,15 +658,6 @@ void loadconfig(char *fn)
 
         model = config_get_int(NULL, "model", 14);
 
-#ifndef __unix
-#ifndef __MINGW64__
-        ethif = config_get_int(NULL, "netinterface", 1);
-
-        if (ethif >= inum)
-                inum = ethif + 1;
-#endif
-#endif
-
         if (model >= model_count())
                 model = model_count() - 1;
 
@@ -739,12 +732,6 @@ void saveconfig()
         config_set_int(NULL, "gus", GUS);
         config_set_int(NULL, "ssi2001", SSI2001);
         config_set_int(NULL, "voodoo", voodoo_enabled);
-
-#ifndef __unix
-#ifndef __MINGW64__
-        config_set_int(NULL, "netinterface", ethif);
-#endif
-#endif
 
         config_set_int(NULL, "model", model);
         config_set_int(NULL, "cpu_manufacturer", cpu_manufacturer);
