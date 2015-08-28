@@ -44,7 +44,7 @@
  * dtom(x) -	convert data pointer within mbuf to mbuf pointer (XXX)
  */
 #define mtod(m,t)	((t)(m)->m_data)
-/* #define	dtom(x)		((struct mbuf *)((int)(x) & ~(M_SIZE-1))) */
+/* #define	dtom(x)		((struct SLIRPmbuf *)((int)(x) & ~(M_SIZE-1))) */
 
 /* XXX About mbufs for slirp:
  * Only one mbuf is ever used in a chain, for each "cell" of data.
@@ -57,10 +57,10 @@
 /* XXX should union some of these! */
 /* header at beginning of each mbuf: */
 struct m_hdr {
-	struct	mbuf *mh_next;		/* Linked list of mbufs */
-	struct	mbuf *mh_prev;
-	struct	mbuf *mh_nextpkt;	/* Next packet in queue/record */
-	struct	mbuf *mh_prevpkt; /* Flags aren't used in the output queue */
+	struct	SLIRPmbuf *mh_next;		/* Linked list of mbufs */
+	struct	SLIRPmbuf *mh_prev;
+	struct	SLIRPmbuf *mh_nextpkt;	/* Next packet in queue/record */
+	struct	SLIRPmbuf *mh_prevpkt; /* Flags aren't used in the output queue */
 	int	mh_flags;	  /* Misc flags */
 
 	int	mh_size;		/* Size of data */
@@ -84,7 +84,7 @@ struct m_hdr {
 #define M_FREEROOM(m) (M_ROOM(m) - (m)->m_len)
 #define M_TRAILINGSPACE M_FREEROOM
 
-struct mbuf {
+struct SLIRPmbuf {
 	struct	m_hdr m_hdr;
 	union M_dat {
 		char	m_dat_[1]; /* ANSI don't like 0 sized arrays */
@@ -127,17 +127,17 @@ struct mbstat {
 
 extern struct	mbstat mbstat;
 extern int mbuf_alloced;
-extern struct mbuf m_freelist, m_usedlist;
+extern struct SLIRPmbuf m_freelist, m_usedlist;
 extern int mbuf_max;
 
 void m_init _P((void));
 void msize_init _P((void));
-struct mbuf * m_get _P((void));
-void m_free _P((struct mbuf *));
-void m_cat _P((register struct mbuf *, register struct mbuf *));
-void m_inc _P((struct mbuf *, int));
-void m_adj _P((struct mbuf *, int));
-int m_copy _P((struct mbuf *, struct mbuf *, int, int));
-struct mbuf * dtom _P((void *));
+struct SLIRPmbuf * m_get _P((void));
+void m_free _P((struct SLIRPmbuf *));
+void m_cat _P((register struct SLIRPmbuf *, register struct SLIRPmbuf *));
+void m_inc _P((struct SLIRPmbuf *, int));
+void m_adj _P((struct SLIRPmbuf *, int));
+int m_copy _P((struct SLIRPmbuf *, struct SLIRPmbuf *, int, int));
+struct SLIRPmbuf * dtom _P((void *));
 
 #endif

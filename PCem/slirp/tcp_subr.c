@@ -79,7 +79,7 @@ tcp_template(tp)
 	struct tcpcb *tp;
 {
 	struct SLIRPsocket *so = tp->t_socket;
-	register struct tcpiphdr *n = &tp->t_template;
+	struct tcpiphdr *n = &tp->t_template;
 
 	n->ti_next = n->ti_prev = 0;
 	n->ti_x1 = 0;
@@ -107,8 +107,8 @@ tcp_template(tp)
  * This is used to force keep alive messages out using the TCP
  * template for a connection tp->t_template.  If flags are given
  * then we send a message back to the TCP which originated the
- * segment ti, and discard the mbuf containing it and any other
- * attached mbufs.
+ * segment ti, and discard the SLIRPmbuf containing it and any other
+ * attached SLIRPmbufs.
  *
  * In any case the ack and sequence number of the transmitted
  * segment are as specified by the parameters.
@@ -116,8 +116,8 @@ tcp_template(tp)
 void
 tcp_respond(tp, ti, m, ack, seq, flags)
 	struct tcpcb *tp;
-	register struct tcpiphdr *ti;
-	register struct mbuf *m;
+	struct tcpiphdr *ti;
+	struct SLIRPmbuf *m;
 	tcp_seq ack, seq;
 	int flags;
 {
@@ -149,7 +149,7 @@ tcp_respond(tp, ti, m, ack, seq, flags)
 	} else {
 		/* 
 		 * ti points into m so the next line is just making
-		 * the mbuf point to ti
+		 * the SLIRPmbuf point to ti
 		 */
 		m->m_data = (caddr_t)ti;
 		
@@ -197,7 +197,7 @@ struct tcpcb *
 tcp_newtcpcb(so)
 	struct SLIRPsocket *so;
 {
-	register struct tcpcb *tp;
+	struct tcpcb *tp;
 	
 	tp = (struct tcpcb *)malloc(sizeof(*tp));
 	if (tp == NULL)
@@ -240,7 +240,7 @@ tcp_newtcpcb(so)
 struct tcpcb *tcp_drop(struct tcpcb *tp, int err) 
 {
 /* tcp_drop(tp, errno)
-	register struct tcpcb *tp;
+	struct tcpcb *tp;
 	int errno;
 {
 */
@@ -270,11 +270,11 @@ struct tcpcb *tcp_drop(struct tcpcb *tp, int err)
  */
 struct tcpcb *
 tcp_close(tp)
-	register struct tcpcb *tp;
+	struct tcpcb *tp;
 {
-	register struct tcpiphdr *t;
+	struct tcpiphdr *t;
 	struct SLIRPsocket *so = tp->t_socket;
-	register struct mbuf *m;
+	struct SLIRPmbuf *m;
 
 	DEBUG_CALL("tcp_close");
 	DEBUG_ARG("tp = %lx", (long )tp);
@@ -283,7 +283,7 @@ tcp_close(tp)
 	t = (struct tcpiphdr *) tp->seg_next;
 	while (t != (struct tcpiphdr *)tp) {
 		t = (struct tcpiphdr *)t->ti_next;
-		m = (struct mbuf *) REASS_MBUF((struct tcpiphdr *)t->ti_prev);
+		m = (struct SLIRPmbuf *) REASS_MBUF((struct tcpiphdr *)t->ti_prev);
 		remque_32((struct tcpiphdr *) t->ti_prev);
 		m_freem(m);
 	}
@@ -624,15 +624,15 @@ int do_echo = -1;
  * DCC doesn't have this problem because there's other stuff
  * in the packet before the DCC command.
  * 
- * Return 1 if the mbuf m is still valid and should be 
+ * Return 1 if the SLIRPmbuf m is still valid and should be 
  * sbappend()ed
  * 
- * NOTE: if you return 0 you MUST m_free() the mbuf!
+ * NOTE: if you return 0 you MUST m_free() the SLIRPmbuf!
  */
 int
 tcp_emu(so, m)
 	struct SLIRPsocket *so;
-	struct mbuf *m;
+	struct SLIRPmbuf *m;
 {
 	u_int n1, n2, n3, n4, n5, n6;
 	char buff[256];

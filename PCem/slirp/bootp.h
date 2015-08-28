@@ -118,4 +118,4 @@ struct bootp_t {
 #pragma pack(PACK_END)
 #endif
 
-void bootp_input(struct mbuf *m);
+void bootp_input(struct SLIRPmbuf *m);

@@ -98,17 +98,17 @@ struct udpstat {
 
 extern struct udpstat udpstat;
 extern struct SLIRPsocket udb;
-struct mbuf;
+struct SLIRPmbuf;
 
 void udp_init _P((void));
-void udp_input _P((register struct mbuf *, int));
-int udp_output _P((struct SLIRPsocket *, struct mbuf *, struct sockaddr_in *));
+void udp_input _P((register struct SLIRPmbuf *, int));
+int udp_output _P((struct SLIRPsocket *, struct SLIRPmbuf *, struct sockaddr_in *));
 int udp_attach _P((struct SLIRPsocket *));
 void udp_detach _P((struct SLIRPsocket *));
 u_int8_t udp_tos _P((struct SLIRPsocket *));
-void udp_emu _P((struct SLIRPsocket *, struct mbuf *));
+void udp_emu _P((struct SLIRPsocket *, struct SLIRPmbuf *));
 struct SLIRPsocket * udp_listen _P((u_int, u_int32_t, u_int, int));
-int udp_output2(struct SLIRPsocket *so, struct mbuf *m, 
+int udp_output2(struct SLIRPsocket *so, struct SLIRPmbuf *m, 
                 struct sockaddr_in *saddr, struct sockaddr_in *daddr,
                 int iptos);
 #endif

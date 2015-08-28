@@ -446,7 +446,7 @@ void slirp_select_poll(fd_set *readfds, fd_set *writefds, fd_set *xfds)
 			    /*
 			     * Continue tcp_input
 			     */
-			    tcp_input((struct mbuf *)NULL, sizeof(struct ip), so);
+			    tcp_input((struct SLIRPmbuf *)NULL, sizeof(struct ip), so);
 			    /* continue; */
 			  } else
 			    ret = sowrite(so);
@@ -489,7 +489,7 @@ void slirp_select_poll(fd_set *readfds, fd_set *writefds, fd_set *xfds)
 			      so->so_state &= ~SS_ISFCONNECTING;
 			    
 			  }
-			  tcp_input((struct mbuf *)NULL, sizeof(struct ip),so);
+			  tcp_input((struct SLIRPmbuf *)NULL, sizeof(struct ip),so);
 			} /* SS_ISFCONNECTING */
 #endif
 		}
@@ -607,7 +607,7 @@ void arp_input(const uint8_t *pkt, int pkt_len)
 
 void slirp_input(const uint8_t *pkt, int pkt_len)
 {
-    struct mbuf *m;
+    struct SLIRPmbuf *m;
     int proto;
 
     if (pkt_len < ETH_HLEN)

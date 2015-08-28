@@ -12,17 +12,17 @@ int if_comp;
 int if_maxlinkhdr;
 int     if_queued = 0;                  /* Number of packets queued so far */
 int     if_thresh = 10;                 /* Number of packets queued before we start sending
-					 * (to prevent allocing too many mbufs) */
+					 * (to prevent allocing too many SLIRPmbufs) */
 
-struct  mbuf if_fastq;                  /* fast queue (for interactive data) */
-struct  mbuf if_batchq;                 /* queue for non-interactive data */
-struct	mbuf *next_m;			/* Pointer to next mbuf to output */
+struct  SLIRPmbuf if_fastq;                  /* fast queue (for interactive data) */
+struct  SLIRPmbuf if_batchq;                 /* queue for non-interactive data */
+struct	SLIRPmbuf *next_m;			/* Pointer to next SLIRPmbuf to output */
 
 #define ifs_init(ifm) ((ifm)->ifs_next = (ifm)->ifs_prev = (ifm))
 
 void
 ifs_insque(ifm, ifmhead)
-	struct mbuf *ifm, *ifmhead;
+	struct SLIRPmbuf *ifm, *ifmhead;
 {
 	ifm->ifs_next = ifmhead->ifs_next;
 	ifmhead->ifs_next = ifm;
@@ -32,7 +32,7 @@ ifs_insque(ifm, ifmhead)
 
 void
 ifs_remque(ifm)
-	struct mbuf *ifm;
+	struct SLIRPmbuf *ifm;
 {
 	ifm->ifs_prev->ifs_next = ifm->ifs_next;
 	ifm->ifs_next->ifs_prev = ifm->ifs_prev;
@@ -147,7 +147,7 @@ if_input(ttyp)
  * if_output: Queue packet into an output queue.
  * There are 2 output queue's, if_fastq and if_batchq. 
  * Each output queue is a doubly linked list of double linked lists
- * of mbufs, each list belonging to one "session" (socket).  This
+ * of SLIRPmbufs, each list belonging to one "session" (socket).  This
  * way, we can output packets fairly by sending one packet from each
  * session, instead of all the packets from one session, then all packets
  * from the next session, etc.  Packets on the if_fastq get absolute 
@@ -159,9 +159,9 @@ if_input(ttyp)
 void
 if_output(so, ifm)
 	struct SLIRPsocket *so;
-	struct mbuf *ifm;
+	struct SLIRPmbuf *ifm;
 {
-	struct mbuf *ifq;
+	struct SLIRPmbuf *ifq;
 	int on_fastq = 1;
 	
 	DEBUG_CALL("if_output");
@@ -169,7 +169,7 @@ if_output(so, ifm)
 	DEBUG_ARG("ifm = %lx", (long)ifm);
 	
 	/*
-	 * First remove the mbuf from m_usedlist,
+	 * First remove the SLIRPmbuf from m_usedlist,
 	 * since we're gonna use m_next and m_prev ourselves
 	 * XXX Shouldn't need this, gotta change dtom() etc.
 	 */
@@ -242,7 +242,7 @@ diddit:
 
 #ifndef FULL_BOLT
 	/*
-	 * This prevents us from malloc()ing too many mbufs
+	 * This prevents us from malloc()ing too many SLIRPmbufs
 	 */
 	if (link_up) {
 		/* if_start will check towrite */
@@ -266,7 +266,7 @@ diddit:
 void
 if_start(void)
 {
-	struct mbuf *ifm, *ifqt;
+	struct SLIRPmbuf *ifm, *ifqt;
 	
 	DEBUG_CALL("if_start");
 	

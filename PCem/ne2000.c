@@ -75,8 +75,8 @@ PCAP_SETFILTER		_pcap_setfilter;
 
 queueADT	slirpq;
 int net_slirp_inited=0;
-int net_is_slirp=0;	//by default we disable slirp
-int net_is_pcap=1;	//and pretend pcap is alive.
+int net_is_slirp=1;	//by default we go with slirp
+int net_is_pcap=0;	//and pretend pcap is dead.
 int fizz=0;
 void slirp_tic();
 
@@ -1414,13 +1414,22 @@ void *ne2000_init()
     if ( rc == 0 )
 	{
 	pclog("ne2000 slirp initalized!\n");
-	inet_aton("10.0.2.15",&myaddr);   
+	inet_aton("10.0.2.15",&myaddr);
+	//YES THIS NEEDS TO PULL FROM A CONFIG FILE... but for now.
 	rc=slirp_redir(0,42323,myaddr,23);
+	pclog("ne2000 slirp redir returned %d on port 42323 -> 23\n",rc);
+	rc=slirp_redir(0,42380,myaddr,80);
+	pclog("ne2000 slirp redir returned %d on port 42380 -> 80\n",rc);
+	rc=slirp_redir(0,42443,myaddr,443);
+	pclog("ne2000 slirp redir returned %d on port 42443 -> 443\n",rc);
+	rc=slirp_redir(0,42322,myaddr,22);
+	pclog("ne2000 slirp redir returned %d on port 42322 -> 22\n",rc);
+
 	net_slirp_inited=1;
 	slirpq = QueueCreate();
 	net_is_slirp=1;
         fizz=0;
-	pclog("ne2000 slirp redir returned %d, slirpq is %x\n",rc,slirpq);
+	pclog("ne2000 slirpq is %x\n",&slirpq);
 	}
     else {
 	net_slirp_inited=0;

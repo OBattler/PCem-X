@@ -30,7 +30,7 @@ debug.o		ip_output.o	sbuf.o		tcp_output.o	udp.o \
 if.o		mbuf.o		slirp.o		tcp_subr.o
 
 
-LIBS = -g -mwindows -lwinmm -lopenal32 -lddraw -ldinput -ldxguid -ld3d9 -lwsock32 -liphlpapi -lgcov -lstdc++
+LIBS = -mwindows -lwinmm -lopenal32 -lddraw -ldinput -ldxguid -ld3d9 -lwsock32 -liphlpapi -lstdc++ -static-libstdc++ -static-libgcc -static
 
 PCem-X.exe: $(OBJ) $(FMOBJ) $(SIDOBJ) $(SLIRPOBJ)
 	$(CC) $(OBJ) $(FMOBJ) $(SIDOBJ) $(SLIRPOBJ) -o "PCem-X.exe" $(LIBS)

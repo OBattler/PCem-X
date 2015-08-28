@@ -67,7 +67,7 @@ static int icmp_flush[19] = {
  */
 void
 icmp_input(m, hlen)
-     struct mbuf *m;
+     struct SLIRPmbuf *m;
      int hlen;
 {
   register struct icmp *icp;
@@ -82,7 +82,7 @@ icmp_input(m, hlen)
   icmpstat.icps_received++;
 	
   /*
-   * Locate icmp structure in mbuf, and check
+   * Locate icmp structure in SLIRPmbuf, and check
    * that its not corrupted and of at least minimum length.
    */
   if (icmplen < ICMP_MINLEN) {          /* min 8 bytes payload */
@@ -192,7 +192,7 @@ end_error:
  */
 /*
  * Send ICMP_UNREACH back to the source regarding msrc.
- * mbuf *msrc is used as a template, but is NOT m_free()'d.
+ * SLIRPmbuf *msrc is used as a template, but is NOT m_free()'d.
  * It is reported as the bad ip packet.  The header should
  * be fully correct and in host byte order.
  * ICMP fragmentation is illegal.  All machines must accept 576 bytes in one 
@@ -202,7 +202,7 @@ end_error:
 #define ICMP_MAXDATALEN (IP_MSS-28)
 void
 icmp_error(msrc, type, code, minsize, message)
-     struct mbuf *msrc;
+     struct SLIRPmbuf *msrc;
      u_char type;
      u_char code;
      int minsize;
@@ -211,7 +211,7 @@ icmp_error(msrc, type, code, minsize, message)
   unsigned hlen, shlen, s_ip_len;
   register struct ip *ip;
   register struct icmp *icp;
-  register struct mbuf *m;
+  register struct SLIRPmbuf *m;
 
   DEBUG_CALL("icmp_error");
   DEBUG_ARG("msrc = %lx", (long )msrc);
@@ -243,7 +243,7 @@ icmp_error(msrc, type, code, minsize, message)
   }
 
   /* make a copy */
-  if(!(m=m_get())) goto end_error;               /* get mbuf */
+  if(!(m=m_get())) goto end_error;               /* get SLIRPmbuf */
   { int new_m_size;
     new_m_size=sizeof(struct ip )+ICMP_MINLEN+msrc->m_len+ICMP_MAXDATALEN;
     if(new_m_size>m->m_size) m_inc(m, new_m_size);
@@ -322,7 +322,7 @@ end_error:
  */
 void
 icmp_reflect(m)
-     struct mbuf *m;
+     struct SLIRPmbuf *m;
 {
   register struct ip *ip = mtod(m, struct ip *);
   int hlen = ip->ip_hl << 2;
@@ -347,7 +347,7 @@ icmp_reflect(m)
   if (optlen > 0) {
     /*
      * Strip out original options by copying rest of first
-     * mbuf's data back, and adjust the IP length.
+     * SLIRPmbuf's data back, and adjust the IP length.
      */
     memmove((caddr_t)(ip + 1), (caddr_t)ip + hlen,
 	    (unsigned )(m->m_len - hlen));

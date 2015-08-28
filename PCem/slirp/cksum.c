@@ -38,13 +38,13 @@
  * This routine is very heavily used in the network
  * code and should be modified for each CPU to be as fast as possible.
  * 
- * XXX Since we will never span more than 1 mbuf, we can optimise this
+ * XXX Since we will never span more than 1 SLIRPmbuf, we can optimise this
  */
 
 #define ADDCARRY(x)  (x > 65535 ? x -= 65535 : x)
 #define REDUCE {l_util.l = sum; sum = l_util.s[0] + l_util.s[1]; ADDCARRY(sum);}
 
-int cksum(struct mbuf *m, int len)
+int cksum(struct SLIRPmbuf *m, int len)
 {
 	register u_int16_t *w;
 	register int sum = 0;
@@ -126,7 +126,7 @@ cont:
 	}
 #endif
 	if (mlen == -1) {
-		/* The last mbuf has odd # of bytes. Follow the
+		/* The last SLIRPmbuf has odd # of bytes. Follow the
 		 standard (the odd byte may be shifted left by 8 bits
 			   or not as determined by endian-ness of the machine) */
 		s_util.c[1] = 0;

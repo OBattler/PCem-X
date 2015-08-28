@@ -344,28 +344,28 @@ extern int do_echo;
 #define DEFAULT_BAUD 115200
 
 /* cksum.c */
-int cksum(struct mbuf *m, int len);
+int cksum(struct SLIRPmbuf *m, int len);
 
 /* if.c */
 void if_init _P((void));
-void if_output _P((struct SLIRPsocket *, struct mbuf *));
+void if_output _P((struct SLIRPsocket *, struct SLIRPmbuf *));
 
 /* ip_input.c */
 void ip_init _P((void));
-void ip_input _P((struct mbuf *));
+void ip_input _P((struct SLIRPmbuf *));
 struct ip * ip_reass _P((register struct ipasfrag *, register struct ipq *));
 void ip_freef _P((struct ipq *));
 void ip_enq _P((register struct ipasfrag *, register struct ipasfrag *));
 void ip_deq _P((register struct ipasfrag *));
 void ip_slowtimo _P((void));
-void ip_stripoptions _P((register struct mbuf *, struct mbuf *));
+void ip_stripoptions _P((register struct SLIRPmbuf *, struct SLIRPmbuf *));
 
 /* ip_output.c */
-int ip_output _P((struct SLIRPsocket *, struct mbuf *));
+int ip_output _P((struct SLIRPsocket *, struct SLIRPmbuf *));
 
 /* tcp_input.c */
-int tcp_reass _P((register struct tcpcb *, register struct tcpiphdr *, struct mbuf *));
-void tcp_input _P((register struct mbuf *, int, struct SLIRPsocket *));
+int tcp_reass _P((register struct tcpcb *, register struct tcpiphdr *, struct SLIRPmbuf *));
+void tcp_input _P((register struct SLIRPmbuf *, int, struct SLIRPsocket *));
 void tcp_dooptions _P((struct tcpcb *, u_char *, int, struct tcpiphdr *));
 void tcp_xmit_timer _P((register struct tcpcb *, int));
 int tcp_mss _P((register struct tcpcb *, u_int));
@@ -377,7 +377,7 @@ void tcp_setpersist _P((register struct tcpcb *));
 /* tcp_subr.c */
 void tcp_init _P((void));
 void tcp_template _P((struct tcpcb *));
-void tcp_respond _P((struct tcpcb *, register struct tcpiphdr *, register struct mbuf *, tcp_seq, tcp_seq, int));
+void tcp_respond _P((struct tcpcb *, register struct tcpiphdr *, register struct SLIRPmbuf *, tcp_seq, tcp_seq, int));
 struct tcpcb * tcp_newtcpcb _P((struct SLIRPsocket *));
 struct tcpcb * tcp_close _P((register struct tcpcb *));
 void tcp_drain _P((void));
@@ -386,7 +386,7 @@ int tcp_fconnect _P((struct SLIRPsocket *));
 void tcp_connect _P((struct SLIRPsocket *));
 int tcp_attach _P((struct SLIRPsocket *));
 u_int8_t tcp_tos _P((struct SLIRPsocket *));
-int tcp_emu _P((struct SLIRPsocket *, struct mbuf *));
+int tcp_emu _P((struct SLIRPsocket *, struct SLIRPmbuf *));
 int tcp_ctl _P((struct SLIRPsocket *));
 struct tcpcb *tcp_drop(struct tcpcb *tp, int err);
 

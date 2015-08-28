@@ -37,4 +37,4 @@ struct tftp_t {
 #pragma pack(PACK_END)
 #endif
 
-void tftp_input(struct mbuf *m);
+void tftp_input(struct SLIRPmbuf *m);

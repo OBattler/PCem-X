@@ -23,7 +23,7 @@ struct SLIRPsocket {
   int s;                           /* The actual socket */
 
 			/* XXX union these with not-yet-used sbuf params */
-  struct mbuf *so_m;	           /* Pointer to the original SYN packet,
+  struct SLIRPmbuf *so_m;	           /* Pointer to the original SYN packet,
 				    * for non-blocking connect()'s, and
 				    * PING reply's */
   struct tcpiphdr *so_ti;	   /* Pointer to the original ti within
@@ -90,7 +90,7 @@ void sorecvoob _P((struct SLIRPsocket *));
 int sosendoob _P((struct SLIRPsocket *));
 int sowrite _P((struct SLIRPsocket *));
 void sorecvfrom _P((struct SLIRPsocket *));
-int sosendto _P((struct SLIRPsocket *, struct mbuf *));
+int sosendto _P((struct SLIRPsocket *, struct SLIRPmbuf *));
 struct SLIRPsocket * solisten _P((u_int, u_int32_t, u_int, int));
 void sorwakeup _P((struct SLIRPsocket *));
 void sowwakeup _P((struct SLIRPsocket *));

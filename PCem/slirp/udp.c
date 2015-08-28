@@ -69,12 +69,12 @@ udp_init()
  */
 void
 udp_input(m, iphlen)
-	register struct mbuf *m;
+	struct SLIRPmbuf *m;
 	int iphlen;
 {
-	register struct ip *ip;
-	register struct udphdr *uh;
-/*	struct mbuf *opts = 0;*/
+	struct ip *ip;
+	struct udphdr *uh;
+/*	struct SLIRPmbuf *opts = 0;*/
 	int len;
 	struct ip save_ip; 
 	struct SLIRPsocket *so;
@@ -92,18 +92,18 @@ udp_input(m, iphlen)
 	 * with options still present.
 	 */
 	if(iphlen > sizeof(struct ip)) {
-		ip_stripoptions(m, (struct mbuf *)0);
+		ip_stripoptions(m, (struct SLIRPmbuf *)0);
 		iphlen = sizeof(struct ip);
 	}
 
 	/*
-	 * Get IP and UDP header together in first mbuf.
+	 * Get IP and UDP header together in first SLIRPmbuf.
 	 */
 	ip = mtod(m, struct ip *);
 	uh = (struct udphdr *)((caddr_t)ip + iphlen);
 
 	/*
-	 * Make mbuf data length reflect UDP length.
+	 * Make SLIRPmbuf data length reflect UDP length.
 	 * If not enough data to reflect UDP length, drop.
 	 */
 	len = ntohs((u_int16_t)uh->uh_ulen);
@@ -235,7 +235,7 @@ udp_input(m, iphlen)
 
 	m_free(so->so_m);   /* used for ICMP if error on sorecvfrom */
 
-	/* restore the orig mbuf packet */
+	/* restore the orig SLIRPmbuf packet */
 	m->m_len += iphlen;
 	m->m_data -= iphlen;
 	*ip=save_ip;
@@ -248,11 +248,11 @@ bad:
 	return;
 }
 
-int udp_output2(struct SLIRPsocket *so, struct mbuf *m, 
+int udp_output2(struct SLIRPsocket *so, struct SLIRPmbuf *m, 
                 struct sockaddr_in *saddr, struct sockaddr_in *daddr,
                 int iptos)
 {
-	register struct udpiphdr *ui;
+	struct udpiphdr *ui;
 	int error = 0;
 
 	DEBUG_CALL("udp_output");
@@ -268,7 +268,7 @@ int udp_output2(struct SLIRPsocket *so, struct mbuf *m,
 	m->m_len += sizeof(struct udpiphdr);
 	
 	/*
-	 * Fill in mbuf with extended UDP header
+	 * Fill in SLIRPmbuf with extended UDP header
 	 * and addresses and length put into network format.
 	 */
 	ui = mtod(m, struct udpiphdr *);
@@ -303,7 +303,7 @@ int udp_output2(struct SLIRPsocket *so, struct mbuf *m,
 	return (error);
 }
 
-int udp_output(struct SLIRPsocket *so, struct mbuf *m, 
+int udp_output(struct SLIRPsocket *so, struct SLIRPmbuf *m, 
                struct sockaddr_in *addr)
 
 {
@@ -401,7 +401,7 @@ udp_tos(so)
 void
 udp_emu(so, m)
 	struct SLIRPsocket *so;
-	struct mbuf *m;
+	struct SLIRPmbuf *m;
 {
 	struct sockaddr_in addr;
         socklen_t addrlen = sizeof(addr);

@@ -43,18 +43,18 @@
 u_int16_t ip_id;
 
 /*
- * IP output.  The packet in mbuf chain m contains a skeletal IP
+ * IP output.  The packet in SLIRPmbuf chain m contains a skeletal IP
  * header (with len, off, ttl, proto, tos, src, dst).
- * The mbuf chain containing the packet will be freed.
- * The mbuf opt, if present, will not be freed.
+ * The SLIRPmbuf chain containing the packet will be freed.
+ * The SLIRPmbuf opt, if present, will not be freed.
  */
 int
 ip_output(so, m0)
 	struct SLIRPsocket *so;
-	struct mbuf *m0;
+	struct SLIRPmbuf *m0;
 {
-	register struct ip *ip;
-	register struct mbuf *m = m0;
+	struct ip *ip;
+	struct SLIRPmbuf *m = m0;
 	register int hlen = sizeof(struct ip );
 	int len, off, error = 0;
 
@@ -120,7 +120,7 @@ ip_output(so, m0)
 
     {
 	int mhlen, firstlen = len;
-	struct mbuf **mnext = &m->m_nextpkt;
+	struct SLIRPmbuf **mnext = &m->m_nextpkt;
 
 	/*
 	 * Loop through length of segment after first fragment,
@@ -129,7 +129,7 @@ ip_output(so, m0)
 	m0 = m;
 	mhlen = sizeof (struct ip);
 	for (off = hlen + len; off < (u_int16_t)ip->ip_len; off += len) {
-	  register struct ip *mhip;
+	  struct ip *mhip;
 	  m = m_get();
 	  if (m == 0) {
 	    error = -1;

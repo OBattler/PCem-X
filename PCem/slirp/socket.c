@@ -83,8 +83,9 @@ sofree(so)
     tcp_last_so = &tcb;
   else if (so == udp_last_so)
     udp_last_so = &udb;
-	
-  m_free(so->so_m);
+
+  if(so->so_m!=NULL)	
+    m_free(so->so_m);
 	
   if(so->so_next && so->so_prev) 
     remque(so);  /* crashes if so is not in a queue */
@@ -426,7 +427,7 @@ sorecvfrom(so)
 	  /* No need for this socket anymore, udp_detach it */
 	  udp_detach(so);
 	} else {                            	/* A "normal" UDP packet */
-	  struct mbuf *m;
+	  struct SLIRPmbuf *m;
 	  int len;
 	  ioctlsockopt_t n;
 
@@ -496,7 +497,7 @@ sorecvfrom(so)
 int
 sosendto(so, m)
 	struct SLIRPsocket *so;
-	struct mbuf *m;
+	struct SLIRPmbuf *m;
 {
 	int ret;
 	struct sockaddr_in addr;

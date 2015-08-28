@@ -117,7 +117,7 @@ static void dhcp_decode(const uint8_t *buf, int size,
 static void bootp_reply(struct bootp_t *bp)
 {
     BOOTPClient *bc;
-    struct mbuf *m;
+    struct SLIRPmbuf *m;
     struct bootp_t *rbp;
     struct sockaddr_in saddr, daddr;
     struct in_addr dns_addr;
@@ -232,7 +232,7 @@ static void bootp_reply(struct bootp_t *bp)
     udp_output2(NULL, m, &saddr, &daddr, IPTOS_LOWDELAY);
 }
 
-void bootp_input(struct mbuf *m)
+void bootp_input(struct SLIRPmbuf *m)
 {
     struct bootp_t *bp = mtod(m, struct bootp_t *);
 

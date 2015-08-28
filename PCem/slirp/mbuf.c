@@ -21,7 +21,7 @@
 struct	mbuf *mbutl;
 char	*mclrefcnt;
 int mbuf_alloced = 0;
-struct mbuf m_freelist, m_usedlist;
+struct SLIRPmbuf m_freelist, m_usedlist;
 int mbuf_thresh = 30;
 int mbuf_max = 0;
 int msize;
@@ -53,16 +53,16 @@ msize_init()
  * free old mbufs, we mark all mbufs above mbuf_thresh as M_DOFREE,
  * which tells m_free to actually free() it
  */
-struct mbuf *
+struct SLIRPmbuf *
 m_get()
 {
-	register struct mbuf *m;
+	struct SLIRPmbuf *m;
 	int flags = 0;
 	
 	DEBUG_CALL("m_get");
 	
 	if (m_freelist.m_next == &m_freelist) {
-		m = (struct mbuf *)malloc(msize);
+		m = (struct SLIRPmbuf *)malloc(msize);
 		if (m == NULL) goto end_error;
 		mbuf_alloced++;
 		if (mbuf_alloced > mbuf_thresh)
@@ -89,9 +89,10 @@ end_error:
 	return m;
 }
 
+//For some reason this fails in GDB saying tehre is no m_flags member
 void
 m_free(m)
-	struct mbuf *m;
+	struct SLIRPmbuf *m;
 {
 	
   DEBUG_CALL("m_free");
@@ -101,6 +102,8 @@ m_free(m)
 	/* Remove from m_usedlist */
 	if (m->m_flags & M_USEDLIST)
 	   remque(m);
+
+
 	
 	/* If it's M_EXT, free() it */
 	if (m->m_flags & M_EXT)
@@ -126,7 +129,7 @@ m_free(m)
  */
 void
 m_cat(m, n)
-	register struct mbuf *m, *n;
+	struct SLIRPmbuf *m, *n;
 {
 	/*
 	 * If there's no room, realloc
@@ -144,7 +147,7 @@ m_cat(m, n)
 /* make m size bytes large */
 void
 m_inc(m, size)
-        struct mbuf *m;
+        struct SLIRPmbuf *m;
         int size;
 {
        int datasize;
@@ -156,7 +159,7 @@ m_inc(m, size)
          datasize = m->m_data - m->m_ext;
 	  m->m_ext = (char *)realloc(m->m_ext,size);
 /*		if (m->m_ext == NULL)
- *			return (struct mbuf *)NULL;
+ *			return (struct SLIRPmbuf *)NULL;
  */		
          m->m_data = m->m_ext + datasize;
         } else {
@@ -164,7 +167,7 @@ m_inc(m, size)
 	  datasize = m->m_data - m->m_dat;
 	  dat = (char *)malloc(size);
 /*		if (dat == NULL)
- *			return (struct mbuf *)NULL;
+ *			return (struct SLIRPmbuf *)NULL;
  */
 	  memcpy(dat, m->m_dat, m->m_size);
 	  
@@ -181,7 +184,7 @@ m_inc(m, size)
 
 void
 m_adj(m, len)
-	struct mbuf *m;
+	struct SLIRPmbuf *m;
 	int len;
 {
 	if (m == NULL)
@@ -203,7 +206,7 @@ m_adj(m, len)
  */
 int
 m_copy(n, m, off, len)
-	struct mbuf *n, *m;
+	struct SLIRPmbuf *n, *m;
 	int off, len;
 {
 	if (len > M_FREEROOM(n))
@@ -220,11 +223,11 @@ m_copy(n, m, off, len)
  * XXX This is a kludge, I should eliminate the need for it
  * Fortunately, it's not used often
  */
-struct mbuf *
+struct SLIRPmbuf *
 dtom(dat)
 	void *dat;
 {
-	struct mbuf *m;
+	struct SLIRPmbuf *m;
 	
 	DEBUG_CALL("dtom");
 	DEBUG_ARG("dat = %lx", (long )dat);
@@ -242,6 +245,6 @@ dtom(dat)
 	
 	DEBUG_ERROR((dfd, "dtom failed"));
 	
-	return (struct mbuf *)0;
+	return (struct SLIRPmbuf *)0;
 }
 

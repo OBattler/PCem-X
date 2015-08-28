@@ -65,13 +65,13 @@ u_char  tcp_outflags[TCP_NSTATES] = {
  */
 int
 tcp_output(tp)
-	register struct tcpcb *tp;
+	struct tcpcb *tp;
 {
-	register struct SLIRPsocket *so = tp->t_socket;
+	struct SLIRPsocket *so = tp->t_socket;
 	register long len, win;
 	int off, flags, error;
-	register struct mbuf *m;
-	register struct tcpiphdr *ti;
+	struct SLIRPmbuf *m;
+	struct tcpiphdr *ti;
 	u_char opt[MAX_TCPOPTLEN];
 	unsigned optlen, hdrlen;
 	int idle, sendalot;
@@ -268,7 +268,7 @@ send:
 	 * Before ESTABLISHED, force sending of initial options
 	 * unless TCP set not to do any options.
 	 * NOTE: we assume that the IP/TCP header plus TCP options
-	 * always fit in a single mbuf, leaving room for a maximum
+	 * always fit in a single SLIRPmbuf, leaving room for a maximum
 	 * link header, i.e.
 	 *	max_linkhdr + sizeof (struct tcpiphdr) + optlen <= MHLEN
 	 */
@@ -329,7 +329,7 @@ send:
 	 }
 
 	/*
-	 * Grab a header mbuf, attaching a copy of data to
+	 * Grab a header SLIRPmbuf, attaching a copy of data to
 	 * be transmitted, and initialize the header from
 	 * the template for sends on this connection.
 	 */
@@ -354,7 +354,7 @@ send:
 		m->m_len = hdrlen;
 		
 		/* 
-		 * This will always succeed, since we make sure our mbufs
+		 * This will always succeed, since we make sure our SLIRPmbufs
 		 * are big enough to hold one MSS packet + header + ... etc.
 		 */
 /*		if (len <= MHLEN - hdrlen - max_linkhdr) { */
@@ -543,7 +543,7 @@ send:
 	error = ip_output(so, m);
 
 /* #else
- *	error = ip_output(m, (struct mbuf *)0, &tp->t_inpcb->inp_route, 
+ *	error = ip_output(m, (struct SLIRPmbuf *)0, &tp->t_inpcb->inp_route, 
  *	    so->so_options & SO_DONTROUTE);
  * #endif
  */
@@ -583,7 +583,7 @@ out:
 
 void
 tcp_setpersist(tp)
-	register struct tcpcb *tp;
+	struct tcpcb *tp;
 {
     int t = ((tp->t_srtt >> 2) + tp->t_rttvar) >> 1;
 

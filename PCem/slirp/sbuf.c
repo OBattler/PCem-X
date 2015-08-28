@@ -75,7 +75,7 @@ sbreserve(sb, size)
 void
 sbappend(so, m)
 	struct SLIRPsocket *so;
-	struct mbuf *m;
+	struct SLIRPmbuf *m;
 {
 	int ret = 0;
 	
@@ -126,7 +126,7 @@ sbappend(so, m)
 		m->m_data += ret;
 		sbappendsb(&so->so_rcv, m);
 	} /* else */
-	/* Whatever happened, we free the mbuf */
+	/* Whatever happened, we free the SLIRPmbuf */
 	m_free(m);
 }
 
@@ -137,7 +137,7 @@ sbappend(so, m)
 void
 sbappendsb(sb, m)
 	 struct sbuf *sb;
-	 struct mbuf *m;
+	 struct SLIRPmbuf *m;
 {
 	int len, n,  nn;
 	

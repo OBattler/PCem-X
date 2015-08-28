@@ -270,7 +270,7 @@ icmpstats()
 void
 mbufstats()
 {
-	struct mbuf *m;
+	struct SLIRPmbuf *m;
 	int i;
 	
         lprint(" \r\n");
@@ -315,8 +315,9 @@ void sockstats(void)
 		lprint("%15s %5d %5d %5d\r\n",
 				inet_ntoa(so->so_faddr), ntohs(so->so_fport),
 				so->so_rcv.sb_cc, so->so_snd.sb_cc);
+
 	}
-		   
+
 	for (so = udb.so_next; so != &udb; so = so->so_next) {
 		
 		n = sprintf(buff, "udp[%d sec]", (so->so_expire - curtime) / 1000);
@@ -329,6 +330,19 @@ void sockstats(void)
 		lprint("%15s %5d %5d %5d\r\n",
 				inet_ntoa(so->so_faddr), ntohs(so->so_fport),
 				so->so_rcv.sb_cc, so->so_snd.sb_cc);
+	}
+}
+
+
+void purgesocks(void)
+{
+	int n;
+	struct SLIRPsocket *so;
+
+	
+	for (so = tcb.so_next; so != &tcb; so = so->so_next) {
+		
+	closesocket(so->s);	//close the socket
 	}
 }
 
@@ -373,5 +387,11 @@ slirp_exit(exit_status)
 //	if(slirp_tty_restore)
 //	  tcsetattr(0,TCSANOW, &slirp_tty_settings);  /* NOW DAMMIT! */
 //	exit(exit_status);
+
+	//This will iterate though the sockets, and close them all (think redirects)
+	//PCem will have SLiRP open, close several times, which trips up SLiRP
+	//So for now I go through the sockets and close them
+	purgesocks();
+
 }
 #endif

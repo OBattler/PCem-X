@@ -112,11 +112,11 @@ tcp_seq tcp_iss;                /* tcp initial send seq # */
 
 int
 tcp_reass(tp, ti, m)
-	register struct tcpcb *tp;
-	register struct tcpiphdr *ti;
-	struct mbuf *m;
+	struct tcpcb *tp;
+	struct tcpiphdr *ti;
+	struct SLIRPmbuf *m;
 {
-	register struct tcpiphdr *q;
+	struct tcpiphdr *q;
 	struct SLIRPsocket *so = tp->t_socket;
 	int flags;
 	
@@ -141,7 +141,7 @@ tcp_reass(tp, ti, m)
 	 * segment.  If it provides all of our data, drop us.
 	 */
 	if ((struct tcpiphdr *)q->ti_prev != (struct tcpiphdr *)tp) {
-		register int i;
+		int i;
 		q = (struct tcpiphdr *)q->ti_prev;
 		/* conversion to int (in i) handles seq wraparound */
 		i = q->ti_seq + q->ti_len - ti->ti_seq;
@@ -173,17 +173,17 @@ tcp_reass(tp, ti, m)
 	 * if they are completely covered, dequeue them.
 	 */
 	while (q != (struct tcpiphdr *)tp) {
-		register int i = (ti->ti_seq + ti->ti_len) - q->ti_seq;
+		int i = (ti->ti_seq + ti->ti_len) - q->ti_seq;
 		if (i <= 0)
 			break;
 		if (i < q->ti_len) {
 			q->ti_seq += i;
 			q->ti_len -= i;
-			m_adj((struct mbuf *) REASS_MBUF(q), i);
+			m_adj((struct SLIRPmbuf *) REASS_MBUF(q), i);
 			break;
 		}
 		q = (struct tcpiphdr *)q->ti_next;
-		m = (struct mbuf *) REASS_MBUF((struct tcpiphdr *)q->ti_prev);
+		m = (struct SLIRPmbuf *) REASS_MBUF((struct tcpiphdr *)q->ti_prev);
 		remque_32((void *)(q->ti_prev));
 		m_freem(m);
 	}
@@ -209,7 +209,7 @@ present:
 		tp->rcv_nxt += ti->ti_len;
 		flags = ti->ti_flags & TH_FIN;
 		remque_32(ti);
-		m = (struct mbuf *) REASS_MBUF(ti); /* XXX */
+		m = (struct SLIRPmbuf *) REASS_MBUF(ti); /* XXX */
 		ti = (struct tcpiphdr *)ti->ti_next;
 /*		if (so->so_state & SS_FCANTRCVMORE) */
 		if (so->so_state & SS_FCANTSENDMORE)
@@ -231,17 +231,17 @@ present:
  */
 void
 tcp_input(m, iphlen, inso)
-	register struct mbuf *m;
+	struct SLIRPmbuf *m;
 	int iphlen;
 	struct SLIRPsocket *inso;
 {
   	struct ip save_ip, *ip;
-	register struct tcpiphdr *ti;
+	struct tcpiphdr *ti;
 	caddr_t optp = NULL;
 	int optlen = 0;
 	int len, tlen, off;
-	register struct tcpcb *tp = 0;
-	register int tiflags;
+	struct tcpcb *tp = 0;
+	int tiflags;
 	struct SLIRPsocket *so = 0;
 	int todrop, acked, ourfinisacked, needoutput = 0;
 /*	int dropsocket = 0; */
@@ -274,12 +274,12 @@ tcp_input(m, iphlen, inso)
 	
 	tcpstat.tcps_rcvtotal++;
 	/*
-	 * Get IP and TCP header together in first mbuf.
-	 * Note: IP leaves IP header in first mbuf.
+	 * Get IP and TCP header together in first SLIRPmbuf.
+	 * Note: IP leaves IP header in first SLIRPmbuf.
 	 */
 	ti = mtod(m, struct tcpiphdr *);
 	if (iphlen > sizeof(struct ip )) {
-	  ip_stripoptions(m, (struct mbuf *)0);
+	  ip_stripoptions(m, (struct SLIRPmbuf *)0);
 	  iphlen=sizeof(struct ip );
 	}
 	/* XXX Check if too short */
@@ -684,7 +684,7 @@ findso:
 	    m_free(m);
 	  } else {
 	    /*
-	     * Haven't connected yet, save the current mbuf
+	     * Haven't connected yet, save the current SLIRPmbuf
 	     * and ti, and return
 	     * XXX Some OS's don't tell us whether the connect()
 	     * succeeded or not.  So we must time it out.
@@ -776,7 +776,7 @@ findso:
  *			}
  */
 			(void) tcp_reass(tp, (struct tcpiphdr *)0,
-				(struct mbuf *)0);
+				(struct SLIRPmbuf *)0);
 			/*
 			 * if we didn't have to retransmit the SYN,
 			 * use its rtt as our initial srtt & rtt var.
@@ -1045,7 +1045,7 @@ trimthenstep6:
  *			tp->rcv_scale = tp->request_r_scale;
  *		}
  */
-		(void) tcp_reass(tp, (struct tcpiphdr *)0, (struct mbuf *)0);
+		(void) tcp_reass(tp, (struct tcpiphdr *)0, (struct SLIRPmbuf *)0);
 		tp->snd_wl1 = ti->ti_seq - 1;
 		/* Avoid ack processing; snd_una==ti_ack  =>  dup ack */
 		goto synrx_to_est;
@@ -1179,8 +1179,8 @@ trimthenstep6:
 		 * (maxseg^2 / cwnd per packet).
 		 */
 		{
-		  register u_int cw = tp->snd_cwnd;
-		  register u_int incr = tp->t_maxseg;
+		  u_int cw = tp->snd_cwnd;
+		  u_int incr = tp->t_maxseg;
 
 		  if (cw > tp->snd_ssthresh)
 		    incr = incr * incr / cw;
@@ -1572,7 +1572,7 @@ void
 tcp_pulloutofband(so, ti, m)
 	struct SLIRPsocket *so;
 	struct tcpiphdr *ti;
-	register struct mbuf *m;
+	struct SLIRPmbuf *m;
 {
 	int cnt = ti->ti_urp - 1;
 	
@@ -1604,10 +1604,10 @@ tcp_pulloutofband(so, ti, m)
 
 void
 tcp_xmit_timer(tp, rtt)
-	register struct tcpcb *tp;
+	struct tcpcb *tp;
 	int rtt;
 {
-	register short delta;
+	short delta;
 
 	DEBUG_CALL("tcp_xmit_timer");
 	DEBUG_ARG("tp = %lx", (long)tp);
@@ -1681,8 +1681,8 @@ tcp_xmit_timer(tp, rtt)
  * If the route is known, check route for mtu.
  * If none, use an mss that can be handled on the outgoing
  * interface without forcing IP to fragment; if bigger than
- * an mbuf cluster (MCLBYTES), round down to nearest multiple of MCLBYTES
- * to utilize large mbufs.  If no route is found, route has no mtu,
+ * an SLIRPmbuf cluster (MCLBYTES), round down to nearest multiple of MCLBYTES
+ * to utilize large SLIRPmbufs.  If no route is found, route has no mtu,
  * or the destination isn't local, use a default, hopefully conservative
  * size (usually 512 or the default IP max size, but no more than the mtu
  * of the interface), as we can't discover anything about intervening
@@ -1694,7 +1694,7 @@ tcp_xmit_timer(tp, rtt)
 
 int
 tcp_mss(tp, offer)
-        register struct tcpcb *tp;
+        struct tcpcb *tp;
         u_int offer;
 {
 	struct SLIRPsocket *so = tp->t_socket;

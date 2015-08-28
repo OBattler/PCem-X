@@ -125,7 +125,7 @@ static int tftp_send_error(struct tftp_session *spt,
 			   struct tftp_t *recv_tp)
 {
   struct sockaddr_in saddr, daddr;
-  struct mbuf *m;
+  struct SLIRPmbuf *m;
   struct tftp_t *tp;
   int nobytes;
 
@@ -169,7 +169,7 @@ static int tftp_send_data(struct tftp_session *spt,
 			  struct tftp_t *recv_tp)
 {
   struct sockaddr_in saddr, daddr;
-  struct mbuf *m;
+  struct SLIRPmbuf *m;
   struct tftp_t *tp;
   int nobytes;
 
@@ -318,7 +318,7 @@ static void tftp_handle_ack(struct tftp_t *tp, int pktlen)
   }
 }
 
-void tftp_input(struct mbuf *m)
+void tftp_input(struct SLIRPmbuf *m)
 {
   struct tftp_t *tp = (struct tftp_t *)m->m_data;
 

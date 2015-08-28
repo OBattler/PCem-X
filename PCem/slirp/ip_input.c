@@ -65,7 +65,7 @@ ip_init()
  */
 void
 ip_input(m)
-	struct mbuf *m;
+	struct SLIRPmbuf *m;
 {
 	register struct ip *ip;
 	int hlen;
@@ -117,14 +117,14 @@ ip_input(m)
 	/*
 	 * Check that the amount of data in the buffers
 	 * is as at least much as the IP header would have us expect.
-	 * Trim mbufs if longer than we expect.
+	 * Trim SLIRPmbufs if longer than we expect.
 	 * Drop packet if shorter than we expect.
 	 */
 	if (m->m_len < ip->ip_len) {
 		ipstat.ips_tooshort++;
 		goto bad;
 	}
-	/* Should drop packet if mbuf too long? hmmm... */
+	/* Should drop packet if SLIRPmbuf too long? hmmm... */
 	if (m->m_len > ip->ip_len)
 	   m_adj(m, ip->ip_len - m->m_len);
 
@@ -236,7 +236,7 @@ ip_reass(ip, fp)
 	register struct ipasfrag *ip;
 	register struct ipq *fp;
 {
-	register struct mbuf *m = dtom(ip);
+	register struct SLIRPmbuf *m = dtom(ip);
 	register struct ipasfrag *q;
 	int hlen = ip->ip_hl << 2;
 	int i, next;
@@ -247,7 +247,7 @@ ip_reass(ip, fp)
 	DEBUG_ARG("m = %lx", (long)m);
 
 	/*
-	 * Presence of header sizes in mbufs
+	 * Presence of header sizes in SLIRPmbufs
 	 * would confuse code below.
          * Fragment m_data is concatenated.
 	 */
@@ -258,7 +258,7 @@ ip_reass(ip, fp)
 	 * If first fragment to arrive, create a reassembly queue.
 	 */
 	if (fp == 0) {
-	  struct mbuf *t;
+	  struct SLIRPmbuf *t;
 	  if ((t = m_get()) == NULL) goto dropfrag;
 	  fp = mtod(t, struct ipq *);
 	  insque_32(fp, &ipq);
@@ -338,7 +338,7 @@ insert:
 
 	q = (struct ipasfrag *) q->ipf_next;
 	while (q != (struct ipasfrag *)fp) {
-	  struct mbuf *t;
+	  struct SLIRPmbuf *t;
 	  t = dtom(q);
 	  q = (struct ipasfrag *) q->ipf_next;
 	  m_cat(m, t);
@@ -353,10 +353,10 @@ insert:
 	ip = (struct ipasfrag *) fp->ipq_next;
 
 	/*
-	 * If the fragments concatenated to an mbuf that's
+	 * If the fragments concatenated to an SLIRPmbuf that's
 	 * bigger than the total size of the fragment, then and
 	 * m_ext buffer was alloced. But fp->ipq_next points to
-	 * the old buffer (in the mbuf), so we must point ip
+	 * the old buffer (in the SLIRPmbuf), so we must point ip
 	 * into the new buffer.
 	 */
 	if (m->m_flags & M_EXT) {
@@ -471,7 +471,7 @@ ip_slowtimo()
 
 int
 ip_dooptions(m)
-	struct mbuf *m;
+	struct SLIRPmbuf *m;
 {
 	register struct ip *ip = mtod(m, struct ip *);
 	register u_char *cp;
@@ -675,8 +675,8 @@ bad:
  */
 void
 ip_stripoptions(m, mopt)
-	register struct mbuf *m;
-	struct mbuf *mopt;
+	struct SLIRPmbuf *m;
+	struct SLIRPmbuf *mopt;
 {
 	register int i;
 	struct ip *ip = mtod(m, struct ip *);
