@@ -24,13 +24,13 @@ void piix_write(int func, int addr, uint8_t val, void *priv)
 
 	if ((addr & 0xff) < 4)  return;
 
-	if ((func == 2) && ((romset == ROM_430VX) || (romset == ROM_430TX) || (romset == ROM_440BX) || (romset == ROM_VPC2007))) /*USB*/
+	if (piix_type >= 3) /*USB*/
 	{
 		card_piix_usb[addr & 0xff] = val;
 		return;
 	}
 
-	if ((func == 3) && ((romset == ROM_430TX) || (romset == ROM_440BX) || (romset == ROM_VPC2007))) /*USB*/
+	if (piix_type >= 4) /*ACPI*/
 	{
 		card_piix_acpi[addr & 0xff] = val;
 		return;
@@ -111,12 +111,12 @@ uint8_t piix_read(int func, int addr, void *priv)
 {
 //        pclog("piix_read: func=%d addr=%02x %04x:%08x\n", func, addr, CS, pc);
 
-	if ((func == 2) && ((romset == ROM_430VX) || (romset == ROM_430TX) || (romset == ROM_440BX) || (romset == ROM_VPC2007))) /*USB*/
+	if (piix_type >= 3) /*USB*/
 	{
                 return card_piix_usb[addr];
 	}
 
-	if ((func == 3) && ((romset == ROM_430TX) || (romset == ROM_440BX) || (romset == ROM_VPC2007))) /*USB*/
+	if (piix_type >= 4) /*ACPI*/
 	{
                 return card_piix_acpi[addr];
 	}
@@ -317,11 +317,11 @@ void piix_init(int card)
         memset(card_piix_usb, 0, 256);
         memset(card_piix_acpi, 0, 256);
         card_piix[0x00] = 0x86; card_piix[0x01] = 0x80; /*Intel*/
-	if ((romset == ROM_430VX) || (romset == ROM_440FX))
+	if (piix_type == 3)
 	{
 	        card_piix[0x02] = 0x00; card_piix[0x03] = 0x70; /*82371SB (PIIX3)*/
 	}
-	else if ((romset == ROM_430TX) || (romset == ROM_440BX) || (romset == ROM_VPC2007))
+	else if (piix_type == 4)
 	{
 	        card_piix[0x02] = 0x10; card_piix[0x03] = 0x71; /*82371AB (PIIX4)*/
 	}
@@ -330,7 +330,7 @@ void piix_init(int card)
 	        card_piix[0x02] = 0x2e; card_piix[0x03] = 0x12; /*82371FB (PIIX)*/
 	}
         card_piix[0x04] = 0x07; card_piix[0x05] = 0x00;
-	if ((romset == ROM_430TX) || (romset == ROM_440BX) || (romset == ROM_VPC2007))
+	if (piix_type == 4)
 	{
         	card_piix[0x06] = 0x80; card_piix[0x07] = 0x02;
 	}
@@ -344,13 +344,13 @@ void piix_init(int card)
         card_piix[0x4c] = 0x4d;
         card_piix[0x4e] = 0x03;
         card_piix[0x60] = card_piix[0x61] = card_piix[0x62] = card_piix[0x63] = 0x80;
-	if ((romset == ROM_430TX) || (romset == ROM_440BX) || (romset == ROM_VPC2007))
+	if (piix_type == 4)
 	{
 		card_piix[0x64] = 0x10;
 	}
         card_piix[0x69] = 0x02;
         card_piix[0x70] = card_piix[0x71] = 0x80;
-	if ((romset == ROM_430TX) || (romset == ROM_440BX) || (romset == ROM_VPC2007))
+	if (piix_type == 4)
 	{
         	card_piix[0x76] = card_piix[0x77] = 0x04;
 	}
@@ -366,17 +366,17 @@ void piix_init(int card)
         card_piix[0xaa] = card_piix[0xab] = 0x00;
         card_piix[0xac] = 0x00;
         card_piix[0xae] = 0x00;
-	if ((romset == ROM_430TX) || (romset == ROM_440BX) || (romset == ROM_VPC2007))
+	if (piix_type == 4)
 	{
         	card_piix[0xCB] = 0x21;
 	}
 
         card_piix_ide[0x00] = 0x86; card_piix_ide[0x01] = 0x80; /*Intel*/
-	if ((romset == ROM_430VX) || (romset == ROM_440FX))
+	if (piix_type == 3)
 	{
 	        card_piix_ide[0x02] = 0x10; card_piix_ide[0x03] = 0x70; /*82371SB (PIIX3)*/
 	}
-	else if ((romset == ROM_430TX) || (romset == ROM_440BX) || (romset == ROM_VPC2007))
+	else if (piix_type == 4)
 	{
 	        card_piix_ide[0x02] = 0x11; card_piix_ide[0x03] = 0x71; /*82371AB (PIIX4)*/
 	}
@@ -396,11 +396,11 @@ void piix_init(int card)
         
         ide_set_bus_master(piix_bus_master_sector_read, piix_bus_master_sector_write, piix_bus_master_set_irq);
 
-	if ((romset == ROM_430VX) || (romset == ROM_430TX) || (romset == ROM_440BX) || (romset == ROM_VPC2007))
+	if (piix_type >= 3)
 	{
 	        card_piix_usb[0x00] = 0x86; card_piix_usb[0x01] = 0x80; /*Intel*/
 
-		if ((romset == ROM_430TX) || (romset == ROM_440BX) || (romset == ROM_VPC2007))
+		if (piix_type == 4)
 		{
 	        	card_piix_usb[0x02] = 0x12; card_piix_usb[0x03] = 0x71; /*82371AB (PIIX4)*/
 		}
@@ -410,7 +410,7 @@ void piix_init(int card)
 		}
 
 	        card_piix_usb[0x06] = 0x80; card_piix_usb[0x07] = 0x02;
-		if ((romset == ROM_430TX) || (romset == ROM_440BX) || (romset == ROM_VPC2007))
+		if (piix_type == 4)
 		{
 		        card_piix_usb[0x09] = 0x00; card_piix_usb[0x0A] = 0x03; card_piix_ide[0x0B] = 0x0C;
 		}
@@ -419,7 +419,7 @@ void piix_init(int card)
 		        card_piix_usb[0x09] = 0x80; card_piix_usb[0x0A] = 0x01; card_piix_ide[0x0B] = 0x01;
 		}
 		card_piix_usb[0x3D] = 0x04;
-		if ((romset == ROM_430TX) || (romset == ROM_440BX) || (romset == ROM_VPC2007))
+		if (piix_type == 4)
 		{
 			card_piix_usb[0x60] = 0x10;
 		}
@@ -427,7 +427,7 @@ void piix_init(int card)
 	        card_piix_usb[0xC1] = 0x20;
 	}
 
-	if ((romset == ROM_430TX) || (romset == ROM_440BX) || (romset == ROM_VPC2007))
+	if (piix_type >= 4)
 	{
 	        card_piix_acpi[0x00] = 0x86; card_piix_acpi[0x01] = 0x80; /*Intel*/
         	card_piix_acpi[0x02] = 0x13; card_piix_acpi[0x03] = 0x71; /*82371AB (PIIX4)*/

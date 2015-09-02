@@ -17,15 +17,22 @@
 #include "fdc37c932fr.h"
 #include "gameport.h"
 #include "headland.h"
-#include "i430fx.h"
 #include "i430lx.h"
-#include "i430tx.h"
+#include "i430fx.h"
+#include "i430hx.h"
 #include "i430vx.h"
+#include "i430tx.h"
 #include "i440fx.h"
+#ifdef BROKEN_CHIPSETS
+#include "i450gx.h"
 #include "i440bx.h"
+#endif
 #include "ide.h"
 #include "intel.h"
 #include "intel_flash.h"
+#ifdef BROKEN_CHIPSETS
+#include "intel_flash_2mbit.h"
+#endif
 #include "jim.h"
 #include "keyboard_amstrad.h"
 #include "keyboard_at.h"
@@ -41,7 +48,9 @@
 #include "nvr.h"
 #include "olivetti_m24.h"
 #include "pc87306.h"
+#ifdef BROKEN_CHIPSETS
 #include "pc87309.h"
+#endif
 #include "pci.h"
 #include "pic.h"
 #include "piix.h"
@@ -53,6 +62,7 @@
 #include "sound_sn76489.h"
 // #include "um8669f.h"
 #include "um8881f.h"
+#include "w83877f.h"
 #include "wd76c10.h"
 #include "xtide.h"
 
@@ -75,10 +85,15 @@ void    at_um8881f_init();
 void     at_sis471_init();
 void  at_colorbook_init();
 void     at_sis496_init();
-void     at_i430fx_init();
-void     at_i430vx_init();
 void     at_batman_init();
+void     at_i430lx_init();
+void      at_plato_init();
+void     at_i430nx_init();
 void   at_endeavor_init();
+void     at_i430fx_init();
+void   at_acerv35n_init();
+void     at_i430hx_init();
+void     at_i430vx_init();
 void     at_i430tx_init();
 void     at_i440fx_init();
 void     at_i440bx_init();
@@ -90,6 +105,8 @@ int machine_class;
 
 int supports_slave = 0;
 int has_pc87306 = 0;
+
+int piix_type = 0;
 
 MODEL models[] =
 {
@@ -103,6 +120,7 @@ MODEL models[] =
         {"VTech Laser XT3",	ROM_LXT3,      { "Stock", cpus_8088,	"286 card",  cpus_286,   "",  NULL},         0,0,      xt_init},
         {"Phoenix XT clone",    ROM_PXXT,      { "Stock", cpus_8088,	"286 card",  cpus_286,   "",  NULL},         0,0,      xt_init},
         {"Juko XT clone",       ROM_JUKOPC,    { "Stock", cpus_8088,	"286 card",  cpus_286,   "",  NULL},         0,0,      xt_init},
+        {"Kaypro XT clone",     ROM_KAYPROXT,  { "Stock", cpus_8088,	"286 card",  cpus_286,   "",  NULL},         0,0,      xt_init},
         {"Tandy 1000",          ROM_TANDY,     { "Stock", cpus_8088,	"286 card",  cpus_286,   "",  NULL},         1,0, tandy1k_init},
         {"Amstrad PC1512",      ROM_PC1512,    { "",      cpus_pc1512,  "",    NULL,         "",      NULL},         1,0,     ams_init},
         {"Sinclair PC200",      ROM_PC200,     { "",      cpus_8086,    "",    NULL,         "",      NULL},         1,0,     ams_init},
@@ -113,7 +131,8 @@ MODEL models[] =
         {"Amstrad PC3086",      ROM_PC3086,    { "",      cpus_8086,    "",    NULL,         "",      NULL},         1,0,     ams_init},
         {"IBM AT",              ROM_IBMAT,     { "",      cpus_ibmat,   "",    NULL,         "",      NULL},         0,0,      at_init},
         {"Commodore PC 30 III", ROM_CMDPC30,   { "",      cpus_286,     "",    NULL,         "",      NULL},         0,0,      at_init},        
-        {"AMI 286 clone",       ROM_AMI286,    { "",      cpus_286,     "",    NULL,         "",      NULL},         0,0,      at_neat_init},        
+        {"AMI 286 clone",       ROM_AMI286,    { "",      cpus_286,     "",    NULL,         "",      NULL},         0,0,      at_neat_init},
+        {"Achieve Microsys. 286",ROM_AMSYS,    { "",      cpus_286,     "",    NULL,         "",      NULL},         0,0,      at_neat_init},
         {"DELL System 200",     ROM_DELL200,   { "",      cpus_286,     "",    NULL,         "",      NULL},         0,0,           at_init},
         {"IBM PS/1 model 2011", ROM_IBMPS1_2011, { "",      cpus_286,     "",    NULL,         "",      NULL},         1,0,          ps1_init},
         {"Acer 386SX25/N",      ROM_ACER386,   { "Intel", cpus_acer,    "",    NULL,         "",      NULL},         1,0, at_acer386sx_init},
@@ -132,14 +151,20 @@ MODEL models[] =
         {"Award SiS 496/497",   ROM_SIS496,    { "Intel", cpus_i486,    "AMD", cpus_Am486,   "Cyrix", cpus_Cx486},   0,0,    at_sis496_init},
 #ifdef DYNAREC
         {"Intel Premiere/PCI",  ROM_REVENGE,   { "Intel", cpus_Pentium5V, "",  NULL,         "",      NULL},         0,0,    at_batman_init},
+        {"Award 430LX PCI",     ROM_430LX,     { "Intel", cpus_Pentium5V, "",  NULL,         "",      NULL},         0,0,    at_i430lx_init},
+        {"Intel Premiere/PCI II",ROM_PLATO,    { "Intel", cpus_PentiumS5,"IDT", cpus_WinChip, "",      NULL},         0,0,   at_plato_init},
+        {"Award 430NX PCI",     ROM_430NX,     { "Intel", cpus_PentiumS5,"IDT", cpus_WinChip, "",      NULL},         0,0,   at_i430nx_init},
         {"Intel Advanced/EV",   ROM_ENDEAVOR,  { "Intel", cpus_PentiumS5,"IDT", cpus_WinChip, "",      NULL},         0,0,  at_endeavor_init},
-        {"Award 430FX PCI",     ROM_430FX,     { "Intel", cpus_PentiumS5,"IDT", cpus_WinChip, "",      NULL},         0,0,    at_i430fx_init},
+        {"Award 430FX PCI",     ROM_430FX,     { "Intel", cpus_PentiumS5,"IDT", cpus_WinChip, "",      NULL},         0,0,   at_i430fx_init},
+        {"Award 430HX PCI",     ROM_430HX,     { "Intel", cpus_Pentium, "IDT", cpus_WinChip, "",      NULL},         0,0,    at_i430hx_init},
+        {"Acer V35N",           ROM_ACERV35N,  { "Intel", cpus_Pentium, "IDT", cpus_WinChip, "",      NULL},         0,0,    at_acerv35n_init},
         {"Award 430VX PCI",     ROM_430VX,     { "Intel", cpus_Pentium, "IDT", cpus_WinChip, "",      NULL},         0,0,    at_i430vx_init},
         {"Award 430TX PCI",     ROM_430TX,     { "Intel", cpus_Pentium, "IDT", cpus_WinChip, "",      NULL},         0,0,    at_i430tx_init},
         {"Award 440FX PCI",     ROM_440FX,     { "Intel", cpus_PentiumPro,"Klamath",    cpus_Pentium2,         "Deschut.",      cpus_Pentium2D},         0,0,    at_i440fx_init},
 #ifdef BROKEN_CHIPSETS
+        {"AMI Goliath 730 PCI", ROM_GOLIATH,   { "Intel", cpus_PentiumPro,"Klamath",    cpus_Pentium2,         "Deschut.",      cpus_Pentium2D},         0,0,    at_i440fx_init},
         {"Award 440BX PCI",     ROM_440BX,     { "Intel", cpus_Pentium2,"Deschut.",    cpus_Pentium2D,         "",      NULL},         0,0,    at_i440bx_init},
-        {"Virtual PC 2007",     ROM_VPC2007,   { "Intel", cpus_Pentium2,"Deschut.",    cpus_pentium2D,         "",      NULL},         0,1,    at_vpc2007_init},
+        {"Virtual PC 2007",     ROM_VPC2007,   { "Intel", cpus_Pentium2,"Deschut.",    cpus_Pentium2D,         "",      NULL},         0,1,    at_vpc2007_init},
 #endif
 #else
         {"Intel Advanced/EV",   ROM_ENDEAVOR,  { "IDT", cpus_WinChip,   "",    NULL,         "",      NULL},         0,0,  at_endeavor_init},
@@ -203,6 +228,7 @@ void common_init()
 	/* It then gets set for the models that do need it. */
 	fdc_clear_dskchg_activelow();
 	fdc_polarity_reset();
+	piix_type = 0;
 }
 
 void xt_init()
@@ -236,6 +262,7 @@ void pcjr_init()
 	nmi_mask = 0x80;
 	machine_class = MC_PCJR;
 	fdc_polarity_reset();
+	piix_type = 0;
 }
 
 void tandy1k_init()
@@ -472,8 +499,61 @@ void at_batman_init()
 	mouse_ps2_init();
         pci_init(PCI_CONFIG_TYPE_2, 0xd, 0x10);
         i430lx_init();
+	sio_init(7);
 	fdc37c665_init();
         intel_batman_init();
+        device_add(&intel_flash_device);
+}
+
+void at_i430lx_init()
+{
+	PCI = 1;
+	maxide = 2;
+	AT = 1;
+	is386 = 1;
+        at_init();
+        ali1429_init();
+        mouse_serial_init();
+	// mouse_ps2_init();
+        pci_init(PCI_CONFIG_TYPE_2, 0xd, 0x10);
+        i430lx_init();
+	sio_init(7);
+	// fdc37c665_init();
+        device_add(&intel_flash_device);
+}
+
+void at_plato_init()
+{
+	PCI = 1;
+	maxide = 4;
+	AT = 1;
+	is386 = 1;
+        at_init();
+        // mouse_serial_init();
+	mouse_ps2_init();
+        pci_init(PCI_CONFIG_TYPE_2, 0xd, 0x10);
+	/* The LX and NX are essentially the same chip. */
+        i430lx_init();
+	sio_init(7);
+	fdc37c665_init();
+        intel_batman_init();
+        device_add(&intel_flash_device);
+}
+
+void at_i430nx_init()
+{
+	PCI = 1;
+	maxide = 2;
+	AT = 1;
+	is386 = 1;
+        at_init();
+        ali1429_init();
+        mouse_serial_init();
+	// mouse_ps2_init();
+        pci_init(PCI_CONFIG_TYPE_2, 0xd, 0x10);
+	/* The LX and NX are essentially the same chip. */
+        i430lx_init();
+	sio_init(7);
         device_add(&intel_flash_device);
 }
 
@@ -488,6 +568,7 @@ void at_endeavor_init()
 	mouse_ps2_init();
         pci_init(PCI_CONFIG_TYPE_1, 0xd, 0x10);
         i430fx_init();
+	piix_type = 1;
         piix_init(7);
 	pc87306_init();
 	has_pc87306 = 1;
@@ -506,11 +587,46 @@ void at_i430fx_init()
 	// mouse_ps2_init();
         pci_init(PCI_CONFIG_TYPE_1, 0, 31);
         i430fx_init();
+	piix_type = 1;
         piix_init(7);
         // um8669f_init();
 	fdc37c665_init();
         intel_endeavor_init();
         device_add(&intel_flash_device);
+}
+
+void at_i430hx_init()
+{
+	PCI = 1;
+	maxide = 4;
+	AT = 1;
+	is386 = 1;
+        at_init();
+        mouse_serial_init();
+	// mouse_ps2_init();
+        pci_init(PCI_CONFIG_TYPE_1, 0, 31);
+        i430hx_init();
+	piix_type = 3;
+        piix_init(7);
+	w83877f_init();
+        // device_add(&intel_flash_device);
+}
+
+void at_acerv35n_init()
+{
+	PCI = 1;
+	maxide = 4;
+	AT = 1;
+	is386 = 1;
+        at_init();
+        mouse_serial_init();
+	// mouse_ps2_init();
+        pci_init(PCI_CONFIG_TYPE_1, 0, 31);
+        i430hx_init();
+	piix_type = 3;
+        piix_init(7);
+	fdc37c932fr_init();
+        // device_add(&intel_flash_device);
 }
 
 void at_i430vx_init()
@@ -524,11 +640,12 @@ void at_i430vx_init()
 	// mouse_ps2_init();
         pci_init(PCI_CONFIG_TYPE_1, 0, 31);
         i430vx_init();
+	piix_type = 3;
         piix_init(7);
         // um8669f_init();
 	/* Note by OBattler: Switched to a BIOS using that Super I/O chip because it's better than UMC. */
 	fdc37c932fr_init();
-        device_add(&intel_flash_device);
+        // device_add(&intel_flash_device);
 }
 
 void at_i430tx_init()
@@ -542,12 +659,13 @@ void at_i430tx_init()
 	// mouse_ps2_init();
         pci_init(PCI_CONFIG_TYPE_1, 0, 31);
         i430tx_init();
+	piix_type = 4;
         piix_init(7);
         // um8669f_init();
 	/* Note by OBattler: Switched to a BIOS using that Super I/O chip because it's better than UMC. */
 	// fdc37c932fr_init();
 	fdc37c669_init();
-        device_add(&intel_flash_device);
+        // device_add(&intel_flash_device);
 }
 
 void at_i440fx_init()
@@ -561,12 +679,30 @@ void at_i440fx_init()
 	// mouse_ps2_init();
         pci_init(PCI_CONFIG_TYPE_1, 0, 31);
         i440fx_init();
+	piix_type = 3;
         piix_init(7);
         // um8669f_init();
 	/* Note by OBattler: Switched to a BIOS using that Super I/O chip because it's better than UMC. */
 	// fdc37c669_init();
 	fdc37c665_init();
         device_add(&intel_flash_device);
+}
+
+#ifdef BROKEN_CHIPSETS
+void at_goliath_init()
+{
+	PCI = 1;
+	maxide = 4;
+	AT = 1;
+	is386 = 1;
+        at_init();
+        mouse_serial_init();
+	// mouse_ps2_init();
+        pci_init(PCI_CONFIG_TYPE_1, 0, 31);
+        i450gx_init();
+	piix_type = 3;
+        piix_init(7);
+	fdc37c665_init();
 }
 
 void at_i440bx_init()
@@ -580,12 +716,14 @@ void at_i440bx_init()
 	// mouse_ps2_init();
         pci_init(PCI_CONFIG_TYPE_1, 0, 31);
         i440bx_init();
+	piix_type = 4;
         piix_init(7);
         // um8669f_init();
 	/* Note by OBattler: Switched to a BIOS using that Super I/O chip because it's better than UMC. */
 	// fdc37c932fr_init();
 	pc87309_init();
 	has_pc87306 = 1;
+        device_add(&intel_flash_2mbit_device);
 }
 
 void at_vpc2007_init()
@@ -599,8 +737,11 @@ void at_vpc2007_init()
 	// mouse_ps2_init();
         pci_init(PCI_CONFIG_TYPE_1, 0, 31);
         i440bx_init();
+	piix_type = 4;
         piix_init(7);
+        device_add(&intel_flash_2mbit_device);
 }
+#endif
 
 void model_init()
 {

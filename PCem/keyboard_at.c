@@ -171,20 +171,20 @@ void keyboard_at_adddata_keyboard(uint8_t val)
                         output = 3;
         }*/
 	/* Modification by OBattler: Allow for scan code translation. */
-	if ((mode & 0x40) && (val == 0xf0))
+	if ((mode & 0x40) && (val == 0xf0) && !(mode & 0x20))
 	{
 		sc_or = 0x80;
 		return;
 	}
 	/* Skip break code if translated make code has bit 7 set. */
-	if ((mode & 0x40) && (sc_or == 0x80) && (nont_to_t[val] & 0x80))
+	if ((mode & 0x40) && (sc_or == 0x80) && (nont_to_t[val] & 0x80) && !(mode & 0x20))
 	{
 		sc_or = 0;
 		return;
 	}
-        key_queue[key_queue_end] = ((mode & 0x40) ? (nont_to_t[val] | sc_or) : val);
+        key_queue[key_queue_end] = (((mode & 0x40) && !(mode & 0x20)) ? (nont_to_t[val] | sc_or) : val);
         key_queue_end = (key_queue_end + 1) & 0xf;
-        pclog("keyboard_at : %02X added to key queue\n", ((mode & 0x40) ? (nont_to_t[val] | sc_or) : val));
+        pclog("keyboard_at : %02X added to key queue\n", (((mode & 0x40) && !(mode & 0x20)) ? (nont_to_t[val] | sc_or) : val));
 	if (sc_or == 0x80)  sc_or = 0;
         return;
 }
@@ -213,6 +213,12 @@ void keyboard_at_write(uint16_t port, uint8_t val, void *priv)
                         keyboard_at.want60 = 0;
                         switch (keyboard_at.command)
                         {
+                                case 0x40 ... 0x5f:
+				pclog("AMI KBC memory write: mem[%02X] = %02X\n", keyboard_at.command & 0x1f, val);
+                                keyboard_at.mem[keyboard_at.command & 0x1f] = val;
+				if (keyboard_at.command == 0x40)  goto process_60;
+				break;
+
                                 case 0x60: case 0x61: case 0x62: case 0x63:
                                 case 0x64: case 0x65: case 0x66: case 0x67:
                                 case 0x68: case 0x69: case 0x6a: case 0x6b:
@@ -221,23 +227,30 @@ void keyboard_at_write(uint16_t port, uint8_t val, void *priv)
                                 case 0x74: case 0x75: case 0x76: case 0x77:
                                 case 0x78: case 0x79: case 0x7a: case 0x7b:
                                 case 0x7c: case 0x7d: case 0x7e: case 0x7f:
+				pclog("KBC memory write: mem[%02X] = %02X\n", keyboard_at.command & 0x1f, val);
                                 keyboard_at.mem[keyboard_at.command & 0x1f] = val;
                                 if (keyboard_at.command == 0x60)
                                 {
+process_60:
                                         if ((val & 1) && (keyboard_at.status & STAT_OFULL))
                                            keyboard_at.wantirq = 1;
                                         if (!(val & 1) && keyboard_at.wantirq)
                                            keyboard_at.wantirq = 0;
                                         mouse_scan = !(val & 0x20);
 					/* Addition by OBattler: Scan code translate ON/OFF. */
-					mode &= 0xB7;
-					mode |= (val & 8);
+					mode &= 0x93;
+					mode |= (val & 0xC);
 					pclog("Val & 0x20 == %02X\n", val & 0x20);
+					mode |= (val & 0x40);
 					if ((val & 0x20) == 0)
 					{
 						pclog("Bit 5 is turned off\n");
-						mode |= (val & 0x40);
 					}
+					else
+					{
+						pclog("Bit 5 is turned on\n");
+					}
+					// mode |= (val & 0x20);
 					pclog("Mode is now %02X, val %02X\n", mode, val);
                                 }                                           
                                 break;
@@ -405,7 +418,11 @@ void keyboard_at_write(uint16_t port, uint8_t val, void *priv)
                                         case 0xff: /*Reset*/
                                         key_queue_start = key_queue_end = 0; /*Clear key queue*/
                                         keyboard_at_adddata_keyboard(0xfa);
+					/* Set system flag to 1 and scan code set to 2. */
                                         keyboard_at_adddata_keyboard(0xaa);
+					mode |= 4;
+					mode &= 0xFC;
+					mode |= 2;
 					pclog("KBC: Reset\n");
                                         break;
                                         
@@ -434,6 +451,11 @@ void keyboard_at_write(uint16_t port, uint8_t val, void *priv)
                 /*New controller command*/
                 switch (val)
                 {
+			case 0x00 ... 0x1f:
+			pclog("AMI KBC memory read: mem[%02X] = %02X\n", val & 0x1f, keyboard_at.mem[val & 0x1f]);
+                        keyboard_at_adddata(keyboard_at.mem[val & 0x1f]);
+			break;
+
                         case 0x20: case 0x21: case 0x22: case 0x23:
                         case 0x24: case 0x25: case 0x26: case 0x27:
                         case 0x28: case 0x29: case 0x2a: case 0x2b:
@@ -442,6 +464,7 @@ void keyboard_at_write(uint16_t port, uint8_t val, void *priv)
                         case 0x34: case 0x35: case 0x36: case 0x37:
                         case 0x38: case 0x39: case 0x3a: case 0x3b:
                         case 0x3c: case 0x3d: case 0x3e: case 0x3f:
+			pclog("KBC memory read: mem[%02X] = %02X\n", val & 0x1f, keyboard_at.mem[val & 0x1f]);
                         keyboard_at_adddata(keyboard_at.mem[val & 0x1f]);
                         break;
 
@@ -569,6 +592,8 @@ uint8_t keyboard_at_read(uint16_t port, void *priv)
                 
                 case 0x64:
                 temp = keyboard_at.status;
+		temp &= 0xFB;
+		temp |= (mode & 4);
 		if (mode & 8)  temp |= STAT_LOCK;
                 keyboard_at.status &= ~(STAT_RTIMEOUT/* | STAT_TTIMEOUT*/);
                 break;
@@ -579,13 +604,16 @@ uint8_t keyboard_at_read(uint16_t port, void *priv)
 
 void keyboard_at_reset()
 {
-	int q = ((biostype != BIOS_AWARD) && (biostype != BIOS_PHOENIX));
+	// int q = ((biostype != BIOS_AWARD) && (biostype != BIOS_PHOENIX));
 
         keyboard_at.initialised = 0;
         keyboard_at.status = STAT_LOCK | STAT_CD;
-        keyboard_at.mem[0] = q ? 0x11 : 0x51;
-	mode = q ? 0x01 : 0x42;
-	if (biostype == BIOS_PHOENIX)  mode = 0x43;
+        // keyboard_at.mem[0] = q ? 0x11 : 0x51;
+	keyboard_at.mem[0] = 0x11;
+	/* 0 means enable, not 1. */
+        // keyboard_at.mem[0] = q ? 0x01 : 0x41;
+	// mode = q ? 0x01 : 0x42;
+	mode = 0x02;
         keyboard_at.wantirq = 0;
         keyboard_at.output_port = 0;
         keyboard_at.input_port = 0xb0;

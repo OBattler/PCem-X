@@ -292,20 +292,13 @@ void initsectors(int d)
 	int s = 0;
 	int b = 0;
 
-        for (t=0;t<85;t++)
+        for (t=0;t<86;t++)
         {
                 for (h=0;h<2;h++)
                 {
                         for (s=0;s<255;s++)
                         {
-                                for (b=0;b<16384;b++)
-                                {
-					fdd[d].disc[h][t][s][b]=0xF6;
-                                }
-                                for (b=0;b<4;b++)
-                                {
-					fdd[d].scid[h][t][s][b]=255;
-                                }
+				memset(fdd[d].scid[h][t][s], 255, 4);
                         }
                 }
 		fdd[d].spt[t]=0;
@@ -493,9 +486,9 @@ void set_sector_id_2m(int d, int t, int h, int s, int sid, int nb)
 	initialize_sector(d, h, t, s, nb, 0xF6);
 }
 
-void read_raw_sectors(FILE *f, int d, int st, int nt, int sh, int nh, int ss2, int ns, int nb, int si)
+void read_raw_sectors(FILE *f, int d, uint8_t st, uint8_t nt, uint8_t sh, uint8_t nh, uint8_t ss2, uint8_t ns, int nb, uint8_t si)
 {
-	int h,t,t2,s,b;
+	unsigned int h,t,t2,s,b;
 	for (t=st;t<(st+nt);t++)
 	{
 		for (h=sh;h<(sh+nh);h++)
@@ -528,7 +521,7 @@ void read_raw_sectors(FILE *f, int d, int st, int nt, int sh, int nh, int ss2, i
 /* Raw, FDI, PEF without any kind of sector info */
 void read_normal_floppy(FILE *f, int d)
 {
-	int h,t,s,b;
+	unsigned int h,t,s,b;
 
 	if (ISSPECIAL)  fdd[d].TRACKS <<= 1;
 
@@ -542,17 +535,17 @@ void read_normal_floppy(FILE *f, int d)
 			}
 		}
 	}
-	read_raw_sectors(f, d, 0, fdd[d].TRACKS, 0, fdd[d].SIDES, 0, fdd[d].SECTORS, fdd[d].BPSCODE, 1);
 	for (t=0;t<fdd[d].TRACKS;t++)
 	{
 		fdd[d].spt[t] = fdd[d].SECTORS;
 	}
+	read_raw_sectors(f, d, 0, fdd[d].TRACKS, 0, fdd[d].SIDES, 0, fdd[d].spt[0], fdd[d].BPSCODE, 1);
 }
 
 /* PEF with sector states */
 void pef_set_spt(int d)
 {
-	int h,t,s,b;
+	unsigned int h,t,s,b;
 
 	for (t=1;t<fdd[d].TRACKS;t++)
 	{
@@ -563,7 +556,7 @@ void pef_set_spt(int d)
 /* PEF with sector ID's */
 void pef_read_advanced_floppy(FILE *f, int d)
 {
-	int h,t,s,b;
+	unsigned int h,t,s,b;
 
 	for (s = 0; s < 21930; s++)
 	{
@@ -638,7 +631,7 @@ void initialize_xdf_maps()
 
 void read_xdf_track0(FILE *f, int d, int sfat, int se, int sg)
 {
-	int s;
+	unsigned int s;
 
 	pclog("read_xdf_track0(%lu, %lu, %lu)\n", sfat, se, sg);
 
@@ -685,7 +678,7 @@ void read_xdf_track0(FILE *f, int d, int sfat, int se, int sg)
 
 void read_xdf(FILE *f, int d, int xdft)
 {
-	int h,t,t2,s,b,s2,p0,p1;
+	unsigned int h,t,t2,s,b,s2,p0,p1;
 
 	// Track 0
 	read_xdf_track0(f, d, xdf_track0[xdft][0], xdf_track0[xdft][1], xdf_track0[xdft][2]);
@@ -729,7 +722,7 @@ void read_xdf(FILE *f, int d, int xdft)
 
 void read_2m_track0(FILE *f, int d, int sfat, int se, int sg)
 {
-	int s;
+	unsigned int s;
 
 	// Track 0
 	for (s=0;s<sfat;s++)
@@ -768,7 +761,7 @@ void read_2m_track0(FILE *f, int d, int sfat, int se, int sg)
 
 void read_2m(FILE *f, int d, int xdft)
 {
-	int h,t,t2,s,b,s2;
+	unsigned int h,t,t2,s,b,s2;
 
 	// Track 0
 	read_2m_track0(f, d, xdf_track0[xdft][0], xdf_track0[xdft][1], xdf_track0[xdft][2]);
@@ -830,7 +823,7 @@ int guess_geometry(FILE *f, int d)
 			if ((tempdiv % 30) == 0)
 			{
 				fdd[d].TRACKS = 30;
-				fdd[d].SECTORS = fdd[d].TOTAL / (fdd[d].TRACKS * fdd[d].SIDES);
+				fdd[d].SECTORS = (uint8_t) (fdd[d].TOTAL / (fdd[d].TRACKS * fdd[d].SIDES));
 				fdd[d].MID = 0xfc + (fdd[d].SIDES - 1);
 				if (fdd[d].SECTORS == 8)  fdd[d].MID = 0xfe + (fdd[d].SIDES - 1);
 				result = 1;
@@ -838,7 +831,7 @@ int guess_geometry(FILE *f, int d)
 			if ((tempdiv % 35) == 0)
 			{
 				fdd[d].TRACKS = 35;
-				fdd[d].SECTORS = fdd[d].TOTAL / (fdd[d].TRACKS * fdd[d].SIDES);
+				fdd[d].SECTORS = (uint8_t) (fdd[d].TOTAL / (fdd[d].TRACKS * fdd[d].SIDES));
 				fdd[d].MID = 0xfc + (fdd[d].SIDES - 1);
 				if (fdd[d].SECTORS == 8)  fdd[d].MID = 0xfe + (fdd[d].SIDES - 1);
 				result = 1;
@@ -848,7 +841,7 @@ int guess_geometry(FILE *f, int d)
 				if ((tempdiv % 40) == 0)
 				{
 					fdd[d].TRACKS = 40;
-					fdd[d].SECTORS = fdd[d].TOTAL / (fdd[d].TRACKS * fdd[d].SIDES);
+					fdd[d].SECTORS = (uint8_t) (fdd[d].TOTAL / (fdd[d].TRACKS * fdd[d].SIDES));
 					fdd[d].MID = 0xfc + (fdd[d].SIDES - 1);
 					if (fdd[d].SECTORS == 8)  fdd[d].MID = 0xfe + (fdd[d].SIDES - 1);
 					result = 1;
@@ -856,7 +849,7 @@ int guess_geometry(FILE *f, int d)
 				else if ((tempdiv % 41) == 0)
 				{
 					fdd[d].TRACKS = 41;
-					fdd[d].SECTORS = fdd[d].TOTAL / (fdd[d].TRACKS * fdd[d].SIDES);
+					fdd[d].SECTORS = (uint8_t) (fdd[d].TOTAL / (fdd[d].TRACKS * fdd[d].SIDES));
 					fdd[d].MID = 0xfc + (fdd[d].SIDES - 1);
 					if (fdd[d].SECTORS == 8)  fdd[d].MID = 0xfe + (fdd[d].SIDES - 1);
 					result = 1;
@@ -864,7 +857,7 @@ int guess_geometry(FILE *f, int d)
 				else if ((tempdiv % 42) == 0)
 				{
 					fdd[d].TRACKS = 42;
-					fdd[d].SECTORS = fdd[d].TOTAL / (fdd[d].TRACKS * fdd[d].SIDES);
+					fdd[d].SECTORS = (uint8_t) (fdd[d].TOTAL / (fdd[d].TRACKS * fdd[d].SIDES));
 					fdd[d].MID = 0xfc + (fdd[d].SIDES - 1);
 					if (fdd[d].SECTORS == 8)  fdd[d].MID = 0xfe + (fdd[d].SIDES - 1);
 					result = 1;
@@ -882,7 +875,7 @@ int guess_geometry(FILE *f, int d)
 			if ((tempdiv % 80) == 0)
 			{
 				fdd[d].TRACKS = 80;
-				fdd[d].SECTORS = fdd[d].TOTAL / (fdd[d].TRACKS * fdd[d].SIDES);
+				fdd[d].SECTORS = (uint8_t) (fdd[d].TOTAL / (fdd[d].TRACKS * fdd[d].SIDES));
 				fdd[d].MID = 0xf0;
 				if (fdd[d].SECTORS <= 15)  fdd[d].MID = 0xf9;
 				result = 1;
@@ -890,21 +883,21 @@ int guess_geometry(FILE *f, int d)
 			else if ((tempdiv % 60) == 0)
 			{
 				fdd[d].TRACKS = 60;
-				fdd[d].SECTORS = fdd[d].TOTAL / (fdd[d].TRACKS * fdd[d].SIDES);
+				fdd[d].SECTORS = (uint8_t) (fdd[d].TOTAL / (fdd[d].TRACKS * fdd[d].SIDES));
 				fdd[d].MID = 0xfe;
 				result = 1;
 			}
 			else if ((tempdiv % 70) == 0)
 			{
 				fdd[d].TRACKS = 70;
-				fdd[d].SECTORS = fdd[d].TOTAL / (fdd[d].TRACKS * fdd[d].SIDES);
+				fdd[d].SECTORS = (uint8_t) (fdd[d].TOTAL / (fdd[d].TRACKS * fdd[d].SIDES));
 				fdd[d].MID = 0xfe;
 				result = 1;
 			}
 			else if ((tempdiv % 77) == 0)
 			{
 				fdd[d].TRACKS = 77;
-				fdd[d].SECTORS = fdd[d].TOTAL / (fdd[d].TRACKS * fdd[d].SIDES);
+				fdd[d].SECTORS = (uint8_t) (fdd[d].TOTAL / (fdd[d].TRACKS * fdd[d].SIDES));
 				fdd[d].MID = 0xfe;
 				result = 1;
 			}
@@ -913,7 +906,7 @@ int guess_geometry(FILE *f, int d)
 				if ((tempdiv % 81) == 0)
 				{
 					fdd[d].TRACKS = 81;
-					fdd[d].SECTORS = fdd[d].TOTAL / (fdd[d].TRACKS * fdd[d].SIDES);
+					fdd[d].SECTORS = (uint8_t) (fdd[d].TOTAL / (fdd[d].TRACKS * fdd[d].SIDES));
 					fdd[d].MID = 0xf0;
 					if (fdd[d].SECTORS <= 15)  fdd[d].MID = 0xf9;
 					result = 1;
@@ -921,7 +914,7 @@ int guess_geometry(FILE *f, int d)
 				else if ((tempdiv % 82) == 0)
 				{
 					fdd[d].TRACKS = 82;
-					fdd[d].SECTORS = fdd[d].TOTAL / (fdd[d].TRACKS * fdd[d].SIDES);
+					fdd[d].SECTORS = (uint8_t) (fdd[d].TOTAL / (fdd[d].TRACKS * fdd[d].SIDES));
 					fdd[d].MID = 0xf0;
 					if (fdd[d].SECTORS <= 15)  fdd[d].MID = 0xf9;
 					result = 1;
@@ -929,7 +922,7 @@ int guess_geometry(FILE *f, int d)
 				else if ((tempdiv % 83) == 0)
 				{
 					fdd[d].TRACKS = 83;
-					fdd[d].SECTORS = fdd[d].TOTAL / (fdd[d].TRACKS * fdd[d].SIDES);
+					fdd[d].SECTORS = (uint8_t) (fdd[d].TOTAL / (fdd[d].TRACKS * fdd[d].SIDES));
 					fdd[d].MID = 0xf0;
 					if (fdd[d].SECTORS <= 15)  fdd[d].MID = 0xf9;
 					result = 1;
@@ -937,7 +930,7 @@ int guess_geometry(FILE *f, int d)
 				else if ((tempdiv % 84) == 0)
 				{
 					fdd[d].TRACKS = 84;
-					fdd[d].SECTORS = fdd[d].TOTAL / (fdd[d].TRACKS * fdd[d].SIDES);
+					fdd[d].SECTORS = (uint8_t) (fdd[d].TOTAL / (fdd[d].TRACKS * fdd[d].SIDES));
 					fdd[d].MID = 0xf0;
 					if (fdd[d].SECTORS <= 15)  fdd[d].MID = 0xf9;
 					result = 1;
@@ -946,7 +939,7 @@ int guess_geometry(FILE *f, int d)
 				else if ((tempdiv % 85) == 0)
 				{
 					fdd[d].TRACKS = 85;
-					fdd[d].SECTORS = fdd[d].TOTAL / (fdd[d].TRACKS * fdd[d].SIDES);
+					fdd[d].SECTORS = (uint8_t) (fdd[d].TOTAL / (fdd[d].TRACKS * fdd[d].SIDES));
 					fdd[d].MID = 0xf0;
 					if (fdd[d].SECTORS <= 15)  fdd[d].MID = 0xf9;
 					result = 1;
@@ -954,7 +947,7 @@ int guess_geometry(FILE *f, int d)
 				else if ((tempdiv % 86) == 0)
 				{
 					fdd[d].TRACKS = 86;
-					fdd[d].SECTORS = fdd[d].TOTAL / (fdd[d].TRACKS * fdd[d].SIDES);
+					fdd[d].SECTORS = (uint8_t) (fdd[d].TOTAL / (fdd[d].TRACKS * fdd[d].SIDES));
 					fdd[d].MID = 0xf0;
 					if (fdd[d].SECTORS <= 15)  fdd[d].MID = 0xf9;
 					result = 1;
@@ -1234,7 +1227,7 @@ void fdi_set_info(FILE *f, int d)
 
 	fdd[d].SIDES = fdd[d].fh.sides;
 	fdd[d].TRACKS = fdd[d].fh.tracks;
-	fdd[d].SECTORS = fdd[d].fh.spt;
+	fdd[d].SECTORS = (uint8_t) fdd[d].fh.spt;
 	fdd[d].TOTAL = fdd[d].fh.rawsize;
 	fdd[d].BPS = fdd[d].fh.bps;
 	fdd[d].TOTAL /= fdd[d].BPS;
@@ -1268,9 +1261,9 @@ int raw_set_info(FILE *f, int d)
 	fseek(f,0x15,SEEK_SET);
 	fdd[d].MID = fgetc(f);
 	fseek(f,0x18,SEEK_SET);
-	fread(&(fdd[d].SECTORS), 1, 2, f);
+	fread(&(fdd[d].SECTORS), 1, 1, f);
 	fseek(f,0x1A,SEEK_SET);
-	fread(&(fdd[d].SIDES), 1, 2, f);
+	fread(&(fdd[d].SIDES), 1, 1, f);
 	fseek(f,0x26,SEEK_SET);
 	if ((fdd[d].SIDES < 1) || (fdd[d].SIDES > 2) || (fdd[d].BPS < 128) || (fdd[d].BPS > 2048))
 	{
@@ -1280,7 +1273,7 @@ int raw_set_info(FILE *f, int d)
 	}
 	else
 	{
-		fdd[d].TRACKS = fdd[d].TOTAL / (fdd[d].SECTORS * fdd[d].SIDES);
+		fdd[d].TRACKS = (uint8_t) (fdd[d].TOTAL / (fdd[d].SECTORS * fdd[d].SIDES));
 		gg = 1;
 	}
 	set_class_and_xdf(d);
@@ -1457,11 +1450,11 @@ void read_raw_or_fdi(FILE *f, int d)
 
 void clear_sector_states(int d)
 {
-	int h,t,s,b;
+	unsigned int h,t,s,b;
 
 	for (h = 0; h < 2; h++)
 	{
-		for (t = 0; t < 85; t++)
+		for (t = 0; t < 86; t++)
 		{
 			for (s = 0; s < 255; s++)
 			{
@@ -1472,10 +1465,7 @@ void clear_sector_states(int d)
 
 	for (s = 0; s < 21930; s++)
 	{
-		for (b = 0; b < 4; b++)
-		{
-			fdd[d].sequential_sectors_index[s][b] = 255;
-		}
+		memset(fdd[d].sequential_sectors_index[s], 255, 4);
 	}
 }
 
@@ -1592,6 +1582,11 @@ drive_disabled:
 			fdi_read_header(f, d);
 			fdi_set_info(f, d);
 			fseek(f, fdd[d].RAWOFFS, SEEK_SET);
+			if (fdd[d].SECTORS == 0)
+			{
+				pclog("No sectors, aborting\n");
+				goto drive_disabled;
+			}
 			read_raw_or_fdi(f, d);
 			fdd[d].WP = 0;
 			break;
@@ -1610,6 +1605,11 @@ drive_disabled:
 			}
 			if (fdd[d].IDTYPE == 1)
 			{
+				if (fdd[d].SECTORS == 0)
+				{
+					pclog("No sectors, aborting\n");
+					goto drive_disabled;
+				}
 				read_raw_or_fdi(f, d);
 				pef_set_spt(d);
 			}
@@ -1624,6 +1624,11 @@ drive_disabled:
 			{
 				fclose(f);
 				goto fli_on_error;
+			}
+			if (fdd[d].SECTORS == 0)
+			{
+				pclog("No sectors, aborting\n");
+				goto drive_disabled;
 			}
 			read_raw_or_fdi(f, d);
 			if (!fdd[d].XDF)  fdd[d].WP = 0;
@@ -1646,7 +1651,7 @@ drive_disabled:
 	fdc.gotdata[vfdd[d]] = 0;
 }
 
-#define COLORBOOK_CASE	((d == 1) && (romset == ROM_COLORBOOK))
+#define COLORBOOK_CASE	((d == 1) && ((romset == ROM_COLORBOOK) || !drv2en))
 #define NO_DRIVE	(COLORBOOK_CASE || !fdd[d].floppy_drive_enabled)
 
 void fdd_seek(int d, uint8_t n, uint8_t dir)

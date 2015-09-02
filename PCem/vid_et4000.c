@@ -61,7 +61,7 @@ void et4000_out(uint16_t addr, uint8_t val, void *p)
                 svga->crtcreg = val & 0x3f;
                 return;
                 case 0x3D5:
-		pclog("ET4000 Write: CRTC %02X = %02X\n", svga->crtcreg, val);
+		// pclog("ET4000 Write: CRTC %02X = %02X\n", svga->crtcreg, val);
                 if ((svga->crtcreg < 7) && (svga->crtc[0x11] & 0x80))
                         return;
                 if ((svga->crtcreg == 7) && (svga->crtc[0x11] & 0x80))
@@ -148,7 +148,7 @@ void et4000_recalctimings(svga_t *svga)
 	/* 40 * 8 = 320
 	   40 * 16 = 640 */
 
-	pclog("ET4000: svga->hdisp is %u\n", svga->hdisp);	
+	// pclog("ET4000: svga->hdisp is %u\n", svga->hdisp);	
 	if ((svga->hdisp == 640) && (svga->bpp == 4))
 	{
 		svga->vrammask = 0x3ffff;

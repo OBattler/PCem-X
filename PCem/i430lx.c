@@ -1,6 +1,7 @@
 #include <string.h>
 
 #include "ibm.h"
+#include "cpu.h"
 #include "mem.h"
 #include "pci.h"
 
@@ -124,17 +125,39 @@ void i430lx_init()
         
         memset(card_i430lx, 0, 256);
         card_i430lx[0x00] = 0x86; card_i430lx[0x01] = 0x80; /*Intel*/
-        card_i430lx[0x02] = 0xa3; card_i430lx[0x03] = 0x04; /*82434LX*/
+        card_i430lx[0x02] = 0xa3; card_i430lx[0x03] = 0x04; /*82434LX/NX*/
         card_i430lx[0x04] = 0x06; card_i430lx[0x05] = 0x00;
         card_i430lx[0x06] = 0x00; card_i430lx[0x07] = 0x02;
-        card_i430lx[0x08] = 0x03; /*A3 stepping*/
+	if ((romset == ROM_PLATO) || (romset == ROM_430NX))
+	        card_i430lx[0x08] = 0x10; /*A0 stepping (82434NX) */
+	else
+	        card_i430lx[0x08] = 0x03; /*A3 stepping (82434LX) */
         card_i430lx[0x09] = 0x00; card_i430lx[0x0a] = 0x00; card_i430lx[0x0b] = 0x06;
-        card_i430lx[0x50] = 0x80;
-        card_i430lx[0x52] = 0x40; /*256kb PLB cache*/
+	if ((romset == ROM_PLATO) || (romset == ROM_430NX))
+	{
+	        card_i430lx[0x50] = 0xA0;
+
+		if (cpu_busspeed <= 61000000)
+			card_i430lx[0x50] |= ((cpu_busspeed <= 51000000) ? 1 : 2);
+		else
+			card_i430lx[0x50] |= 3;
+	}
+	else
+	{
+	        card_i430lx[0x50] = 0x80;
+		card_i430lx[0x50] |= ((cpu_busspeed <= 61000000) ? 0 : 1);
+	}
+
+	if ((romset == ROM_PLATO) || (romset == ROM_430NX))
+		card_i430lx[0x52] = 0x44; /*256kb PLB cache*/
+	else
+	        card_i430lx[0x52] = 0x40; /*256kb PLB cache*/
 //        card_i430lx[0x53] = 0x14;
 //        card_i430lx[0x56] = 0x52; /*DRAM control*/
         card_i430lx[0x57] = 0x31;
-        card_i430lx[0x60] = card_i430lx[0x61] = card_i430lx[0x62] = card_i430lx[0x63] = card_i430lx[0x64] = 0x02;
+        card_i430lx[0x60] = card_i430lx[0x61] = card_i430lx[0x62] = card_i430lx[0x63] = card_i430lx[0x64] = card_i430lx[0x65] = 0x02;
+	if ((romset == ROM_PLATO) || (romset == ROM_430NX))
+		card_i430lx[0x66] = card_i430lx[0x67] = 0x02;
 //        card_i430lx[0x67] = 0x11;
 //        card_i430lx[0x69] = 0x03;
 //        card_i430lx[0x70] = 0x20;

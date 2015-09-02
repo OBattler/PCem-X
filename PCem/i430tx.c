@@ -121,6 +121,4 @@ void i430tx_init()
         card_i430tx[0x69] = 0x03;
         card_i430tx[0x70] = 0x20;
         card_i430tx[0x72] = 0x02;
-        card_i430tx[0x74] = 0x0e;
-        card_i430tx[0x78] = 0x23;
 }

@@ -30,7 +30,7 @@ static char *fn;
 static uint8_t flash_read(uint32_t addr, void *p)
 {
         flash_t *flash = (flash_t *)p;
-//        pclog("flash_read : addr=%08x command=%02x %04x:%08x\n", addr, flash->command, CS, pc);
+        // pclog("flash_read : addr=%08x command=%02x %04x:%08x\n", addr, flash->command, CS, pc);
         switch (flash->command)
         {
                 case CMD_IID:
@@ -46,14 +46,14 @@ static uint8_t flash_read(uint32_t addr, void *p)
 static void flash_write(uint32_t addr, uint8_t val, void *p)
 {
         flash_t *flash = (flash_t *)p;
-	int q = ((romset == ROM_REVENGE) || (romset == ROM_ENDEAVOR));
-//        pclog("flash_write : addr=%08x val=%02x command=%02x %04x:%08x\n", addr, val, flash->command, CS, pc);        
+	int q = ((romset == ROM_REVENGE) || (romset == ROM_PLATO) || (romset == ROM_ENDEAVOR));
+        // pclog("flash_write : addr=%08x val=%02x command=%02x %04x:%08x\n", addr, val, flash->command, CS, pc);        
         switch (flash->command)
         {
                 case CMD_ERASE_SETUP:
                 if (val == CMD_ERASE_CONFIRM)
                 {
-//                        pclog("flash_write: erase %05x\n", addr & 0x1ffff);
+                        // pclog("flash_write: erase %05x\n", addr & 0x1ffff);
 			if (q)
 			{
 	                        if ((addr & 0x1f000) == 0x0d000)
@@ -85,8 +85,9 @@ static void flash_write(uint32_t addr, uint8_t val, void *p)
                 
                 case CMD_PROGRAM_SETUP:
                 case CMD_PROGRAM_ALT_SETUP:
-//                pclog("flash_write: program %05x %02x\n", addr & 0x1ffff, val);
-                if ((addr & 0x1e000) != 0x0e000)
+                // pclog("flash_write: program %05x %02x\n", addr & 0x1ffff, val);
+                // if ((addr & 0x1e000) != 0x0e000)
+                if ((addr & 0x1f000) == (q ? 0xd000 : 0x1d000))
                         rom[addr & 0x1ffff] = val;
                 flash->command = CMD_READ_STATUS;
                 flash->status = 0x80;
@@ -150,18 +151,33 @@ static void flash_write(uint32_t addr, uint8_t val, void *p)
         }
 }
 
-void configure_path()
+static void configure_path()
 {
 	switch(romset)
 	{
 		case ROM_REVENGE:
 			path = "roms/revenge/";
 			break;
+		case ROM_430LX:
+			path = "roms/430lx/";
+			break;
+		case ROM_PLATO:
+			path = "roms/plato/";
+			break;
+		case ROM_430NX:
+			path = "roms/430nx/";
+			break;
 		case ROM_ENDEAVOR:
 			path = "roms/endeavor/";
 			break;
 		case ROM_430FX:
 			path = "roms/430fx/";
+			break;
+		case ROM_430HX:
+			path = "roms/430hx/";
+			break;
+		case ROM_ACERV35N:
+			path = "roms/acerv35n/";
 			break;
 		case ROM_430VX:
 			path = "roms/430vx/";
@@ -184,7 +200,7 @@ void configure_path()
 void flash_1mbit_readfiles()
 {
         FILE *f;
-	int q = ((romset == ROM_REVENGE) || (romset == ROM_ENDEAVOR));
+	int q = ((romset == ROM_REVENGE) || (romset == ROM_PLATO) || (romset == ROM_ENDEAVOR));
 
         memset(&rom[q ? 0xd000 : 0x1d000], 0xFF, 0x1000);
 
@@ -212,7 +228,8 @@ void *intel_flash_init()
 {
         FILE *f;
         flash_t *flash = malloc(sizeof(flash_t));
-	int q = ((romset == ROM_REVENGE) || (romset == ROM_ENDEAVOR));
+	int q = ((romset == ROM_REVENGE) || (romset == ROM_PLATO) || (romset == ROM_ENDEAVOR));
+	int r = ((romset == ROM_430HX) || (romset == ROM_ACERV35N));
         memset(flash, 0, sizeof(flash_t));
 
 	/* if (romset == ROM_440BX)
@@ -237,7 +254,7 @@ void *intel_flash_init()
                     NULL, NULL, NULL,
                	    NULL, MEM_MAPPING_EXTERNAL, (void *)flash);
         mem_mapping_add(&flash->write_mapping,
-                    0xe0000, 
+                    r ? 0xc0000 : 0xe0000, 
        	            0x20000,
        	            NULL, NULL, NULL,
                     flash_write, NULL, NULL,
@@ -274,7 +291,7 @@ void intel_flash_close(void *p)
 {
         FILE *f;
         flash_t *flash = (flash_t *)p;
-	int q = ((romset == ROM_REVENGE) || (romset == ROM_ENDEAVOR));
+	int q = ((romset == ROM_REVENGE) || (romset == ROM_PLATO) || (romset == ROM_ENDEAVOR));
 
 	configure_path();
 	fn = (char *) malloc(255);

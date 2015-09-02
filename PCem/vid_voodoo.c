@@ -3855,12 +3855,12 @@ static void voodoo_recalcmapping(voodoo_t *voodoo)
 {
         if (voodoo->pci_enable && voodoo->memBaseAddr)
         {
-                pclog("voodoo_recalcmapping : memBaseAddr %08X\n", voodoo->memBaseAddr);
+                // pclog("voodoo_recalcmapping : memBaseAddr %08X\n", voodoo->memBaseAddr);
                 mem_mapping_set_addr(&voodoo->mapping, voodoo->memBaseAddr, 0x01000000);
         }
         else
         {
-                pclog("voodoo_recalcmapping : disabled\n");
+                // pclog("voodoo_recalcmapping : disabled\n");
                 mem_mapping_disable(&voodoo->mapping);
         }
 }
@@ -3869,7 +3869,7 @@ uint8_t voodoo_pci_read(int func, int addr, void *p)
 {
         voodoo_t *voodoo = (voodoo_t *)p;
 
-        pclog("Voodoo PCI read %08X\n", addr);
+        // pclog("Voodoo PCI read %08X\n", addr);
         switch (addr)
         {
                 case 0x00: return 0x1a; /*3dfx*/
@@ -3897,7 +3897,7 @@ void voodoo_pci_write(int func, int addr, uint8_t val, void *p)
 {
         voodoo_t *voodoo = (voodoo_t *)p;
         
-        pclog("Voodoo PCI write %04X %02X\n", addr, val);
+        // pclog("Voodoo PCI write %04X %02X\n", addr, val);
         switch (addr)
         {
                 case 0x04:

@@ -103,7 +103,7 @@ void svga_out(uint16_t addr, uint8_t val, void *p)
                 switch (svga->seqaddr & 0xf)
                 {
 			case 0:
-			pclog("Sequencer register 0 being set to %02X, old %02X\n", val, o);
+			// pclog("Sequencer register 0 being set to %02X, old %02X\n", val, o);
 			break;
                         case 1:
                         if (svga->scrblank && !(val & 0x20))
@@ -184,7 +184,7 @@ void svga_out(uint16_t addr, uint8_t val, void *p)
 			svga->chain2 = val & 2;
                         if ((svga->gdcreg[6] & 0xc) != (val & 0xc))
                         {
-                                pclog("Write mapping %02X\n", val);
+                                // pclog("Write mapping %02X\n", val);
                                 switch (val&0xC)
                                 {
                                         case 0x0: /*128k at A0000*/

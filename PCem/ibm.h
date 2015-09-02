@@ -341,12 +341,22 @@ enum
 	ROM_DTK386,
 	ROM_PXXT,
 	ROM_JUKOPC,
+	ROM_AMSYS,
+	ROM_KAYPROXT,
 	ROM_PX486,
 	ROM_430TX,
 	ROM_440FX,
 	ROM_440BX,
 	ROM_VPC2007,
 	ROM_PXSIS471,
+        ROM_430LX,
+	ROM_430NX,
+        ROM_430HX,
+        ROM_CPQ430HX,
+	ROM_ACERV35N,
+	ROM_SISP2,
+	ROM_GOLIATH,
+	ROM_PLATO,
         
         ROM_MAX
 };
@@ -475,7 +485,7 @@ void setsbclock(float clock);
 
 int sbtype;
 
-int clocks[3][28][4];
+int clocks[3][34][4];
 int at70hz;
 
 char pcempath[512];
@@ -530,6 +540,8 @@ extern int infocus;
 void onesec();
 
 void resetpc_cad();
+void ctrl_alt_esc();
+void simple_del();
 
 extern int machine_class;
 
@@ -566,10 +578,15 @@ extern int gfxpciid;
 extern int enable_dynarec;
 
 #define BIOS_NONE	0
-#define BIOS_AWARD	1
-#define BIOS_AMI	2
-#define BIOS_PHOENIX	3
-#define BIOS_OTHER	4
+#define BIOS_IBM	1
+#define BIOS_AMSTRAD	2
+#define BIOS_QUADTEL	3
+#define BIOS_AWARD	4
+#define BIOS_AMI	5
+#define BIOS_PHOENIX	6
+#define BIOS_ACER	7
+#define BIOS_COMPAQ	8
+#define BIOS_OTHER	9
 
 extern int biostype;
 
@@ -582,3 +599,5 @@ extern uint32_t esp_msr;
 extern uint32_t eip_msr;
 
 #define FPU_CW_Reserved_Bits (0xe0c0)
+
+extern int piix_type;

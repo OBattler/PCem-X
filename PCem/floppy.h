@@ -318,7 +318,7 @@ void ejectdisc(int d);
 void set_sector_id(int d, int t, int h, int s, int sid, int nb);
 void set_sector_id_nh(int d, int t, int h, int s, int sid, int nb);
 void set_sector_id_2m(int d, int t, int h, int s, int sid, int nb);
-void read_raw_sectors(FILE *f, int d, int st, int nt, int sh, int nh, int ss2, int ns, int nb, int si);
+void read_raw_sectors(FILE *f, int d, uint8_t st, uint8_t nt, uint8_t sh, uint8_t nh, uint8_t ss2, uint8_t ns, int nb, uint8_t si);
 
 void read_normal_floppy(FILE *f, int d);
 void pef_set_spt(int d);
@@ -365,11 +365,11 @@ typedef struct FDD
 {
 	uint64_t FDIDATA;
 	uint8_t MID;
-	int TRACKS;
-	int SECTORS;
-	int SIDES;
-	int BPS;
-	int BPSCODE;
+	uint8_t TRACKS;
+	uint8_t SECTORS;
+	uint8_t SIDES;
+	uint16_t BPS;
+	uint8_t BPSCODE;
 	char MAGIC;
 	int WP;
 	int HSIZE;
@@ -397,7 +397,7 @@ typedef struct FDD
 	uint8_t trackparams[2][86][4];
 	// Sector ID fields
 	uint8_t scid[2][86][255][5];
-	uint8_t spt[85];
+	uint8_t spt[86];
 	// Sector states
 	uint8_t sstat[2][86][255];
 	uint8_t track;

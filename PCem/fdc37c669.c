@@ -130,7 +130,8 @@ void fdc37c669_write(uint16_t port, uint8_t val, void *priv)
 		if (fdc37c669_locked)
 		{
 			if ((fdc37c669_curreg < 0x18) && (fdc37c669_rw_locked))  return;
-			if ((fdc37c669_curreg >= 0x26) && (fdc37c669_curreg <= 0x29))  return;
+			if ((fdc37c669_curreg >= 0x26) && (fdc37c669_curreg <= 0x27))  return;
+			if (fdc37c669_curreg == 0x29)  return;
 			valxor = val ^ fdc37c669_regs[fdc37c669_curreg];
 			fdc37c669_regs[fdc37c669_curreg] = val;
 			goto process_value;
@@ -220,6 +221,18 @@ process_value:
 			if (valxor & 0xfe)
 			{
 				if (fdc37c669_regs[2] & 0x80)  serial2_set(make_port(0x25), fdc37c669_regs[0x28] & 0xF);
+			}
+			break;
+		case 0x28:
+			if (valxor & 0xf)
+			{
+				if (fdc37c669_regs[0x28] & 0xf == 0)  fdc37c669_regs[0x28] |= 0x3;
+				if (fdc37c669_regs[2] & 0x80)  serial2_set(make_port(0x25), fdc37c669_regs[0x28] & 0xF);
+			}
+			if (valxor & 0xf0)
+			{
+				if (fdc37c669_regs[0x28] & 0xf0 == 0)  fdc37c669_regs[0x28] |= 0x40;
+				if (fdc37c669_regs[2] & 8)  serial1_set(make_port(0x24), (fdc37c669_regs[0x28] & 0xF0) >> 8);
 			}
 			break;
 	}

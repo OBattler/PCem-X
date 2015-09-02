@@ -25,9 +25,15 @@ extern int discint;
 extern int densel_polarity;
 extern int densel_polarity_mid[2];
 extern int densel_force;
+extern int rwc_force[2];
+extern int en3mode;
+extern int diswr;
+extern int swwp;
+extern int drv2en;
 extern int drt[2];
 extern int fdc_os2;
 extern int drive_swap;
+extern int boot_drive;
 
 void configure_drt();
 void fdc_setswap(int val);

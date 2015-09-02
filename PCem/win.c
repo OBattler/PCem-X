@@ -227,6 +227,10 @@ void mainthread(LPVOID param)
                 {
                         leave_fullscreen_flag = 0;
                         SendMessage(ghwnd, WM_LEAVEFULLSCREEN, 0, 0);
+			if (video_fullscreen && infocus)
+			{
+				SetCursorPos(9999, 9999);
+			}
                 }
         }
 }
@@ -828,6 +832,18 @@ LRESULT CALLBACK WindowProcedure (HWND hwnd, UINT message, WPARAM wParam, LPARAM
                         resetpc_cad();
                         pause=0;
                         break;
+                        case IDM_FILE_CAE:
+                        pause=1;
+                        Sleep(100);
+                        ctrl_alt_esc();
+                        pause=0;
+                        break;
+                        case IDM_FILE_DEL:
+                        pause=1;
+                        Sleep(100);
+                        simple_del();
+                        pause=0;
+                        break;
                         case IDM_FILE_EXIT:
 			fflush(pclogf);
 			free(rtlog);
@@ -1100,7 +1116,10 @@ LRESULT CALLBACK WindowProcedure (HWND hwnd, UINT message, WPARAM wParam, LPARAM
                         pcclip.bottom -= GetSystemMetrics(SM_CXFIXEDFRAME) + 10;
                         ClipCursor(&pcclip);
                         mousecapture = 1;
-                        ShowCursor(FALSE);
+                        while (1)
+			{
+				if (ShowCursor(FALSE) < 0)  break;
+			}
                 }
                 break;
 

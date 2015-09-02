@@ -413,6 +413,7 @@ void keyboard_process()
 				scancodes = scancode_set3;
 				break;
 		}
+		if (mode & 0x20)  scancodes = scancode_set1;
 	}
 	else
 	{

@@ -23,6 +23,9 @@
 #include "codegen.h"
 #endif
 #include "intel_flash.h"
+#ifdef BROKEN_CHIPSETS
+#include "intel_flash_2mbit.h"
+#endif
 
 page_t *pages;
 page_t **page_lookup;
@@ -146,6 +149,7 @@ int loadbios()
                 fclose(f);
                 mem_load_xtide_bios();
                 // loadfont("roms/pc1512/40078.ic127", 2);
+		biostype = BIOS_AMSTRAD;
                 return 1;
                 case ROM_PC1640:
                 f=romfopen("roms/pc1640/40044.v3","rb");
@@ -162,6 +166,7 @@ int loadbios()
                 if (!f) break;
                 fclose(f);
                 mem_load_xtide_bios();
+		biostype = BIOS_AMSTRAD;
                 return 1;
                 case ROM_PC200:
                 f=romfopen("roms/pc200/pc20v2.1","rb");
@@ -176,6 +181,7 @@ int loadbios()
                 fclose(f);
                 mem_load_xtide_bios();
                 // loadfont("roms/pc200/40109.bin", 1);
+		biostype = BIOS_OTHER;
                 return 1;
                 case ROM_TANDY:
                 f=romfopen("roms/tandy/tandy1t1.020","rb");
@@ -183,6 +189,7 @@ int loadbios()
                 fread(rom,65536,1,f);
                 fclose(f);
                 mem_load_xtide_bios();
+		biostype = BIOS_OTHER;
                 return 1;
 /*                case ROM_IBMPCJR:
                 f=fopen("pcjr/bios.rom","rb");
@@ -213,6 +220,7 @@ int loadbios()
                         mem_load_xtide_bios();
                         return 1;
                 }
+		biostype = BIOS_IBM;
                 break;
                 
                 case ROM_IBMPCJR:
@@ -220,6 +228,7 @@ int loadbios()
                 if (!f) break;
                 fread(rom, 0x10000, 1, f);
                 fclose(f);
+		biostype = BIOS_IBM;
                 return 1;
                 
                 case ROM_GENXT:
@@ -228,6 +237,7 @@ int loadbios()
                 fread(rom+0xE000,8192,1,f);
                 fclose(f);
                 mem_load_xtide_bios();
+		biostype = BIOS_OTHER;
                 return 1;
                 case ROM_DTKXT:
                 f=romfopen("roms/dtk/DTK_ERSO_2.42_2764.bin","rb");
@@ -235,6 +245,7 @@ int loadbios()
                 fread(rom+0xE000,8192,1,f);
                 fclose(f);
                 mem_load_xtide_bios();
+		biostype = BIOS_OTHER;
                 return 1;
                 case ROM_OLIM24:
                 f  = romfopen("roms/olivetti_m24/olivetti_m24_version_1.43_low.bin" ,"rb");
@@ -248,6 +259,7 @@ int loadbios()
                 fclose(ff);
                 fclose(f);
                 mem_load_xtide_bios();
+		biostype = BIOS_OTHER;
                 return 1;
                         
                 case ROM_PC2086:
@@ -268,6 +280,7 @@ int loadbios()
                 fclose(f);
                 mem_load_xtide_bios();
                 biosmask = 0x3fff;
+		biostype = BIOS_AMSTRAD;
                 return 1;
 
                 case ROM_PC3086:
@@ -280,6 +293,7 @@ int loadbios()
                 fclose(f);
                 mem_load_xtide_bios();
                 biosmask = 0x3fff;                
+		biostype = BIOS_AMSTRAD;
                 return 1;
 
                 case ROM_IBMAT:
@@ -300,6 +314,7 @@ int loadbios()
                 fclose(ff);
                 fclose(f);
                 mem_load_atide_bios();
+		biostype = BIOS_IBM;
                 return 1;
                 case ROM_CMDPC30:
                 f  = romfopen("roms/cmdpc30/commodore pc 30 iii even.bin", "rb");
@@ -314,6 +329,7 @@ int loadbios()
                 fclose(f);
                 biosmask = 0x7fff;
                 mem_load_atide_bios();
+		biostype = BIOS_OTHER;
                 return 1;
                 case ROM_DELL200:
                 f=romfopen("roms/dells200/dell0.bin","rb");
@@ -326,6 +342,7 @@ int loadbios()
                 }
                 fclose(ff);
                 fclose(f);
+		biostype = BIOS_OTHER;
                 return 1;
 
 		case ROM_IBMPS1_2011:
@@ -352,6 +369,7 @@ int loadbios()
 //#endif
                 biosmask = 0x1ffff;
 		if (ps1xtide)  mem_load_atide_ps1_bios();
+		biostype = BIOS_IBM;
                 return 1;
 
 /*                case ROM_IBMAT386:
@@ -359,6 +377,7 @@ int loadbios()
                 if (!f) break;
                 fread(rom,65536,1,f);
                 fclose(f);
+		biostype = BIOS_IBM;
                 return 1;*/
 
                 case ROM_AMI386: /*This uses the OPTi 82C495 chipset*/
@@ -383,6 +402,7 @@ int loadbios()
                 fclose(f);
                 biosmask = 0x7fff;
                 mem_load_atide_bios();
+		biostype = BIOS_COMPAQ;
                 return 1;
 
                 case ROM_ACER386:
@@ -395,6 +415,7 @@ int loadbios()
                 f=romfopen("roms/acer386/oti067.bin","rb");
                 if (!f) break;
                 fclose(f);
+		biostype = BIOS_AMI;
                 return 1;
 
                 case ROM_AMI286:
@@ -453,6 +474,7 @@ int loadbios()
                 }
                 fclose(ff);
                 fclose(f);
+		biostype = BIOS_QUADTEL;
                 return 1;
                         
                 case ROM_AMI486:
@@ -533,6 +555,28 @@ int loadbios()
 		biostype = BIOS_AWARD;
                 return 1;
                 
+                case ROM_430LX:
+                f = romfopen("roms/430lx/IS.34", "rb");	/* Works */
+                if (!f) break;
+                fread(rom,           0x20000, 1, f);                
+                fclose(f);
+                biosmask = 0x1ffff;
+                //is486=1;
+		biostype = BIOS_AWARD;
+		flash_1mbit_readfiles();
+                return 1;
+
+                case ROM_430NX:
+                f = romfopen("roms/430nx/IP.20", "rb");	/* Works */
+                if (!f) break;
+                fread(rom,           0x20000, 1, f);                
+                fclose(f);
+                biosmask = 0x1ffff;
+                //is486=1;
+		biostype = BIOS_AWARD;
+		flash_1mbit_readfiles();
+                return 1;
+
                 case ROM_430FX:
                 f = romfopen("roms/430fx/031396S.BIN", "rb");	/* Works */
 		// f = romfopen("roms/430fx/P54CE_FX.bin", "rb");	/* Does NOT work */
@@ -544,8 +588,31 @@ int loadbios()
                 fclose(f);
                 biosmask = 0x1ffff;
                 //is486=1;
-		flash_1mbit_readfiles();
 		biostype = BIOS_AWARD;
+		flash_1mbit_readfiles();
+                return 1;
+
+                case ROM_430HX:
+		// f = romfopen("roms/430hx/fw82439hx.bin", "rb");
+		f = romfopen("roms/430hx/T25I0207.AWD", "rb");
+                if (!f) break;
+                fread(rom,           0x20000, 1, f);                
+                fclose(f);
+                biosmask = 0x1ffff;
+                //is486=1;
+		biostype = BIOS_AWARD;
+		// flash_1mbit_readfiles();
+                return 1;
+
+                case ROM_ACERV35N:
+		f = romfopen("roms/acerv35n/R01-C0.BIN", "rb");
+                if (!f) break;
+                fread(rom,           0x20000, 1, f);                
+                fclose(f);
+                biosmask = 0x1ffff;
+                //is486=1;
+		biostype = BIOS_ACER;
+		// flash_1mbit_readfiles();
                 return 1;
 
                 case ROM_430VX:
@@ -560,8 +627,8 @@ int loadbios()
                 fclose(f);
                 biosmask = 0x1ffff;
                 //is486=1;
-		flash_1mbit_readfiles();
 		biostype = BIOS_AWARD;
+		// flash_1mbit_readfiles();
                 return 1;
 
                 case ROM_430TX:
@@ -572,8 +639,8 @@ int loadbios()
                 fclose(f);
                 biosmask = 0x1ffff;
                 //is486=1;
-		flash_1mbit_readfiles();
 		biostype = BIOS_AWARD;
+		// flash_1mbit_readfiles();
                 return 1;
 
                 case ROM_440FX:
@@ -585,11 +652,22 @@ int loadbios()
                 fclose(f);
                 biosmask = 0x1ffff;
                 //is486=1;
-		flash_1mbit_readfiles();
 		biostype = BIOS_AWARD;
+		flash_1mbit_readfiles();
                 return 1;
 
 #ifdef BROKEN_CHIPSETS
+                case ROM_GOLIATH:
+		f = romfopen("roms/goliath/S730P.ROM", "rb");
+                if (!f) break;
+                fread(rom,           0x20000, 1, f);                
+                fclose(f);
+                biosmask = 0x1ffff;
+                //is486=1;
+		biostype = BIOS_AMI;
+		// flash_1mbit_readfiles();
+                return 1;
+
                 case ROM_440BX:
 		f = romfopen("roms/440bx/bx32200f.rom", "rb");
                 if (!f) break;
@@ -598,6 +676,7 @@ int loadbios()
                 biosmask = 0x3ffff;
                 //is486=1;
 		biostype = BIOS_AMI;
+		flash_2mbit_readfiles();
                 return 1;
 
                 case ROM_VPC2007:
@@ -608,6 +687,7 @@ int loadbios()
                 biosmask = 0x3ffff;
                 //is486=1;
 		biostype = BIOS_AMI;
+		flash_2mbit_readfiles();
                 return 1;
 #endif
 
@@ -627,6 +707,24 @@ int loadbios()
 		flash_1mbit_readfiles();
 		biostype = BIOS_AMI;
                 return 1;
+
+                case ROM_PLATO:
+                f = romfopen("roms/plato/1016AX1_.BIO", "rb");
+                if (!f) break;
+                fseek(f, 0x80, SEEK_SET);
+                fread(rom + 0x10000, 0x10000, 1, f);                
+                fclose(f);
+                f = romfopen("roms/plato/1016AX1_.BI1", "rb");
+                if (!f) break;
+                fseek(f, 0x80, SEEK_SET);
+                fread(rom, 0xd000, 1, f);
+                fclose(f);
+                biosmask = 0x1ffff;
+                //is486=1;
+		flash_1mbit_readfiles();
+		biostype = BIOS_AMI;
+                return 1;
+
                 case ROM_ENDEAVOR:
                 f = romfopen("roms/endeavor/1006CB0_.BIO", "rb");
                 if (!f) break;
@@ -659,6 +757,7 @@ int loadbios()
                 fread(rom + 0xE000, 8192, 1, f);
                 fclose(f);
                 mem_load_xtide_bios();
+		biostype = BIOS_OTHER;
                 return 1;
 
                 case ROM_LXT3:
@@ -667,6 +766,7 @@ int loadbios()
                 fread(rom + 0xE000, 8192, 1, f);
                 fclose(f);
                 mem_load_xtide_bios();
+		biostype = BIOS_OTHER;
                 return 1;
 
                 case ROM_PX386: /*Phoenix 80386 BIOS*/
@@ -690,6 +790,7 @@ int loadbios()
                 fread(rom, 65536, 1, f);
                 fclose(f);
                 mem_load_atide_bios();
+		biostype = BIOS_OTHER;
                 return 1;
 
                 case ROM_PXXT:
@@ -703,6 +804,29 @@ int loadbios()
 
                 case ROM_JUKOPC:
                 f = romfopen("roms/jukopc/000o001.bin", "rb");
+                if (!f) break;
+                fread(rom + 0xE000, 8192, 1, f);
+                fclose(f);
+                mem_load_xtide_bios();
+		biostype = BIOS_OTHER;
+                return 1;
+
+                case ROM_AMSYS: /*Achieve Microsystems 286 BIOS*/
+                f=romfopen("roms/amsys/am286ev.rom","rb");
+                ff=romfopen("roms/amsys/am286od.rom","rb");
+                if (!f || !ff) break;
+                for (c = 0x0000; c < 0x10000; c += 2)
+                {
+                        rom[c] = getc(f);
+                        rom[c+1] = getc(ff);
+                }
+                fclose(ff);
+                fclose(f);
+                mem_load_atide_bios();
+                return 1;
+
+                case ROM_KAYPROXT:
+                f = romfopen("roms/kayproxt/kpb203n.rom", "rb");
                 if (!f) break;
                 fread(rom + 0xE000, 8192, 1, f);
                 fclose(f);
@@ -1646,9 +1770,9 @@ void mem_updatecache()
                 return;
         }
         if (cpu_16bitbus)
-           memwaitstate = 512 * cpu_multi;
+           memwaitstate = (int) (512.0 * cpu_multi);
         else
-           memwaitstate = 384 * cpu_multi; //memspeed[cpuspeed];        
+           memwaitstate = (int) (384.0 * cpu_multi); //memspeed[cpuspeed];        
         switch (cache)
         {
                 case 0: cachesize=32; break;
@@ -1996,7 +2120,7 @@ void mem_init()
 
         memset(ram, 0, mem_size * 1024 * 1024);
         memset(pages, 0, ((mem_size * 1024 * 1024) >> 12) * sizeof(page_t));
-        
+
         memset(page_lookup, 0, (1 << 20) * sizeof(page_t *));
         
         for (c = 0; c < ((mem_size * 1024 * 1024) >> 12); c++)
@@ -2049,7 +2173,7 @@ void mem_resize()
         free(ram);
         ram = malloc(mem_size * 1024 * 1024);
         memset(ram, 0, mem_size * 1024 * 1024);
-        
+
         free(pages);
         pages = malloc(((mem_size * 1024 * 1024) >> 12) * sizeof(page_t));
         memset(pages, 0, ((mem_size * 1024 * 1024) >> 12) * sizeof(page_t));

@@ -55,7 +55,7 @@ typedef struct
         int cpu_type;
         int speed;
         int rspeed;
-        int multi;
+        double multi;
 	int pci_speed;
         uint32_t edx_reset;
         uint32_t cpuid_model;
@@ -89,7 +89,7 @@ extern CPU cpus_acer[];
 extern int cpu_iscyrix;
 extern int cpu_16bitbus;
 extern int cpu_busspeed;
-extern int cpu_multi;
+extern double cpu_multi;
 
 extern int cpu_hasrdtsc;
 extern int cpu_hasMSR;

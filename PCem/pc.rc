@@ -11,6 +11,8 @@ BEGIN
         BEGIN
                 MENUITEM "&Hard Reset",           IDM_FILE_HRESET
                 MENUITEM "&Ctrl+Alt+Del",         IDM_FILE_RESET_CAD
+                MENUITEM "Ctrl+Alt+&Esc",         IDM_FILE_CAE
+                MENUITEM "Simple &Del",           IDM_FILE_DEL
                 MENUITEM "E&xit",                 IDM_FILE_EXIT
         END
         POPUP "&Disk"

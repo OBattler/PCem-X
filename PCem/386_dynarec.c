@@ -51,7 +51,7 @@ int cgate32;
 
 uint8_t romext[32768];
 uint8_t *ram,*rom;
-uint16_t biosmask;
+uint32_t biosmask;
 
 uint32_t rmdat32;
 uint32_t backupregs[16];
@@ -2294,6 +2294,10 @@ inrecomp=0;
                         
                         if (!abrt && !x86_was_reset)
                                 codegen_block_end();
+
+			if (x86_was_reset)
+				codegen_reset();
+
 //                        output &= ~2;
                 }
 //                        if (output && (SP & 1))

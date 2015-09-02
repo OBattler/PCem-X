@@ -2,6 +2,8 @@
 #define IDM_FILE_HRESET    40001
 #define IDM_FILE_EXIT      40002
 #define IDM_FILE_RESET_CAD 40003
+#define IDM_FILE_CAE	   40004
+#define IDM_FILE_DEL	   40005
 #define IDM_DISC_A         40010
 #define IDM_DISC_B         40011
 #define IDM_EJECT_A        40012

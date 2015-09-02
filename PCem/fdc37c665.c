@@ -23,7 +23,7 @@ void fdc37c665_write(uint16_t port, uint8_t val, void *priv)
 	uint8_t valxor = 0;
 	uint8_t max = 16;
         int temp;
-        pclog("fdc37c665_write : port=%04x reg %02X = %02X locked=%i\n", port, fdc37c665_curreg, val, fdc37c665_locked);
+        // pclog("fdc37c665_write : port=%04x reg %02X = %02X locked=%i\n", port, fdc37c665_curreg, val, fdc37c665_locked);
 
 	if (index)
 	{
@@ -168,7 +168,7 @@ serial_set:
 
 uint8_t fdc37c665_read(uint16_t port, void *priv)
 {
-        pclog("fdc37c665_read : port=%04x reg %02X locked=%i\n", port, fdc37c665_curreg, fdc37c665_locked);
+        // pclog("fdc37c665_read : port=%04x reg %02X locked=%i\n", port, fdc37c665_curreg, fdc37c665_locked);
 	uint8_t index = (port & 1) ? 0 : 1;
 
 	if (!fdc37c665_locked)
@@ -180,7 +180,7 @@ uint8_t fdc37c665_read(uint16_t port, void *priv)
 		return fdc37c665_curreg;
 	else
 	{
-		pclog("0x03F1: %02X\n", fdc37c665_regs[fdc37c665_curreg]);
+		// pclog("0x03F1: %02X\n", fdc37c665_regs[fdc37c665_curreg]);
 		return fdc37c665_regs[fdc37c665_curreg];
 	}
 }
