@@ -515,11 +515,6 @@ int WINAPI WinMain (HINSTANCE hThisInstance,
         ghwnd=hwnd;
 
         initpc();
-#ifndef __MINGW64__
-        initpcap();
-
-        atexit(closepcap);
-#endif
 
         vid_apis[0][vid_api].init(ghwnd);
 

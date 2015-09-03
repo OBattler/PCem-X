@@ -1411,7 +1411,7 @@ void *ne2000_init()
 #endif
 
     io_sethandler(addr, 0x0010, ne2000_read, NULL, NULL, ne2000_write, NULL, NULL, ne2000);
-    io_sethandler(addr+0x10, 0x0010, ne2000_asic_read_b, ne2000_asic_read_w, NULL, ne2000_asic_write_b, ne2000_asic_write_w, NULL, ne2000);
+    io_sethandler(addr+0x10, 0x000f, ne2000_asic_read_b, ne2000_asic_read_w, NULL, ne2000_asic_write_b, ne2000_asic_write_w, NULL, ne2000);
     io_sethandler(addr+0x1f, 0x0001, ne2000_reset_read, NULL, NULL, ne2000_reset_write, NULL, NULL, ne2000);
     memcpy(ne2000->physaddr, maclocal, 6);
 
