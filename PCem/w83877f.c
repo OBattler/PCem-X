@@ -271,7 +271,7 @@ void w83877f_write(uint16_t port, uint8_t val, void *priv)
 {
 	uint8_t index = (port & 1) ? 0 : 1;
 	uint8_t valxor = 0;
-	uint8_t max = 42;
+	uint8_t max = 40;
         int temp;
         pclog("w83877f_write : port=%04x reg %02X = %02X locked=%i\n", port, w83877f_curreg, val, w83877f_locked);
 
@@ -424,12 +424,12 @@ process_value:
 		case 0x28:
 			if (valxor & 0xf)
 			{
-				if (w83877f_regs[0x28] & 0xf == 0)  w83877f_regs[0x28] |= 0x3;
+				if ((w83877f_regs[0x28] & 0xf) == 0)  w83877f_regs[0x28] |= 0x3;
 				if (!(w83877f_regs[2] & 0x10))  serial2_set(make_port(0x25), w83877f_regs[0x28] & 0xF);
 			}
 			if (valxor & 0xf0)
 			{
-				if (w83877f_regs[0x28] & 0xf0 == 0)  w83877f_regs[0x28] |= 0x40;
+				if ((w83877f_regs[0x28] & 0xf0) == 0)  w83877f_regs[0x28] |= 0x40;
 				if (!(w83877f_regs[4] & 0x20))  serial1_set(make_port(0x24), (w83877f_regs[0x28] & 0xF0) >> 8);
 			}
 			break;

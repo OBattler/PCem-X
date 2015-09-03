@@ -226,12 +226,12 @@ process_value:
 		case 0x28:
 			if (valxor & 0xf)
 			{
-				if (fdc37c669_regs[0x28] & 0xf == 0)  fdc37c669_regs[0x28] |= 0x3;
+				if ((fdc37c669_regs[0x28] & 0xf) == 0)  fdc37c669_regs[0x28] |= 0x3;
 				if (fdc37c669_regs[2] & 0x80)  serial2_set(make_port(0x25), fdc37c669_regs[0x28] & 0xF);
 			}
 			if (valxor & 0xf0)
 			{
-				if (fdc37c669_regs[0x28] & 0xf0 == 0)  fdc37c669_regs[0x28] |= 0x40;
+				if ((fdc37c669_regs[0x28] & 0xf0) == 0)  fdc37c669_regs[0x28] |= 0x40;
 				if (fdc37c669_regs[2] & 8)  serial1_set(make_port(0x24), (fdc37c669_regs[0x28] & 0xF0) >> 8);
 			}
 			break;
