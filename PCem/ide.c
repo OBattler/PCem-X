@@ -1685,9 +1685,7 @@ static void atapicommand(int ide_board)
                 if (!atapi->ready()) { atapi_notready(ide); return; }
 //                if (atapi->ready())
 //                {
-						if (ide->discchanged) /*ATAPI drivers for NT 3.1 rely on this on TEST UNIT READY, READ TOC and READ SUBCHANNEL*/
-							atapi_discchanged();
-						
+						atapi_discchanged(); /*ATAPI drivers for NT 3.1 rely on this behavoir for disc ejects/loads.*/
                         ide->packetstatus=2;
                         idecallback[ide_board]=50*IDE_TIME;
 //                }
@@ -1747,12 +1745,8 @@ static void atapicommand(int ide_board)
                         ide->error = (SENSE_ILLEGAL_REQUEST << 4) | ABRT_ERR;
                         if (ide->discchanged) {
                                 ide->error |= MCR_ERR;
-								atapi_discchanged();
                         }
-						else {
-                        ide->discchanged=0;
-                        atapi_sense.asc = ASC_ILLEGAL_OPCODE;
-						}
+                        atapi_discchanged(); /*ATAPI drivers for NT 3.1 rely on this behavoir for disc ejects/loads.*/
                         ide->packetstatus=0x80;
                         idecallback[ide_board]=50*IDE_TIME;
                         break;
@@ -1970,12 +1964,10 @@ static void atapicommand(int ide_board)
 //                        pclog("Read subchannel check condition %02X\n",idebufferb[3]);
                         ide->atastat = READY_STAT | ERR_STAT;    /*CHECK CONDITION*/
                         ide->error = (SENSE_ILLEGAL_REQUEST << 4) | ABRT_ERR;
-                        if (ide->discchanged) 
-						{
+                        if (ide->discchanged) {
                                 ide->error |= MCR_ERR;
-								ext_ide->discchanged=1;
                         }
-						else ide->discchanged=0;
+                        ext_ide->discchanged=1; /*ATAPI drivers for NT 3.1 rely on this behavoir for disc ejects/loads.*/
                         atapi_sense.asc = ASC_ILLEGAL_OPCODE;
                         ide->packetstatus=0x80;
                         idecallback[ide_board]=50*IDE_TIME;
