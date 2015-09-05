@@ -735,7 +735,7 @@ uint16_t ne2000_read(uint32_t address, void *p)
       break;
 
     default:
-      fatal("ne2K: unknown value of pgsel in read - %d\n", ne2000->CR.pgsel);
+      fatal("ne2000: unknown value of pgsel in read - %d\n", ne2000->CR.pgsel);
     }
   }
   return ret;
@@ -1100,7 +1100,7 @@ if(net_is_pcap && net_pcap!=NULL) {
     break;
 
   case 0x4:
-    fatal("page 2 write to reserved offset 4\n");
+    pclog("page 2 write to reserved offset 4\n");
     break;
 
   case 0x5:  // Local Next-packet pointer
@@ -1127,13 +1127,13 @@ if(net_is_pcap && net_pcap!=NULL) {
   case 0xd:
   case 0xe:
   case 0xf:
-    fatal("page 2 write to reserved offset %0x\n", address);
+    pclog("page 2 write to reserved offset %0x\n", address);
     break;
   }
       break;
 
     default:
-      fatal("ne2K: unknown value of pgsel in write - %d\n", ne2000->CR.pgsel);
+      fatal("ne2000: unknown value of pgsel in write - %d\n", ne2000->CR.pgsel);
     }
     }
 }

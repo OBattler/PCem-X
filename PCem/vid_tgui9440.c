@@ -313,7 +313,16 @@ void tgui_recalctimings(svga_t *svga)
 
 	svga->lowres = !(svga->crtc[0x2a] & 0x40); 
 
-        svga->interlace = svga->crtc[0x1e] & 4;
+        // svga->interlace = svga->crtc[0x1e] & 4;
+        if (svga->crtc[0x1e] & 4)
+	{
+                svga->rowoffset >>= 1;
+		svga->vtotal *= 2;
+		svga->dispend *= 2;
+		svga->vblankstart *= 2;
+		svga->vsyncstart *= 2;
+		svga->split *= 2;
+	}
         
         if (svga->miscout & 8)
                 svga->clock = cpuclock / (((tgui->clock_n + 8) * 14318180.0) / ((tgui->clock_m + 2) * (1 << tgui->clock_k)));
