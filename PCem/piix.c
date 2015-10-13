@@ -9,7 +9,12 @@
 #include "ide.h"
 #include "io.h"
 #include "mem.h"
+#include "cpu.h"
+#include "model.h"
+#include "dma.h"
+#include "fdc.h"
 #include "pci.h"
+#include "pic.h"
 
 #include "piix.h"
 
@@ -17,6 +22,18 @@ uint8_t piix_bus_master_read(uint16_t port, void *priv);
 void piix_bus_master_write(uint16_t port, uint8_t val, void *priv);
 
 static uint8_t card_piix[256], card_piix_ide[256], card_piix_usb[256], card_piix_acpi[256];
+
+struct
+{
+        uint8_t command;
+        uint8_t status;
+        uint32_t ptr, ptr_cur;
+        int count;
+        uint32_t addr;
+        int eot;
+} piix_busmaster[2];
+
+uint8_t piix_33 = 0;
 
 void piix_write(int func, int addr, uint8_t val, void *priv)
 {
@@ -26,14 +43,20 @@ void piix_write(int func, int addr, uint8_t val, void *priv)
 
 	if (piix_type >= 3) /*USB*/
 	{
-		card_piix_usb[addr & 0xff] = val;
-		return;
+		if (func == 2)
+		{
+			card_piix_usb[addr & 0xff] = val;
+			return;
+		}
 	}
 
-	if (piix_type >= 4) /*ACPI*/
+	if (piix_type >= 5) /*ACPI*/
 	{
-		card_piix_acpi[addr & 0xff] = val;
-		return;
+		if (func == 3)
+		{
+			card_piix_acpi[addr & 0xff] = val;
+			return;
+		}
 	}
 
         if (func > 1)
@@ -41,6 +64,7 @@ void piix_write(int func, int addr, uint8_t val, void *priv)
         
         if (func == 1) /*IDE*/
         {
+		// pclog("piix_write ide: func=%d addr=%02x val=%02x %04x:%08x\n", func, addr, val, CS, pc);
                 switch (addr)
                 {
                         case 0x04:
@@ -59,6 +83,16 @@ void piix_write(int func, int addr, uint8_t val, void *priv)
                         case 0x21:
                         card_piix_ide[0x21] = val;
                         break;
+
+			case 0x33:
+			/* Note by OBattler: This is a hack, but it's needed to reset the cylinders of the IDE devices. */
+			if ((romset != ROM_430HX) && (romset != ROM_430TX))  break;
+			if (val != piix_33)
+			{
+				resetide();
+			}
+			piix_33 = val;
+			break;
                         
                         case 0x40:
                         card_piix_ide[0x40] = val;
@@ -113,12 +147,12 @@ uint8_t piix_read(int func, int addr, void *priv)
 
 	if (piix_type >= 3) /*USB*/
 	{
-                return card_piix_usb[addr];
+                if (func == 2)  return card_piix_usb[addr];
 	}
 
-	if (piix_type >= 4) /*ACPI*/
+	if (piix_type >= 5) /*ACPI*/
 	{
-                return card_piix_acpi[addr];
+                if (func == 3)  return card_piix_acpi[addr];
 	}
 
         if (func > 1)
@@ -132,16 +166,6 @@ uint8_t piix_read(int func, int addr, void *priv)
         else
            return card_piix[addr];
 }
-
-struct
-{
-        uint8_t command;
-        uint8_t status;
-        uint32_t ptr, ptr_cur;
-        int count;
-        uint32_t addr;
-        int eot;
-} piix_busmaster[2];
 
 static void piix_bus_master_next_addr(int channel)
 {
@@ -314,8 +338,8 @@ void piix_init(int card)
         
         memset(card_piix, 0, 256);
         memset(card_piix_ide, 0, 256);
-        memset(card_piix_usb, 0, 256);
-        memset(card_piix_acpi, 0, 256);
+        if (piix_type >= 3)  memset(card_piix_usb, 0, 256);
+        if (piix_type >= 5)  memset(card_piix_acpi, 0, 256);
         card_piix[0x00] = 0x86; card_piix[0x01] = 0x80; /*Intel*/
 	if (piix_type == 3)
 	{
@@ -427,7 +451,7 @@ void piix_init(int card)
 	        card_piix_usb[0xC1] = 0x20;
 	}
 
-	if (piix_type >= 4)
+	if (piix_type >= 5)
 	{
 	        card_piix_acpi[0x00] = 0x86; card_piix_acpi[0x01] = 0x80; /*Intel*/
         	card_piix_acpi[0x02] = 0x13; card_piix_acpi[0x03] = 0x71; /*82371AB (PIIX4)*/

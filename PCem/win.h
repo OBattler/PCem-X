@@ -24,9 +24,7 @@ void hdconf_open(HWND hwnd);
 
 void config_open(HWND hwnd);
 
-#ifndef __MINGW64__
-void debug_open(HWND hwnd);
-#endif
+void deviceconfig_open(HWND hwnd, struct device_t *device);
 
 extern char openfilestring[260];
 
@@ -34,5 +32,3 @@ int getfile(HWND hwnd, char *f, char *fn);
 int getsfile(HWND hwnd, char *f, char *fn);
 
 extern int pause;
-
-void uws_natural();

@@ -13,13 +13,7 @@ static int hd_changed = 0;
 static char hd_new_name[512];
 static int hd_new_spt, hd_new_hpc, hd_new_cyl;
 
-static uint64_t cookie = 0;
-
-#ifndef __MINGW64__
 static BOOL CALLBACK hdnew_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPARAM lParam)
-#else
-static INT_PTR CALLBACK hdnew_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPARAM lParam)
-#endif
 {
         char s[260];
         HWND h;
@@ -56,7 +50,7 @@ static INT_PTR CALLBACK hdnew_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LP
                         SendMessage(h, WM_GETTEXT, 511, (LPARAM)hd_new_name);
                         if (!hd_new_name[0])
                         {
-                                MessageBox(ghwnd,"Please enter a valid file name","PCem error",MB_OK);
+                                MessageBox(ghwnd,"Please enter a valid filename","PCem error",MB_OK);
                                 return TRUE;
                         }
                         h = GetDlgItem(hdlg, IDC_EDIT1);
@@ -134,15 +128,11 @@ static INT_PTR CALLBACK hdnew_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LP
         return FALSE;
 }
 
-#ifndef __MINGW64__
 BOOL CALLBACK hdsize_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPARAM lParam)
-#else
-INT_PTR CALLBACK hdsize_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPARAM lParam)
-#endif
 {
         char s[260];
         HWND h;
-        PcemHDC hd[4];
+        PcemHDC hd[2];
         switch (message)
         {
                 case WM_INITDIALOG:
@@ -219,11 +209,7 @@ INT_PTR CALLBACK hdsize_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPARAM l
         return FALSE;
 }
 
-#ifndef __MINGW64__
 static BOOL CALLBACK hdconf_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPARAM lParam)
-#else
-static INT_PTR CALLBACK hdconf_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPARAM lParam)
-#endif
 {
         char s[260];
         HWND h;
@@ -237,6 +223,7 @@ static INT_PTR CALLBACK hdconf_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
                 hd[0] = hdc[0];
                 hd[1] = hdc[1];
                 hd[2] = hdc[2];
+                hd[3] = hdc[3];
                 hd_changed = 0;
                 
                 h = GetDlgItem(hdlg, IDC_EDIT_C_SPT);
@@ -262,7 +249,7 @@ static INT_PTR CALLBACK hdconf_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
                 SendMessage(h, WM_SETTEXT, 0, (LPARAM)s);
                 h=  GetDlgItem(hdlg, IDC_EDIT_D_FN);
                 SendMessage(h, WM_SETTEXT, 0, (LPARAM)ide_fn[1]);
-
+                
                 h = GetDlgItem(hdlg, IDC_EDIT_E_SPT);
                 sprintf(s, "%i", hdc[2].spt);
                 SendMessage(h, WM_SETTEXT, 0, (LPARAM)s);
@@ -274,7 +261,7 @@ static INT_PTR CALLBACK hdconf_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
                 SendMessage(h, WM_SETTEXT, 0, (LPARAM)s);
                 h=  GetDlgItem(hdlg, IDC_EDIT_E_FN);
                 SendMessage(h, WM_SETTEXT, 0, (LPARAM)ide_fn[2]);
-
+                
                 h = GetDlgItem(hdlg, IDC_EDIT_F_SPT);
                 sprintf(s, "%i", hdc[3].spt);
                 SendMessage(h, WM_SETTEXT, 0, (LPARAM)s);
@@ -294,12 +281,10 @@ static INT_PTR CALLBACK hdconf_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
                 h = GetDlgItem(hdlg, IDC_TEXT_D_SIZE);
                 sprintf(s, "Size : %imb", (((((uint64_t)hd[1].tracks*(uint64_t)hd[1].hpc)*(uint64_t)hd[1].spt)*512)/1024)/1024);
                 SendMessage(h, WM_SETTEXT, 0, (LPARAM)s);
-                return TRUE;
 
                 h = GetDlgItem(hdlg, IDC_TEXT_E_SIZE);
                 sprintf(s, "Size : %imb", (((((uint64_t)hd[2].tracks*(uint64_t)hd[2].hpc)*(uint64_t)hd[2].spt)*512)/1024)/1024);
                 SendMessage(h, WM_SETTEXT, 0, (LPARAM)s);
-                return TRUE;
 
                 h = GetDlgItem(hdlg, IDC_TEXT_F_SIZE);
                 sprintf(s, "Size : %imb", (((((uint64_t)hd[3].tracks*(uint64_t)hd[3].hpc)*(uint64_t)hd[3].spt)*512)/1024)/1024);
@@ -337,7 +322,7 @@ static INT_PTR CALLBACK hdconf_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
                                         sscanf(s, "%i", &hd[1].tracks);
                                         h = GetDlgItem(hdlg, IDC_EDIT_D_FN);
                                         SendMessage(h, WM_GETTEXT, 511, (LPARAM)ide_fn[1]);
-
+                                        
                                         h = GetDlgItem(hdlg, IDC_EDIT_E_SPT);
                                         SendMessage(h, WM_GETTEXT, 255, (LPARAM)s);
                                         sscanf(s, "%i", &hd[2].spt);
@@ -349,7 +334,7 @@ static INT_PTR CALLBACK hdconf_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
                                         sscanf(s, "%i", &hd[2].tracks);
                                         h = GetDlgItem(hdlg, IDC_EDIT_E_FN);
                                         SendMessage(h, WM_GETTEXT, 511, (LPARAM)ide_fn[2]);
-
+                                        
                                         h = GetDlgItem(hdlg, IDC_EDIT_F_SPT);
                                         SendMessage(h, WM_GETTEXT, 255, (LPARAM)s);
                                         sscanf(s, "%i", &hd[3].spt);
@@ -388,7 +373,6 @@ static INT_PTR CALLBACK hdconf_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
                         SetDlgItemText(hdlg, IDC_EDIT_C_FN, "");
                         hd_changed = 1;
                         return TRUE;
-
                         case IDC_EJECTD:
                         hd[1].spt = 0;
                         hd[1].hpc = 0;
@@ -400,7 +384,6 @@ static INT_PTR CALLBACK hdconf_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
                         SetDlgItemText(hdlg, IDC_EDIT_D_FN, "");
                         hd_changed = 1;
                         return TRUE;
-
                         case IDC_EJECTE:
                         hd[2].spt = 0;
                         hd[2].hpc = 0;
@@ -412,7 +395,6 @@ static INT_PTR CALLBACK hdconf_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
                         SetDlgItemText(hdlg, IDC_EDIT_E_FN, "");
                         hd_changed = 1;
                         return TRUE;
-
                         case IDC_EJECTF:
                         hd[3].spt = 0;
                         hd[3].hpc = 0;
@@ -449,7 +431,7 @@ static INT_PTR CALLBACK hdconf_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
                         return TRUE;
                         
                         case IDC_CFILE:
-                        if (!getfile(hdlg, "Hard disk image (*.IMG;*.IMA;*.VHD)\0*.IMG;*.IMA;*.VHD\0All files (*.*)\0*.*\0", ""))
+                        if (!getfile(hdlg, "Hard disc image (*.IMG)\0*.IMG\0All files (*.*)\0*.*\0", ""))
                         {
                                 f = fopen64(openfilestring, "rb");
                                 if (!f)
@@ -459,12 +441,6 @@ static INT_PTR CALLBACK hdconf_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
                                 }
                                 fseeko64(f, -1, SEEK_END);
                                 sz = ftello64(f) + 1;
-				fseeko64(f, -512, SEEK_END);
-				fread(&cookie, 1, 8, f);
-				// VPC 2004+ VHD
-				if (cookie == 0x78697463656E6F63)  sz -= 512;
-				// Connectix VPC VHD
-				if ((cookie & 0xFFFFFFFFFFFFFF00) == 0x697463656E6F6300)  sz -= 511;
                                 fclose(f);
                                 hd_new_spt = 63;
                                 hd_new_hpc = 16;
@@ -517,7 +493,7 @@ static INT_PTR CALLBACK hdconf_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
                         return TRUE;
                         
                         case IDC_DFILE:
-                        if (!getfile(hdlg, "Hard disk image (*.IMG;*.IMA;*.VHD)\0*.IMG;*.IMA;*.VHD\0All files (*.*)\0*.*\0", ""))
+                        if (!getfile(hdlg, "Hard disc image (*.IMG)\0*.IMG\0All files (*.*)\0*.*\0", ""))
                         {
                                 f = fopen64(openfilestring, "rb");
                                 if (!f)
@@ -527,12 +503,6 @@ static INT_PTR CALLBACK hdconf_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
                                 }
                                 fseeko64(f, -1, SEEK_END);
                                 sz = ftello64(f) + 1;
-				fseeko64(f, -512, SEEK_END);
-				fread(&cookie, 1, 8, f);
-				// VPC 2004+ VHD
-				if (cookie == 0x78697463656E6F63)  sz -= 512;
-				// Connectix VPC VHD
-				if ((cookie & 0xFFFFFFFFFFFFFF00) == 0x697463656E6F6300)  sz -= 511;
                                 fclose(f);
                                 hd_new_spt = 63;
                                 hd_new_hpc = 16;
@@ -585,7 +555,7 @@ static INT_PTR CALLBACK hdconf_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
                         return TRUE;
                         
                         case IDC_EFILE:
-                        if (!getfile(hdlg, "Hard disk image (*.IMG;*.IMA;*.VHD)\0*.IMG;*.IMA;*.VHD\0All files (*.*)\0*.*\0", ""))
+                        if (!getfile(hdlg, "Hard disc image (*.IMG)\0*.IMG\0All files (*.*)\0*.*\0", ""))
                         {
                                 f = fopen64(openfilestring, "rb");
                                 if (!f)
@@ -595,12 +565,6 @@ static INT_PTR CALLBACK hdconf_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
                                 }
                                 fseeko64(f, -1, SEEK_END);
                                 sz = ftello64(f) + 1;
-				fseeko64(f, -512, SEEK_END);
-				fread(&cookie, 1, 8, f);
-				// VPC 2004+ VHD
-				if (cookie == 0x78697463656E6F63)  sz -= 512;
-				// Connectix VPC VHD
-				if ((cookie & 0xFFFFFFFFFFFFFF00) == 0x697463656E6F6300)  sz -= 511;
                                 fclose(f);
                                 hd_new_spt = 63;
                                 hd_new_hpc = 16;
@@ -653,7 +617,7 @@ static INT_PTR CALLBACK hdconf_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
                         return TRUE;
                         
                         case IDC_FFILE:
-                        if (!getfile(hdlg, "Hard disk image (*.IMG;*.IMA;*.VHD)\0*.IMG;*.IMA;*.VHD\0All files (*.*)\0*.*\0", ""))
+                        if (!getfile(hdlg, "Hard disc image (*.IMG)\0*.IMG\0All files (*.*)\0*.*\0", ""))
                         {
                                 f = fopen64(openfilestring, "rb");
                                 if (!f)
@@ -663,12 +627,6 @@ static INT_PTR CALLBACK hdconf_dlgproc(HWND hdlg, UINT message, WPARAM wParam, L
                                 }
                                 fseeko64(f, -1, SEEK_END);
                                 sz = ftello64(f) + 1;
-				fseeko64(f, -512, SEEK_END);
-				fread(&cookie, 1, 8, f);
-				// VPC 2004+ VHD
-				if (cookie == 0x78697463656E6F63)  sz -= 512;
-				// Connectix VPC VHD
-				if ((cookie & 0xFFFFFFFFFFFFFF00) == 0x697463656E6F6300)  sz -= 511;
                                 fclose(f);
                                 hd_new_spt = 63;
                                 hd_new_hpc = 16;

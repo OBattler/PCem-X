@@ -118,7 +118,8 @@ void updatewindowsize(int x, int y)
 
 	if (force_43)
 	{
-		winsizey = (int) (((double) x / 4.0) * 3.0);
+		/* Account for possible overscan. */
+		winsizey = ((int) (((double) (x - overscan_x) / 4.0) * 3.0)) + overscan_y;
 	}
 	else
 	{
@@ -133,7 +134,7 @@ void uws_natural()
 	updatewindowsize(winsizex, efwinsizey);
 }
 
-void releasemouse()
+void releasemouse() 
 {
         if (mousecapture)
         {
@@ -160,11 +161,6 @@ void leave_fullscreen()
 
 uint64_t main_time;
 
-void SleepExA(int time)
-{
-	Sleep(time);
-}
-
 void mainthread(LPVOID param)
 {
         int t = 0;
@@ -176,6 +172,7 @@ void mainthread(LPVOID param)
         old_time = GetTickCount();
         while (!quited)
         {
+#if 0
 		if (firststart)
 		{
 			pause = 1;
@@ -184,6 +181,7 @@ void mainthread(LPVOID param)
 			pause = 0;
 			firststart = 0;
 		}
+#endif
                 if (updatestatus)
                 {
                         updatestatus = 0;
@@ -227,10 +225,10 @@ void mainthread(LPVOID param)
                 {
                         leave_fullscreen_flag = 0;
                         SendMessage(ghwnd, WM_LEAVEFULLSCREEN, 0, 0);
-			if (video_fullscreen && infocus)
-			{
-				SetCursorPos(9999, 9999);
-			}
+                }
+                if (video_fullscreen && infocus)
+                {
+                        SetCursorPos(9999, 9999);
                 }
         }
 }
@@ -305,11 +303,7 @@ static void initmenu(void)
         HMENU m;
         char s[32];
         m=GetSubMenu(menu,2); /*Settings*/
-#ifndef __MINGW64__
-        m=GetSubMenu(m,4); /*CD-ROM*/
-#else
         m=GetSubMenu(m,3); /*CD-ROM*/
-#endif
 
         /* Loop through each Windows drive letter and test to see if
            it's a CDROM */
@@ -569,37 +563,25 @@ int WINAPI WinMain (HINSTANCE hThisInstance,
         }
 
         for (c = 0; c < GFX_MAX; c++)
-                gfx_present[c] = video_card_available(video_old_to_new(c, models[model].pci_only), models[model].pci_only);
+                gfx_present[c] = video_card_available(video_old_to_new(c));
 
-        if (!video_card_available(video_old_to_new(gfxcard, models[model].pci_only), models[model].pci_only))
+        if (!video_card_available(video_old_to_new(gfxcard)))
         {
                 if (romset!=-1) MessageBox(hwnd,"Configured video BIOS not available.\nDefaulting to available romset.","PCem error",MB_OK);
                 for (c = GFX_MAX-1; c >= 0; c--)
                 {
-			if (models[model].pci_only)
-			{
-	                        if (gfx_present[c])
-        	                {
-                	                gfxcardpci = c;
-                        	        saveconfig();
-                                	resetpchard();
-	                                break;
-        	                }
-			}
-			else
-			{
-	                        if (gfx_present[c])
-        	                {
-                	                gfxcard = c;
-                        	        saveconfig();
-                                	resetpchard();
-	                                break;
-        	                }
-			}
+                        if (gfx_present[c])
+                        {
+                                gfxcard = c;
+                                saveconfig();
+                                resetpchard();
+                                break;
+                        }
                 }
         }
 
         loadbios();
+	resetpchard();
 
         timeBeginPeriod(1);
 
@@ -686,6 +668,8 @@ int WINAPI WinMain (HINSTANCE hThisInstance,
         UnregisterClass(szClassName, hinstance);
 
 //        pclog("Ending! %i %i\n",messages.wParam,quited);
+	closeide();
+	fflush(stdout);
         return messages.wParam;
 }
 
@@ -840,8 +824,6 @@ LRESULT CALLBACK WindowProcedure (HWND hwnd, UINT message, WPARAM wParam, LPARAM
                         pause=0;
                         break;
                         case IDM_FILE_EXIT:
-			fflush(pclogf);
-			free(rtlog);
                         PostQuitMessage (0);       /* send a WM_QUIT to the message queue */
                         break;
                         case IDM_DISC_A:
@@ -853,7 +835,7 @@ LRESULT CALLBACK WindowProcedure (HWND hwnd, UINT message, WPARAM wParam, LPARAM
                         }
                         break;
                         case IDM_DISC_B:
-                        if (!getfile(hwnd,"Disc image (*.IMG;*.IMA;*.FDI;*.PEF;*.FLP;*.XDF)\0*.IMG;*.IMA;*.FDI;*.PEF;*.FLP;*.XDF\0All files (*.*)\0*.*\0",discfns[1]))
+                        if (!getfile(hwnd,"Disk image (*.IMG;*.IMA;*.FDI;*.PEF;*.FLP;*.XDF)\0*.IMG;*.IMA;*.FDI;*.PEF;*.FLP;*.XDF\0All files (*.*)\0*.*\0",discfns[1]))
                         {
                                 savedisc(1);
                                 loaddisc(1,openfilestring);
@@ -876,11 +858,6 @@ LRESULT CALLBACK WindowProcedure (HWND hwnd, UINT message, WPARAM wParam, LPARAM
                         case IDM_CONFIG:
                         config_open(hwnd);
                         break;
-#ifndef __MINGW64__
-                        case IDM_DEBUG:
-                        debug_open(hwnd);
-                        break;
-#endif
                         case IDM_STATUS:
                         status_open(hwnd);
                         break;
@@ -919,6 +896,7 @@ LRESULT CALLBACK WindowProcedure (HWND hwnd, UINT message, WPARAM wParam, LPARAM
                         video_fullscreen = 1;
                         vid_apis[1][vid_api].init(ghwnd);
                         mouse_init();
+                        leave_fullscreen_flag = 0;
                         endblit();
                         device_force_redraw();
                         break;
@@ -986,6 +964,7 @@ LRESULT CALLBACK WindowProcedure (HWND hwnd, UINT message, WPARAM wParam, LPARAM
                         ioctl_open(0);
                         CheckMenuItem(hmenu, IDM_CDROM_REAL + cdrom_drive, MF_UNCHECKED);
                         CheckMenuItem(hmenu, IDM_CDROM_DISABLED,           MF_UNCHECKED);
+			old_cdrom_drive = cdrom_drive;
                         cdrom_drive=0;
                         CheckMenuItem(hmenu, IDM_CDROM_EMPTY, MF_CHECKED);
                         saveconfig();
@@ -1007,6 +986,7 @@ LRESULT CALLBACK WindowProcedure (HWND hwnd, UINT message, WPARAM wParam, LPARAM
                                         if (MessageBox(NULL,"This will reset PCem!\nOkay to continue?","PCem",MB_OKCANCEL) != IDOK)
                                            break;
                                 }
+				old_cdrom_drive = cdrom_drive;
                                 atapi->exit();
                                 ioctl_open(LOWORD(wParam)-IDM_CDROM_REAL);
                                 CheckMenuItem(hmenu, IDM_CDROM_REAL + cdrom_drive, MF_UNCHECKED);
@@ -1051,14 +1031,17 @@ LRESULT CALLBACK WindowProcedure (HWND hwnd, UINT message, WPARAM wParam, LPARAM
 
         			// pclog("Keyboard input received: S:%X VK:%X F:%X\n", c, d, e);
 
+#if 0
         			if (rawKB.VKey == VK_NUMLOCK)
         			{
         				/* This is for proper handling of Pause/Break and Num Lock */
         				scancode = (MapVirtualKey(rawKB.VKey, MAPVK_VK_TO_VSC) | 0x100);
         			}
+#endif
         			/* If it's not a scan code that starts with 0xE1 */
         			if (!(rawKB.Flags & RI_KEY_E1))
         			{
+					// pclog("Non-E1 triggered, make code is %04X\n", rawKB.MakeCode);
         				if (rawKB.Flags & RI_KEY_E0)
                                                 scancode |= (0xE0 << 8);
 
@@ -1075,6 +1058,14 @@ LRESULT CALLBACK WindowProcedure (HWND hwnd, UINT message, WPARAM wParam, LPARAM
         				if (!(scancode & 0xf00))
                                                 rawinputkey[scancode & 0x1ff] = !(rawKB.Flags & RI_KEY_BREAK);
         			}
+				else
+				{
+					// pclog("E1 triggered, make code is %04X\n", rawKB.MakeCode);
+					if (rawKB.MakeCode == 0x1D)
+						scancode = 0xFF;
+        				if (!(scancode & 0xf00))
+                                                rawinputkey[scancode & 0x1ff] = !(rawKB.Flags & RI_KEY_BREAK);
+				}
                         }
                         free(raw);
 
@@ -1096,6 +1087,8 @@ LRESULT CALLBACK WindowProcedure (HWND hwnd, UINT message, WPARAM wParam, LPARAM
                 }
 //                pclog("Lost focus!\n");
                 memset(rawinputkey, 0, sizeof(rawinputkey));
+                if (video_fullscreen)
+                        leave_fullscreen_flag = 1;
                 break;
 
                 case WM_LBUTTONUP:
@@ -1111,10 +1104,13 @@ LRESULT CALLBACK WindowProcedure (HWND hwnd, UINT message, WPARAM wParam, LPARAM
                         pcclip.bottom -= GetSystemMetrics(SM_CXFIXEDFRAME) + 10;
                         ClipCursor(&pcclip);
                         mousecapture = 1;
+//                        ShowCursor(FALSE);
                         while (1)
-			{
-				if (ShowCursor(FALSE) < 0)  break;
-			}
+
+                        {
+
+                                if (ShowCursor(FALSE) < 0) break;
+                        }
                 }
                 break;
 
@@ -1187,8 +1183,6 @@ LRESULT CALLBACK WindowProcedure (HWND hwnd, UINT message, WPARAM wParam, LPARAM
                 case WM_DESTROY:
                 UnhookWindowsHookEx( hKeyboardHook );
                 KillTimer(hwnd, TIMER_1SEC);
-		fflush(pclogf);
-		free(rtlog);
                 PostQuitMessage (0);       /* send a WM_QUIT to the message queue */
                 break;
 

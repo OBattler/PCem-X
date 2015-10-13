@@ -120,6 +120,8 @@ void pci_init(int type, int min_card, int max_card)
 {
         int c;
 
+        PCI = 1;
+        
         if (type == PCI_CONFIG_TYPE_1)
         {
                 io_sethandler(0x0cf8, 0x0001, NULL, NULL, pci_cf8_read, NULL, NULL, pci_cf8_write,  NULL);
@@ -145,7 +147,7 @@ void pci_add_specific(int card, uint8_t (*read)(int func, int addr, void *priv),
               pci_priv[card] = priv;
 }
 
-int pci_add(uint8_t (*read)(int func, int addr, void *priv), void (*write)(int func, int addr, uint8_t val, void *priv), void *priv)
+void pci_add(uint8_t (*read)(int func, int addr, void *priv), void (*write)(int func, int addr, uint8_t val, void *priv), void *priv)
 {
         int c;
         
@@ -156,9 +158,7 @@ int pci_add(uint8_t (*read)(int func, int addr, void *priv), void (*write)(int f
                          pci_card_read[c] = read;
                         pci_card_write[c] = write;
                               pci_priv[c] = priv;
-                        return c;
+                        return;
                 }
         }
-
-	return -1;
 }

@@ -1,6 +1,9 @@
 #include <math.h>
+#include <fenv.h>
 
 #define fplog 0
+
+static int rounding_modes[4] = {FE_TONEAREST, FE_DOWNWARD, FE_UPWARD, FE_TOWARDZERO};
 
 #define ST(x) ST[((TOP+(x))&7)]
 
@@ -63,10 +66,19 @@ static inline double x87_pop()
 
 static inline int64_t x87_fround(double b)
 {
+	int64_t a, c;
+
         switch ((npxc>>10)&3)
         {
                 case 0: /*Nearest*/
-                return (int64_t)(b+0.5);
+                a = (int64_t)floor(b);
+                c = (int64_t)floor(b + 1.0);
+                if ((b - a) < (b - c))
+                        return a;
+                else if ((b - a) > (b - c))
+                        return b;
+                else
+                        return (a & 1) ? c : a;
                 case 1: /*Down*/
                 return (int64_t)floor(b);
                 case 2: /*Up*/
@@ -363,7 +375,7 @@ OpFn OP_TABLE(fpu_d9_a16)[256] =
         opFSTP,  opFSTP,   opFSTP,   opFSTP,    opFSTP,    opFSTP,   opFSTP,    opFSTP,  /*Invalid*/
         opFCHS,  opFABS,   ILLEGAL,  ILLEGAL,   opFTST,    opFXAM,   ILLEGAL,   ILLEGAL,
         opFLD1,  opFLDL2T, opFLDL2E, opFLDPI,   opFLDEG2,  opFLDLN2, opFLDZ,    ILLEGAL,
-        opF2XM1, opFYL2X,  opFPTAN,  opFPATAN,  ILLEGAL,   ILLEGAL,  opFDECSTP, opFINCSTP,
+        opF2XM1, opFYL2X,  opFPTAN,  opFPATAN,  ILLEGAL,   opFPREM1, opFDECSTP, opFINCSTP,
         opFPREM, opFYL2XP1,opFSQRT,  opFSINCOS, opFRNDINT, opFSCALE, opFSIN,    opFCOS
 };
 
@@ -402,7 +414,7 @@ OpFn OP_TABLE(fpu_d9_a32)[256] =
         opFSTP,  opFSTP,   opFSTP,   opFSTP,    opFSTP,    opFSTP,   opFSTP,    opFSTP,  /*Invalid*/
         opFCHS,  opFABS,   ILLEGAL,  ILLEGAL,   opFTST,    opFXAM,   ILLEGAL,   ILLEGAL,
         opFLD1,  opFLDL2T, opFLDL2E, opFLDPI,   opFLDEG2,  opFLDLN2, opFLDZ,    ILLEGAL,
-        opF2XM1, opFYL2X,  opFPTAN,  opFPATAN,  ILLEGAL,   ILLEGAL,  opFDECSTP, opFINCSTP,
+        opF2XM1, opFYL2X,  opFPTAN,  opFPATAN,  ILLEGAL,   opFPREM1, opFDECSTP, opFINCSTP,
         opFPREM, opFYL2XP1,opFSQRT,  opFSINCOS, opFRNDINT, opFSCALE, opFSIN,    opFCOS
 };
 

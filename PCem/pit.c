@@ -7,6 +7,7 @@
 #include "ibm.h"
 
 #include "cpu.h"
+#include "device.h"
 #include "dma.h"
 #include "io.h"
 #include "pic.h"
@@ -87,6 +88,7 @@ static void pit_load(int t)
         int l = pit.l[t] ? pit.l[t] : 0x10000;
         timer_process();
         pit.newcount[t] = 0;
+        pit.disabled[t] = 0;
 //        pclog("pit_load: t=%i l=%x\n", t, l);
         switch (pit.m[t])
         {
@@ -146,6 +148,10 @@ static void pit_load(int t)
 void pit_set_gate(int t, int gate)
 {
         int l = pit.l[t] ? pit.l[t] : 0x10000;
+
+        if (pit.disabled[t])
+                return;
+
         timer_process();
         switch (pit.m[t])
         {
@@ -194,7 +200,15 @@ void pit_set_gate(int t, int gate)
 static void pit_over(int t)
 {
         int l = pit.l[t] ? pit.l[t] : 0x10000;
-//        if (!t) pclog("pit_over: t=%i l=%x c=%x %i\n", t, pit.l[t], pit.c[t], pit.c[t] >> TIMER_SHIFT);
+
+        if (pit.disabled[t])
+        {
+                pit.count[t] += 0xffff;
+                pit.c[t] += (int)((0xffff << TIMER_SHIFT) * PITCONST);
+                return;
+        }
+
+//        if (!t) pclog("pit_over: t=%i l=%x c=%x %i hit=%i\n", t, pit.l[t], pit.c[t], pit.c[t] >> TIMER_SHIFT, pit.thit[t]);
         switch (pit.m[t])
         {
                 case 0: /*Interrupt on terminal count*/
@@ -259,6 +273,21 @@ static void pit_over(int t)
         pit.running[t] = pit.enabled[t] && pit.using_timer[t];
 }
 
+int pit_get_timer_0()
+{
+        int read = (int)((pit.c[0] + ((1 << TIMER_SHIFT) - 1)) / PITCONST) >> TIMER_SHIFT;
+//pclog("pit_get_timer_0: t=%i using_timer=%i m=%i\n", 0, pit.using_timer[0], pit.m[0]);
+        if (pit.m[0] == 2)
+                read++;
+        if (read < 0)
+                read = 0;
+        if (read > 0x10000)
+                read = 0x10000;
+        if (pit.m[0] == 3)
+                read <<= 1;
+        return read;
+}
+        
 static int pit_read_timer(int t)
 {
         timer_clock();
@@ -321,6 +350,7 @@ void pit_write(uint16_t addr, uint8_t val, void *priv)
                         pit.ctrl |= 0x30;
                         pit.rereadlatch[t] = 0;
                         pit.rm[t] = 3;
+                        pit.latched[t] = 1;
                 }
                 else
                 {
@@ -338,6 +368,9 @@ void pit_write(uint16_t addr, uint8_t val, void *priv)
                         pit.initial[t] = 1;
                         if (!pit.m[val >> 6])
                                 pit_set_out(val >> 6, 0);
+                        else
+                                pit_set_out(val >> 6, 1);
+                        pit.disabled[val >> 6] = 1;
 //                                pclog("ppispeakon %i\n",ppispeakon);
                 }
                 pit.wp=0;
@@ -406,7 +439,7 @@ uint8_t pit_read(uint16_t addr, void *priv)
         {
                 case 0: case 1: case 2: /*Timers*/
                 t = addr & 3;
-                if (pit.rereadlatch[addr & 3])
+                if (pit.rereadlatch[addr & 3] && !pit.latched[addr & 3])
                 {
                         pit.rereadlatch[addr & 3] = 0;
                         pit.rl[t] = pit_read_timer(t);
@@ -416,14 +449,17 @@ uint8_t pit_read(uint16_t addr, void *priv)
                         case 0:
                         temp = pit.rl[addr & 3] >> 8;
                         pit.rm[addr & 3] = 3;
+                        pit.latched[addr & 3] = 0;
                         pit.rereadlatch[addr & 3] = 1;
                         break;
                         case 1:
                         temp = (pit.rl[addr & 3]) & 0xFF;
+                        pit.latched[addr & 3] = 0;
                         pit.rereadlatch[addr & 3] = 1;
                         break;
                         case 2:
                         temp = (pit.rl[addr & 3]) >> 8;
+                        pit.latched[addr & 3] = 0;
                         pit.rereadlatch[addr & 3] = 1;
                         break;
                         case 3:

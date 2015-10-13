@@ -8,7 +8,6 @@ typedef struct
                 CPU *cpus;
         } cpu[4];
         int fixed_gfxcard;
-	int pci_only;
         void (*init)();
 } MODEL;
 

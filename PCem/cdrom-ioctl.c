@@ -2,17 +2,19 @@
 
 #include <windows.h>
 #include <io.h>
-#ifdef __MINGW64__
+// #ifdef __MINGW64__
 #include "ntddcdrm.h"
-#else
-#include "ddk/ntddcdrm.h"
-#endif
+// #else
+// #include "ddk/ntddcdrm.h"
+// #endif
 #include "ibm.h"
 #include "ide.h"
 #include "cdrom-ioctl.h"
 
 int cdrom_drive;
+int old_cdrom_drive;
 
+#if 0
 #ifndef __MINGW64__
 typedef struct _CDROM_TOC_SESSION_DATA {
   UCHAR      Length[2];
@@ -20,6 +22,7 @@ typedef struct _CDROM_TOC_SESSION_DATA {
   UCHAR      LastCompleteSession;
   TRACK_DATA TrackData[1];
 } CDROM_TOC_SESSION_DATA, *PCDROM_TOC_SESSION_DATA;
+#endif
 #endif
 
 static ATAPI ioctl_atapi;
@@ -130,8 +133,16 @@ static void ioctl_playaudio(uint32_t pos, uint32_t len, int ismsf)
         pclog("Play audio - %08X %08X %i\n", pos, len, ismsf);
         if (ismsf)
         {
-                pos = (pos & 0xff) + (((pos >> 8) & 0xff) * 75) + (((pos >> 16) & 0xff) * 75 * 60);
-                len = (len & 0xff) + (((len >> 8) & 0xff) * 75) + (((len >> 16) & 0xff) * 75 * 60);
+                int m = (pos >> 16) & 0xff;
+
+                int s = (pos >> 8) & 0xff;
+                int f = pos & 0xff;
+
+                pos = MSFtoLBA(m, s, f);
+                m = (len >> 16) & 0xff;
+                s = (len >> 8) & 0xff;
+                f = len & 0xff;
+                len = MSFtoLBA(m, s, f);
                 pclog("MSF - pos = %08X len = %08X\n", pos, len);
         }
         else
@@ -241,7 +252,7 @@ static int ioctl_ready(void)
                 ioctl_close();*/
                 toc=ltoc;
                 tocvalid=1;
-                return 0;
+                return 2;
         }
 //        pclog("IOCTL says ready\n");
         return 1;
@@ -370,6 +381,42 @@ static void ioctl_readsector(uint8_t *b, int sector)
         ioctl_close();
 }
 
+static void lba_to_msf(uint8_t *buf, int lba)
+{
+	lba += 150;
+	buf[0] = (lba / 75) / 60;
+	buf[1] = (lba / 75) % 60;
+	buf[2] = lba &75;
+}
+
+static void ioctl_readsector_raw(uint8_t *b, int sector)
+{
+        LARGE_INTEGER pos;
+        long size;
+	uint32_t temp;
+        if (!cdrom_drive) return;
+	if (ioctl_cd_state == CD_PLAYING)
+		return;
+	else
+	        ioctl_cd_state = CD_STOPPED;        
+        pos.QuadPart=sector*2048;
+        ioctl_open(0);
+        SetFilePointer(hIOCTL,pos.LowPart,&pos.HighPart,FILE_BEGIN);
+        ReadFile(hIOCTL,b+16,2048,&size,NULL);
+        ioctl_close();
+
+	/* sync bytes */
+	b[0] = 0;
+	memset(b + 1, 0xff, 10);
+	b[11] = 0;
+	b += 12;
+	lba_to_msf(b, pos.QuadPart);
+	b[3] = 1; /* mode 1 data */
+	b += 4;
+	b += 2048;
+	memset(b, 0, 288);
+}
+
 static int ioctl_readtoc(unsigned char *b, unsigned char starttrack, int msf, int maxlen, int single)
 {
         int len=4;
@@ -479,6 +526,50 @@ static void ioctl_readtoc_session(unsigned char *b, int msf, int maxlen)
                 }
 }
 
+static int ioctl_readtoc_raw(unsigned char *b, int maxlen)
+{
+        int len=4;
+        int size;
+        uint32_t temp;
+	int i;
+	int BytesRead = 0;
+        CDROM_READ_TOC_EX toc_ex;
+        CDROM_TOC_FULL_TOC_DATA toc;
+        if (!cdrom_drive) return 0;
+        ioctl_cd_state = CD_STOPPED;        
+        memset(&toc_ex,0,sizeof(toc_ex));
+        memset(&toc,0,sizeof(toc));
+        toc_ex.Format=CDROM_READ_TOC_EX_FORMAT_FULL_TOC;
+        toc_ex.Msf=1;
+        toc_ex.SessionTrack=0;
+        ioctl_open(0);
+        DeviceIoControl(hIOCTL,IOCTL_CDROM_READ_TOC_EX, &toc_ex,sizeof(toc_ex),&toc,sizeof(toc),(PDWORD)&size,NULL);
+        ioctl_close();
+//        pclog("Read TOC session - %i %02X %02X %i %i %02X %02X %02X\n",size,toc.Length[0],toc.Length[1],toc.FirstCompleteSession,toc.LastCompleteSession,toc.TrackData[0].Adr,toc.TrackData[0].Control,toc.TrackData[0].TrackNumber);
+        b[2]=toc.FirstCompleteSession;
+        b[3]=toc.LastCompleteSession;
+
+	size -= sizeof(CDROM_TOC_FULL_TOC_DATA);
+	size /= sizeof(toc.Descriptors[0]);
+
+	for (i = 0; i <= size; i++)
+	{
+                b[len++]=toc.Descriptors[i].SessionNumber;
+                b[len++]=(toc.Descriptors[i].Adr<<4)|toc.Descriptors[i].Control;
+                b[len++]=0;
+                b[len++]=toc.Descriptors[i].Reserved1; /*Reserved*/
+		b[len++]=toc.Descriptors[i].MsfExtra[0];
+		b[len++]=toc.Descriptors[i].MsfExtra[1];
+		b[len++]=toc.Descriptors[i].MsfExtra[2];
+		b[len++]=toc.Descriptors[i].Zero;
+		b[len++]=toc.Descriptors[i].Msf[0];
+		b[len++]=toc.Descriptors[i].Msf[1];
+		b[len++]=toc.Descriptors[i].Msf[2];
+	}
+
+	return len;
+}
+
 static uint32_t ioctl_size()
 {
         unsigned char b[4096];
@@ -549,8 +640,10 @@ static ATAPI ioctl_atapi=
         ioctl_ready,
         ioctl_readtoc,
         ioctl_readtoc_session,
+        ioctl_readtoc_raw,
         ioctl_getcurrentsubchannel,
         ioctl_readsector,
+        ioctl_readsector_raw,
         ioctl_playaudio,
         ioctl_seek,
         ioctl_load,

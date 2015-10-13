@@ -659,6 +659,8 @@ void *tandy_init()
         tandy_t *tandy = malloc(sizeof(tandy_t));
         memset(tandy, 0, sizeof(tandy_t));
 
+	overscan_x = overscan_y = 16;
+
         tandy->memctrl = -1;
         
         for (c = 0; c < 8; c++)

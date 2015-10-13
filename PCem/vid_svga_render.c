@@ -9,6 +9,8 @@
 void svga_render_blank(svga_t *svga)
 {
         int x, xx;
+	int y_add = (enable_overscan) ? 16 : 0;
+	int x_add = y_add >> 1;
         
         if (svga->firstline_draw == 2000) 
                 svga->firstline_draw = svga->displine;
@@ -19,16 +21,16 @@ void svga_render_blank(svga_t *svga)
                 switch (svga->seqregs[1] & 9)
                 {
                         case 0:
-                        for (xx = 0; xx < 9; xx++) ((uint32_t *)buffer32->line[svga->displine])[(x * 9) + xx + 32] = 0;
+                        for (xx = 0; xx < 9; xx++) ((uint32_t *)buffer32->line[svga->displine + y_add])[(x * 9) + xx + 32 + x_add] = 0;
                         break;
                         case 1:
-                        for (xx = 0; xx < 8; xx++) ((uint32_t *)buffer32->line[svga->displine])[(x * 8) + xx + 32] = 0;
+                        for (xx = 0; xx < 8; xx++) ((uint32_t *)buffer32->line[svga->displine + y_add])[(x * 8) + xx + 32 + x_add] = 0;
                         break;
                         case 8:
-                        for (xx = 0; xx < 18; xx++) ((uint32_t *)buffer32->line[svga->displine])[(x * 18) + xx + 32] = 0;
+                        for (xx = 0; xx < 18; xx++) ((uint32_t *)buffer32->line[svga->displine + y_add])[(x * 18) + xx + 32 + x_add] = 0;
                         break;
                         case 9:
-                        for (xx = 0; xx < 16; xx++) ((uint32_t *)buffer32->line[svga->displine])[(x * 16) + xx + 32] = 0;
+                        for (xx = 0; xx < 16; xx++) ((uint32_t *)buffer32->line[svga->displine + y_add])[(x * 16) + xx + 32 + x_add] = 0;
                         break;
                 }
         }
@@ -37,6 +39,8 @@ void svga_render_blank(svga_t *svga)
 void svga_render_text_40(svga_t *svga)
 {     
 	uint32_t addr_ex = 0;
+	int y_add = (enable_overscan) ? 16 : 0;
+	int x_add = y_add >> 1;
 
         if (svga->firstline_draw == 2000) 
                 svga->firstline_draw = svga->displine;
@@ -44,7 +48,7 @@ void svga_render_text_40(svga_t *svga)
         
         if (svga->fullchange)
         {
-                uint32_t *p = &((uint32_t *)buffer32->line[svga->displine])[32];
+                uint32_t *p = &((uint32_t *)buffer32->line[svga->displine + y_add])[32 + x_add];
                 int x, xx;
                 int drawcursor;
                 uint8_t chr, attr, dat;
@@ -106,6 +110,8 @@ void svga_render_text_80(svga_t *svga)
 {
 	uint32_t addr_ex = 0;
 	FILE *f;
+	int y_add = (enable_overscan) ? 16 : 0;
+	int x_add = y_add >> 1;
 
         if (svga->firstline_draw == 2000) 
                 svga->firstline_draw = svga->displine;
@@ -113,7 +119,7 @@ void svga_render_text_80(svga_t *svga)
         
         if (svga->fullchange)
         {
-                uint32_t *p = &((uint32_t *)buffer32->line[svga->displine])[32];
+                uint32_t *p = &((uint32_t *)buffer32->line[svga->displine + y_add])[32 + x_add];
                 int x, xx;
                 int drawcursor;
                 uint8_t chr, attr, dat;
@@ -174,6 +180,8 @@ void svga_render_text_80(svga_t *svga)
 void svga_render_2bpp_lowres(svga_t *svga)
 {
         int changed_offset;
+	int y_add = (enable_overscan) ? 16 : 0;
+	int x_add = y_add >> 1;
         
         if (svga->sc & 1 && !(svga->crtc[0x17] & 1))
                 changed_offset = (svga->ma << 1) >> 12;
@@ -184,7 +192,7 @@ void svga_render_2bpp_lowres(svga_t *svga)
         {
                 int x;
                 int offset = ((8 - svga->scrollcache) << 1) + 16;
-                uint32_t *p = &((uint32_t *)buffer32->line[svga->displine])[offset];
+                uint32_t *p = &((uint32_t *)buffer32->line[svga->displine + y_add])[offset + x_add];
                 
                 if (svga->firstline_draw == 2000) 
                         svga->firstline_draw = svga->displine;
@@ -224,6 +232,8 @@ void svga_render_2bpp_lowres(svga_t *svga)
 void svga_render_2bpp_highres(svga_t *svga)
 {
         int changed_offset;
+	int y_add = (enable_overscan) ? 16 : 0;
+	int x_add = y_add >> 1;
         
         if (svga->sc & 1 && !(svga->crtc[0x17] & 1))
                 changed_offset = ((svga->ma << 1) | 0x8000) >> 12;
@@ -234,7 +244,7 @@ void svga_render_2bpp_highres(svga_t *svga)
         {
                 int x;
                 int offset = (8 - svga->scrollcache) + 24;
-                uint32_t *p = &((uint32_t *)buffer32->line[svga->displine])[offset];
+                uint32_t *p = &((uint32_t *)buffer32->line[svga->displine + y_add])[offset + x_add];
                 
                 if (svga->firstline_draw == 2000) 
                         svga->firstline_draw = svga->displine;
@@ -273,11 +283,14 @@ void svga_render_2bpp_highres(svga_t *svga)
 
 void svga_render_4bpp_lowres(svga_t *svga)
 {
+	int y_add = (enable_overscan) ? 16 : 0;
+	int x_add = y_add >> 1;
+
         if (svga->changedvram[svga->ma >> 12] || svga->changedvram[(svga->ma >> 12) + 1] || svga->fullchange)
         {
                 int x;
                 int offset = ((8 - svga->scrollcache) << 1) + 16;
-                uint32_t *p = &((uint32_t *)buffer32->line[svga->displine])[offset];
+                uint32_t *p = &((uint32_t *)buffer32->line[svga->displine + y_add])[offset + x_add];
                 
                 if (svga->firstline_draw == 2000) 
                         svga->firstline_draw = svga->displine;
@@ -313,6 +326,8 @@ void svga_render_4bpp_lowres(svga_t *svga)
 void svga_render_4bpp_highres(svga_t *svga)
 {
         int changed_offset;
+	int y_add = (enable_overscan) ? 16 : 0;
+	int x_add = y_add >> 1;
         
         if (svga->sc & 1 && !(svga->crtc[0x17] & 1))
                 changed_offset = (svga->ma | 0x8000) >> 12;
@@ -323,7 +338,7 @@ void svga_render_4bpp_highres(svga_t *svga)
         {
                 int x;
                 int offset = (8 - svga->scrollcache) + 24;
-                uint32_t *p = &((uint32_t *)buffer32->line[svga->displine])[offset];
+                uint32_t *p = &((uint32_t *)buffer32->line[svga->displine + y_add])[offset + x_add];
         
                 if (svga->firstline_draw == 2000) 
                         svga->firstline_draw = svga->displine;
@@ -359,16 +374,16 @@ void svga_render_4bpp_highres(svga_t *svga)
         }
 }
 
-/* void *svga_render_8bpp_lowres_th(void *arg)
-{
-	svga_t *svga = (svga_t *) arg; */
 void svga_render_8bpp_lowres(svga_t *svga)
 {
+	int y_add = (enable_overscan) ? 16 : 0;
+	int x_add = y_add >> 1;
+
         if (svga->changedvram[svga->ma >> 12] || svga->changedvram[(svga->ma >> 12) + 1] || svga->fullchange)
         {
                 int x;
                 int offset = (8 - (svga->scrollcache & 6)) + 24;
-                uint32_t *p = &((uint32_t *)buffer32->line[svga->displine])[offset];
+                uint32_t *p = &((uint32_t *)buffer32->line[svga->displine + y_add])[offset + x_add];
                 
                 if (svga->firstline_draw == 2000) 
                         svga->firstline_draw = svga->displine;
@@ -392,22 +407,16 @@ void svga_render_8bpp_lowres(svga_t *svga)
 	// return NULL;
 }
 
-/* void svga_render_8bpp_lowres(svga_t *svga)
-{
-	pthread_t pth;
-	pthread_create(&pth,NULL,svga_render_8bpp_lowres_th,(void *) svga);
-}
-
-void *svga_render_8bpp_highres_th(void *arg)
-{
-	svga_t *svga = (svga_t *) arg; */
 void svga_render_8bpp_highres(svga_t *svga)
 {
+	int y_add = (enable_overscan) ? 16 : 0;
+	int x_add = y_add >> 1;
+
         if (svga->changedvram[svga->ma >> 12] || svga->changedvram[(svga->ma >> 12) + 1] || svga->fullchange)
         {
                 int x;
                 int offset = (8 - ((svga->scrollcache & 6) >> 1)) + 24;
-                uint32_t *p = &((uint32_t *)buffer32->line[svga->displine])[offset];
+                uint32_t *p = &((uint32_t *)buffer32->line[svga->displine + y_add])[offset + x_add];
 
                 if (svga->firstline_draw == 2000) 
                         svga->firstline_draw = svga->displine;
@@ -437,19 +446,16 @@ void svga_render_8bpp_highres(svga_t *svga)
 	// return NULL;
 }
 
-/* void svga_render_8bpp_highres(svga_t *svga)
-{
-	pthread_t pth;
-	pthread_create(&pth,NULL,svga_render_8bpp_highres_th,(void *) svga);
-} */
-
 void svga_render_15bpp_lowres(svga_t *svga)
 {
+	int y_add = (enable_overscan) ? 16 : 0;
+	int x_add = y_add >> 1;
+
         if (svga->changedvram[svga->ma >> 12] || svga->changedvram[(svga->ma >> 12) + 1] || svga->fullchange)
         {
                 int x;
                 int offset = (8 - (svga->scrollcache & 6)) + 24;
-                uint32_t *p = &((uint32_t *)buffer32->line[svga->displine])[offset];
+                uint32_t *p = &((uint32_t *)buffer32->line[svga->displine + y_add])[offset + x_add];
                 
                 if (svga->firstline_draw == 2000) 
                         svga->firstline_draw = svga->displine;
@@ -474,11 +480,14 @@ void svga_render_15bpp_lowres(svga_t *svga)
 
 void svga_render_15bpp_highres(svga_t *svga)
 {
+	int y_add = (enable_overscan) ? 16 : 0;
+	int x_add = y_add >> 1;
+
         if (svga->changedvram[svga->ma >> 12] || svga->changedvram[(svga->ma >> 12) + 1] || svga->fullchange)
         {
                 int x;
                 int offset = (8 - ((svga->scrollcache & 6) >> 1)) + 24;
-                uint32_t *p = &((uint32_t *)buffer32->line[svga->displine])[offset];
+                uint32_t *p = &((uint32_t *)buffer32->line[svga->displine + y_add])[offset + x_add];
 
                 if (svga->firstline_draw == 2000) 
                         svga->firstline_draw = svga->displine;
@@ -509,11 +518,14 @@ void svga_render_15bpp_highres(svga_t *svga)
 
 void svga_render_16bpp_lowres(svga_t *svga)
 {
+	int y_add = (enable_overscan) ? 16 : 0;
+	int x_add = y_add >> 1;
+
         if (svga->changedvram[svga->ma >> 12] || svga->changedvram[(svga->ma >> 12) + 1] || svga->fullchange)
         {
                 int x;
                 int offset = (8 - (svga->scrollcache & 6)) + 24;
-                uint32_t *p = &((uint32_t *)buffer32->line[svga->displine])[offset];
+                uint32_t *p = &((uint32_t *)buffer32->line[svga->displine + y_add])[offset + x_add];
                 
                 if (svga->firstline_draw == 2000) 
                         svga->firstline_draw = svga->displine;
@@ -538,11 +550,14 @@ void svga_render_16bpp_lowres(svga_t *svga)
 
 void svga_render_16bpp_highres(svga_t *svga)
 {
+	int y_add = (enable_overscan) ? 16 : 0;
+	int x_add = y_add >> 1;
+
         if (svga->changedvram[svga->ma >> 12] || svga->changedvram[(svga->ma >> 12) + 1] || svga->fullchange)
         {
                 int x;
                 int offset = (8 - ((svga->scrollcache & 6) >> 1)) + 24;
-                uint32_t *p = &((uint32_t *)buffer32->line[svga->displine])[offset];
+                uint32_t *p = &((uint32_t *)buffer32->line[svga->displine + y_add])[offset + x_add];
 
                 if (svga->firstline_draw == 2000) 
                         svga->firstline_draw = svga->displine;
@@ -575,6 +590,8 @@ void svga_render_24bpp_lowres(svga_t *svga)
 {
         int x, offset;
         uint32_t fg;
+	int y_add = (enable_overscan) ? 16 : 0;
+	int x_add = y_add >> 1;
         
         if (svga->changedvram[svga->ma >> 12] || svga->changedvram[(svga->ma >> 12) + 1] || svga->fullchange)
         {
@@ -589,18 +606,21 @@ void svga_render_24bpp_lowres(svga_t *svga)
                         fg = svga->vram[svga->ma] | (svga->vram[svga->ma + 1] << 8) | (svga->vram[svga->ma + 2] << 16);
                         svga->ma += 3; 
                         svga->ma &= svga->vrammask;
-                        ((uint32_t *)buffer32->line[svga->displine])[(x << 1) + offset] = ((uint32_t *)buffer32->line[svga->displine])[(x << 1) + 1 + offset] = fg;
+                        ((uint32_t *)buffer32->line[svga->displine + y_add])[(x << 1) + offset + x_add] = ((uint32_t *)buffer32->line[svga->displine + y_add])[(x << 1) + 1 + offset + x_add] = fg;
                 }
         }
 }
 
 void svga_render_24bpp_highres(svga_t *svga)
 {
+	int y_add = (enable_overscan) ? 16 : 0;
+	int x_add = y_add >> 1;
+
         if (svga->changedvram[svga->ma >> 12] || svga->changedvram[(svga->ma >> 12) + 1] || svga->fullchange)
         {
                 int x;
                 int offset = (8 - ((svga->scrollcache & 6) >> 1)) + 24;
-                uint32_t *p = &((uint32_t *)buffer32->line[svga->displine])[offset];
+                uint32_t *p = &((uint32_t *)buffer32->line[svga->displine + y_add])[offset + x_add];
                 
                 if (svga->firstline_draw == 2000) 
                         svga->firstline_draw = svga->displine;
@@ -630,6 +650,8 @@ void svga_render_32bpp_lowres(svga_t *svga)
 {
         int x, offset;
         uint32_t fg;
+	int y_add = (enable_overscan) ? 16 : 0;
+	int x_add = y_add >> 1;
         
         if (svga->changedvram[svga->ma >> 12] || svga->changedvram[(svga->ma >> 12) + 1] || svga->fullchange)
         {
@@ -644,7 +666,7 @@ void svga_render_32bpp_lowres(svga_t *svga)
                         fg = svga->vram[svga->ma] | (svga->vram[svga->ma + 1] << 8) | (svga->vram[svga->ma + 2] << 16);
                         svga->ma += 4; 
                         svga->ma &= svga->vrammask;
-                        ((uint32_t *)buffer32->line[svga->displine])[(x << 1) + offset] = ((uint32_t *)buffer32->line[svga->displine])[(x << 1) + 1 + offset] = fg;
+                        ((uint32_t *)buffer32->line[svga->displine + y_add])[(x << 1) + offset + x_add] = ((uint32_t *)buffer32->line[svga->displine + y_add])[(x << 1) + 1 + offset + x_add] = fg;
                 }
         }
 }
@@ -653,11 +675,14 @@ void svga_render_32bpp_lowres(svga_t *svga)
   91%*/
 void svga_render_32bpp_highres(svga_t *svga)
 {
+	int y_add = (enable_overscan) ? 16 : 0;
+	int x_add = y_add >> 1;
+
         if (svga->changedvram[svga->ma >> 12] ||  svga->changedvram[(svga->ma >> 12) + 1] || svga->changedvram[(svga->ma >> 12) + 2] || svga->fullchange)
         {
                 int x;
                 int offset = (8 - ((svga->scrollcache & 6) >> 1)) + 24;
-                uint32_t *p = &((uint32_t *)buffer32->line[svga->displine])[offset];
+                uint32_t *p = &((uint32_t *)buffer32->line[svga->displine + y_add])[offset + x_add];
                 
                 if (svga->firstline_draw == 2000) 
                         svga->firstline_draw = svga->displine;
@@ -675,11 +700,14 @@ void svga_render_32bpp_highres(svga_t *svga)
 
 void svga_render_RGBA8888_highres(svga_t *svga)
 {
+	int y_add = (enable_overscan) ? 16 : 0;
+	int x_add = y_add >> 1;
+
         if (svga->changedvram[svga->ma >> 12] ||  svga->changedvram[(svga->ma >> 12) + 1] || svga->changedvram[(svga->ma >> 12) + 2] || svga->fullchange)
         {
                 int x;
                 int offset = (8 - ((svga->scrollcache & 6) >> 1)) + 24;
-                uint32_t *p = &((uint32_t *)buffer32->line[svga->displine])[offset];
+                uint32_t *p = &((uint32_t *)buffer32->line[svga->displine + y_add])[offset + x_add];
                 
                 if (svga->firstline_draw == 2000) 
                         svga->firstline_draw = svga->displine;

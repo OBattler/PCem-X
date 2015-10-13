@@ -87,6 +87,7 @@ void pic_write(uint16_t addr, uint8_t val, void *priv)
                         pic.mask2=0;
                         pic.icw=1;
                         pic.icw1=val;
+                        pic.ins = 0;
                         pic_updatepending();
                 }
                 else if (!(val&8)) /*OCW2*/
@@ -115,7 +116,6 @@ void pic_write(uint16_t addr, uint8_t val, void *priv)
                                                 if (c == 2 && (pic2.pend&~pic2.mask)&~pic2.mask2)
                                                         pic.pend |= (1 << 2);
 
-//                                                pic.pend&=~(1<<c);
                                                 if (c==1 && keywaiting)
                                                 {
                                                         intclear&=~1;
@@ -186,6 +186,7 @@ void pic2_write(uint16_t addr, uint8_t val, void *priv)
                         pic2.mask2=0;
                         pic2.icw=1;
                         pic2.icw1=val;
+                        pic2.ins = 0;
                         pic_updatepending();
                 }
                 else if (!(val&8)) /*OCW2*/

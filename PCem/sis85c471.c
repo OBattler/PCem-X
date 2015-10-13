@@ -4,6 +4,7 @@
 */
 
 #include "ibm.h"
+#include "ide.h"
 
 #include "fdc.h"
 #include "io.h"

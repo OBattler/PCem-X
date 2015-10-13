@@ -11,5 +11,8 @@ int sound_card_has_config(int card);
 void sound_card_init();
 void sound_set_cd_volume(unsigned int vol_l, unsigned int vol_r);
 
+void sound_init();
+void sound_reset();
+
 #define CD_FREQ 44100
 #define CD_BUFLEN (CD_FREQ / 10)

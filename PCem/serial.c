@@ -13,7 +13,7 @@ enum
         SERIAL_INT_MSR = 8
 };
 
-SERIAL serial1, serial2, serial3, serial4;
+SERIAL serial1, serial2;
 
 int mousepos=-1;
 int mousedelay;
@@ -22,13 +22,9 @@ void serial_reset()
 {
         serial1.iir = serial1.ier = serial1.lcr = 0;
         serial2.iir = serial2.ier = serial2.lcr = 0;
-        serial3.iir = serial3.ier = serial3.lcr = 0;
-        serial4.iir = serial4.ier = serial4.lcr = 0;
         mousedelay = 0;
         serial1.fifo_read = serial1.fifo_write = 0;
         serial2.fifo_read = serial2.fifo_write = 0;
-        serial3.fifo_read = serial3.fifo_write = 0;
-        serial4.fifo_read = serial4.fifo_write = 0;
 }
 
 void serial_update_ints(SERIAL *serial)
@@ -94,7 +90,7 @@ void serial_write(uint16_t addr, uint8_t val, void *p)
         switch (addr&7)
         {
                 case 0:
-                if (serial->lcr & 0x80 && !AMSTRADIO)
+                if (serial->lcr & 0x80)
                 {
                         serial->dlab1 = val;
                         return;
@@ -109,7 +105,7 @@ void serial_write(uint16_t addr, uint8_t val, void *p)
                 }
                 break;
                 case 1:
-                if (serial->lcr & 0x80 && !AMSTRADIO)
+                if (serial->lcr & 0x80)
                 {
                         serial->dlab2 = val;
                         return;
@@ -164,9 +160,9 @@ void serial_write(uint16_t addr, uint8_t val, void *p)
                         serial->int_status |= SERIAL_INT_MSR;
                 serial_update_ints(serial);
                 break;
-		case 7:
-		serial->scratch = val;
-		break;
+                case 7:
+                serial->scratch = val;
+                break;
         }
 }
 
@@ -178,7 +174,7 @@ uint8_t serial_read(uint16_t addr, void *p)
         switch (addr&7)
         {
                 case 0:
-                if (serial->lcr & 0x80 && !AMSTRADIO)
+                if (serial->lcr & 0x80)
                 {
                         temp = serial->dlab1;
                         break;
@@ -192,7 +188,7 @@ uint8_t serial_read(uint16_t addr, void *p)
                         serial->recieve_delay = 1000 * TIMER_USEC;
                 break;
                 case 1:
-                if (serial->lcr & 0x80 && !AMSTRADIO)
+                if (serial->lcr & 0x80)
                         temp = serial->dlab2;
                 else
                         temp = serial->ier;
@@ -228,9 +224,9 @@ uint8_t serial_read(uint16_t addr, void *p)
                 serial->int_status &= ~SERIAL_INT_MSR;
                 serial_update_ints(serial);
                 break;
-		case 7:
-		temp = serial->scratch;
-		break;
+                case 7:
+                temp = serial->scratch;
+                break;
         }
 //        pclog("%02X\n",temp);
         return temp;
@@ -304,58 +300,4 @@ void serial2_remove()
         io_removehandler(0x338, 0x0008, serial_read,  NULL, NULL, serial_write,  NULL, NULL, &serial2);
         io_removehandler(0x3e8, 0x0008, serial_read,  NULL, NULL, serial_write,  NULL, NULL, &serial2);
         io_removehandler(0x3f8, 0x0008, serial_read,  NULL, NULL, serial_write,  NULL, NULL, &serial2);
-}
-
-void serial3_init(uint16_t addr, int irq)
-{
-        memset(&serial3, 0, sizeof(serial3));
-        io_sethandler(addr, 0x0008, serial_read, NULL, NULL, serial_write, NULL, NULL, &serial3);
-        serial3.irq = irq;
-        serial3.rcr_callback = NULL;
-        timer_add(serial_recieve_callback, &serial3.recieve_delay, &serial2.recieve_delay, &serial3);
-}
-void serial3_set(uint16_t addr, int irq)
-{
-        serial3_remove();
-        io_sethandler(addr, 0x0008, serial_read, NULL, NULL, serial_write, NULL, NULL, &serial3);
-        serial3.irq = irq;
-}
-void serial3_remove()
-{
-        io_removehandler(0x220, 0x0008, serial_read,  NULL, NULL, serial_write,  NULL, NULL, &serial3);
-        io_removehandler(0x228, 0x0008, serial_read,  NULL, NULL, serial_write,  NULL, NULL, &serial3);
-        io_removehandler(0x238, 0x0008, serial_read,  NULL, NULL, serial_write,  NULL, NULL, &serial3);
-        io_removehandler(0x2e0, 0x0008, serial_read,  NULL, NULL, serial_write,  NULL, NULL, &serial3);
-        io_removehandler(0x2e8, 0x0008, serial_read,  NULL, NULL, serial_write,  NULL, NULL, &serial3);
-        io_removehandler(0x2f8, 0x0008, serial_read,  NULL, NULL, serial_write,  NULL, NULL, &serial3);
-        io_removehandler(0x338, 0x0008, serial_read,  NULL, NULL, serial_write,  NULL, NULL, &serial3);
-        io_removehandler(0x3e8, 0x0008, serial_read,  NULL, NULL, serial_write,  NULL, NULL, &serial3);
-        io_removehandler(0x3f8, 0x0008, serial_read,  NULL, NULL, serial_write,  NULL, NULL, &serial3);
-}
-
-void serial4_init(uint16_t addr, int irq)
-{
-        memset(&serial4, 0, sizeof(serial4));
-        io_sethandler(addr, 0x0008, serial_read, NULL, NULL, serial_write, NULL, NULL, &serial4);
-        serial4.irq = irq;
-        serial4.rcr_callback = NULL;
-        timer_add(serial_recieve_callback, &serial3.recieve_delay, &serial2.recieve_delay, &serial4);
-}
-void serial4_set(uint16_t addr, int irq)
-{
-        serial4_remove();
-        io_sethandler(addr, 0x0008, serial_read, NULL, NULL, serial_write, NULL, NULL, &serial4);
-        serial4.irq = irq;
-}
-void serial4_remove()
-{
-        io_removehandler(0x220, 0x0008, serial_read,  NULL, NULL, serial_write,  NULL, NULL, &serial4);
-        io_removehandler(0x228, 0x0008, serial_read,  NULL, NULL, serial_write,  NULL, NULL, &serial4);
-        io_removehandler(0x238, 0x0008, serial_read,  NULL, NULL, serial_write,  NULL, NULL, &serial4);
-        io_removehandler(0x2e0, 0x0008, serial_read,  NULL, NULL, serial_write,  NULL, NULL, &serial4);
-        io_removehandler(0x2e8, 0x0008, serial_read,  NULL, NULL, serial_write,  NULL, NULL, &serial4);
-        io_removehandler(0x2f8, 0x0008, serial_read,  NULL, NULL, serial_write,  NULL, NULL, &serial4);
-        io_removehandler(0x338, 0x0008, serial_read,  NULL, NULL, serial_write,  NULL, NULL, &serial4);
-        io_removehandler(0x3e8, 0x0008, serial_read,  NULL, NULL, serial_write,  NULL, NULL, &serial4);
-        io_removehandler(0x3f8, 0x0008, serial_read,  NULL, NULL, serial_write,  NULL, NULL, &serial4);
 }

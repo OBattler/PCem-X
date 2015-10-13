@@ -523,7 +523,7 @@ static device_config_t sb_config[] =
                                 .description = ""
                         }
                 },
-                .default_int = 7
+                .default_int = 5
         },
         {
                 .name = "dma",
@@ -599,7 +599,7 @@ static device_config_t sb_pro_config[] =
                                 .description = ""
                         }
                 },
-                .default_int = 7
+                .default_int = 5
         },
         {
                 .name = "dma",

@@ -9,7 +9,7 @@
 
 int oldromset;
 int nvrmask=63;
-uint8_t nvrram[256];
+uint8_t nvrram[128];
 int nvraddr;
 
 int nvr_dosave = 0;
@@ -259,41 +259,29 @@ void nvr_onesec(void *p)
 void writenvr(uint16_t addr, uint8_t val, void *priv)
 {
         int c;
-	// if (AMSTRAD)  printf("AM ");
-        // printf("Write NVR %03X %02X %02X %04X:%04X %i\n",addr,nvraddr,val,cs>>4,pc,ins);
-	// printf("CPU Clock = %f MHz\n", RTCCONST * 32768.0);
+//        printf("Write NVR %03X %02X %02X %04X:%04X %i\n",addr,nvraddr,val,cs>>4,pc,ins);
         if (addr&1)
         {
-//              if (nvraddr == 0x33)  pclog("NVRWRITE33 %02X %04X:%04X %i\n",val,CS,pc,ins);
-		/* if (AMSTRAD)
-		{
-                	if (nvraddr >= 0x13 && nvrram[nvraddr] != val) 
-	                   nvr_dosave = 1;
-		}
-		else
-		{ */
-//                	if (nvraddr >= 0xe && nvrram[nvraddr] != val) 
-                	if (nvrram[nvraddr] != val) 
-	                   nvr_dosave = 1;
-		// }
+//                if (nvraddr == 0x33) pclog("NVRWRITE33 %02X %04X:%04X %i\n",val,CS,pc,ins);
+//                if (nvraddr >= 0xe && nvrram[nvraddr] != val) 
+               	if (nvrram[nvraddr] != val) 
+                   nvr_dosave = 1;
                 if (nvraddr!=0xC && nvraddr!=0xD && nvraddr!=0xA) nvrram[nvraddr]=val;
                 
                 if (nvraddr==0xA)
                 {
-//                       pclog("NVR rate %i\n",val&0xF);
+//                        pclog("NVR rate %i\n",val&0xF);
                         if (val&0xF)
                         {
-                               	c=1<<((val&0xF)-1);
-                               	rtctime += (int)(RTCCONST * c * (1 << TIMER_SHIFT));
-				printf("%ld MHz\n", rtctime);
+                                c=1<<((val&0xF)-1);
+                                rtctime += (int)(RTCCONST * c * (1 << TIMER_SHIFT));
                         }
                         else
                            rtctime = 0x7fffffff;
 
-			val &= 0x7F;
-			val |= (nvrram[nvraddr] & 0x80);
-			nvrram[nvraddr] = val;
-                       pclog("NVR rate %i\n",nvrram[nvraddr]&0xF);
+                        val &= 0x7F;
+                        val |= (nvrram[nvraddr] & 0x80);
+                        nvrram[nvraddr] = val;
                 }
         }
         else        nvraddr=val&nvrmask;
@@ -302,21 +290,10 @@ void writenvr(uint16_t addr, uint8_t val, void *priv)
 uint8_t readnvr(uint16_t addr, void *priv)
 {
         uint8_t temp;
-	uint32_t where;
-	// if (AMSTRAD)  printf("AM ");
-        // printf("Read NVR %03X %02X %02X %04X:%04X\n",addr,nvraddr,nvrram[nvraddr],cs>>4,pc);
-	// printf("NVR 0F = %02X\n", nvrram[0xC]);
+//        printf("Read NVR %03X %02X %02X %04X:%04X\n",addr,nvraddr,nvrram[nvraddr],cs>>4,pc);
         if (addr&1)
         {
                 if (nvraddr==0xD) nvrram[0xD]|=0x80;
-		// Amstrad test
-                // if (AMSTRAD & (nvraddr==0xA))
-                /* if (nvraddr==0xA)
-                {
-                        temp=nvrram[0xA];
-                        nvrram[0xA]^=0x80;
-                        return temp;
-                } */
                 if (nvraddr==0xC)
                 {
                         if (AMSTRAD) picintc(2);
@@ -326,20 +303,18 @@ uint8_t readnvr(uint16_t addr, void *priv)
                         return temp;
                 }
 //                if (AMIBIOS && nvraddr==0x36) return 0;
-                /* if (!AMSTRAD)  if (nvraddr==0xA) nvrram[0xA]^=0x80;
-		if (AMSTRAD)
-		{
-			where = cs + pc;
-                	if ((where & 0xFFFFFFF0) != 0xFC4C0)
-			{
-				pclog("Date/time test\n");
-				if (nvraddr==0xA) nvrram[0xA]^=0x80;
-			}
-		} */
+//                if (nvraddr==0xA) nvrram[0xA]^=0x80;
                 return nvrram[nvraddr];
         }
         return nvraddr;
 }
+
+/*
+	IMPORTANT Notice:
+	Keep the NVR files for SiS 496/497 and 430VX different from the ones used by stock PCem,
+	in order to avoid conflict due to the two emulators using different Super I/O chips
+	(SMsC for PCem-X, UMC for PCem).
+*/
 
 void loadnvr()
 {
@@ -369,32 +344,37 @@ void loadnvr()
                 case ROM_AMI486:     f = romfopen("ami486.nvr",     "rb"); nvrmask = 127; break;
                 case ROM_PX486:      f = romfopen("px486.nvr",      "rb"); nvrmask = 127; break;
                 case ROM_WIN486:     f = romfopen("win486.nvr",     "rb"); nvrmask = 127; break;
-                case ROM_PCI486:     f = romfopen("hot-433.nvr",    "rb"); nvrmask = 127; break;
                 case ROM_SIS471:     f = romfopen("sis471.nvr",     "rb"); nvrmask = 127; break;
                 case ROM_PXSIS471:   f = romfopen("pxsis471.nvr",   "rb"); nvrmask = 127; break;
                 case ROM_COLORBOOK:  f = romfopen("colorbook.nvr",  "rb"); nvrmask = 127; break;
-                case ROM_SIS496:     f = romfopen("sis496.nvr",     "rb"); nvrmask = 127; break;
+                case ROM_SIS496:     f = romfopen("sis496-x.nvr",   "rb"); nvrmask = 127; break;
                 case ROM_REVENGE:    f = romfopen("revenge.nvr",    "rb"); nvrmask = 127; break;
                 case ROM_430LX:      f = romfopen("430lx.nvr",      "rb"); nvrmask = 127; break;
+                case ROM_ACERV12LC:  f = romfopen("acerv12lc.nvr",  "rb"); nvrmask = 127; break;
                 case ROM_PLATO:      f = romfopen("plato.nvr",      "rb"); nvrmask = 127; break;
                 case ROM_430NX:      f = romfopen("430nx.nvr",      "rb"); nvrmask = 127; break;
                 case ROM_ENDEAVOR:   f = romfopen("endeavor.nvr",   "rb"); nvrmask = 127; break;
                 case ROM_430FX:      f = romfopen("430fx.nvr",      "rb"); nvrmask = 127; break;
                 case ROM_430HX:      f = romfopen("430hx.nvr",      "rb"); nvrmask = 127; break;
                 case ROM_ACERV35N:   f = romfopen("acerv35n.nvr",   "rb"); nvrmask = 127; break;
-                case ROM_430VX:      f = romfopen("430vx.nvr",      "rb"); nvrmask = 127; break;
+                case ROM_430VX:      f = romfopen("430vx-x.nvr",    "rb"); nvrmask = 127; break;
                 case ROM_430TX:      f = romfopen("430tx.nvr",      "rb"); nvrmask = 127; break;
                 case ROM_440FX:      f = romfopen("440fx.nvr",      "rb"); nvrmask = 127; break;
+#ifdef BROKEN_CHIPSETS
+                case ROM_PCI486:     f = romfopen("hot-433.nvr",    "rb"); nvrmask = 127; break;
+                case ROM_APOLLO:     f = romfopen("apollo.nvr",     "rb"); nvrmask = 127; break;
+                case ROM_GOLIATH:    f = romfopen("goliath.nvr",    "rb"); nvrmask = 127; break;
                 case ROM_440BX:      f = romfopen("440bx.nvr",      "rb"); nvrmask = 127; break;
                 case ROM_VPC2007:    f = romfopen("vpc2007.nvr",    "rb"); nvrmask = 127; break;
+#endif
                 default: return;
         }
         if (!f)
         {
-                memset(nvrram,0xFF,(nvrmask == 255) ? 256 : 128);
+                memset(nvrram,0xFF,128);
                 return;
         }
-        fread(nvrram,(nvrmask == 255) ? 256 : 128,1,f);
+        fread(nvrram,128,1,f);
         fclose(f);
         // nvrram[0xA]=6;
         // nvrram[0xB]=0;
@@ -427,28 +407,32 @@ void savenvr()
                 case ROM_AMI486:     f = romfopen("ami486.nvr",     "wb"); break;
                 case ROM_PX486:      f = romfopen("px486.nvr",      "wb"); break;
                 case ROM_WIN486:     f = romfopen("win486.nvr",     "wb"); break;
-                case ROM_PCI486:     f = romfopen("hot-433.nvr",    "wb"); break;
                 case ROM_SIS471:     f = romfopen("sis471.nvr",     "wb"); break;
                 case ROM_PXSIS471:   f = romfopen("pxsis471.nvr",   "wb"); break;
                 case ROM_COLORBOOK:  f = romfopen("colorbook.nvr",  "wb"); break;
-                case ROM_SIS496:     f = romfopen("sis496.nvr",     "wb"); break;
+                case ROM_SIS496:     f = romfopen("sis496-x.nvr",   "wb"); break;
                 case ROM_REVENGE:    f = romfopen("revenge.nvr",    "wb"); break;
                 case ROM_430LX:      f = romfopen("430lx.nvr",      "wb"); break;
+                case ROM_ACERV12LC:  f = romfopen("acerv12lc.nvr",  "wb"); break;
                 case ROM_PLATO:      f = romfopen("plato.nvr",      "wb"); break;
                 case ROM_430NX:      f = romfopen("430nx.nvr",      "wb"); break;
                 case ROM_ENDEAVOR:   f = romfopen("endeavor.nvr",   "wb"); break;
                 case ROM_430FX:      f = romfopen("430fx.nvr",      "wb"); break;
                 case ROM_430HX:      f = romfopen("430hx.nvr",      "wb"); break;
                 case ROM_ACERV35N:   f = romfopen("acerv35n.nvr",   "wb"); break;
-                case ROM_430VX:      f = romfopen("430vx.nvr",      "wb"); break;
+                case ROM_430VX:      f = romfopen("430vx-x.nvr",    "wb"); break;
                 case ROM_430TX:      f = romfopen("430tx.nvr",      "wb"); break;
                 case ROM_440FX:      f = romfopen("440fx.nvr",      "wb"); break;
+#ifdef BROKEN_CHIPSETS
+                case ROM_PCI486:     f = romfopen("hot-433.nvr",    "wb"); break;
+                case ROM_APOLLO:     f = romfopen("apollo.nvr",     "wb"); break;
+                case ROM_GOLIATH:    f = romfopen("goliath.nvr",    "wb"); break;
                 case ROM_440BX:      f = romfopen("440bx.nvr",      "wb"); break;
                 case ROM_VPC2007:    f = romfopen("vpc2007.nvr",    "wb"); break;
+#endif
                 default: return;
         }
-        fwrite(nvrram,(nvrmask == 255) ? 256 : 128,1,f);
-	if(AMSTRAD)  nvrram[0x20] = 0x19;
+        fwrite(nvrram,128,1,f);
         fclose(f);
 }
 

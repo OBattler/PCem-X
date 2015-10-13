@@ -39,3 +39,6 @@ void configure_drt();
 void fdc_setswap(int val);
 
 uint8_t fdc_read(uint16_t addr, void *priv);
+
+void loaddisc(int d, char *fn);
+void savedisc(int d);

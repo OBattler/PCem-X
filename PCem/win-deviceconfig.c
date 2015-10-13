@@ -5,17 +5,13 @@
 
 #include "ibm.h"
 #include "config.h"
-#include "win-deviceconfig.h"
+#include "device.h"
 #include "resources.h"
 #include "win.h"
 
 static device_t *config_device;
 
-#ifndef __MINGW64__
 static BOOL CALLBACK deviceconfig_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPARAM lParam)
-#else
-static INT_PTR CALLBACK deviceconfig_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPARAM lParam)
-#endif
 {
         switch (message)
         {
@@ -31,8 +27,8 @@ static INT_PTR CALLBACK deviceconfig_dlgproc(HWND hdlg, UINT message, WPARAM wPa
                                 HWND h = GetDlgItem(hdlg, id);
                                 int val_int;
                                 char *val_string;
-				int num;
-				char s[80];
+                                int num;
+                                char s[80];
                                 
                                 switch (config->type)
                                 {
@@ -71,7 +67,7 @@ static INT_PTR CALLBACK deviceconfig_dlgproc(HWND hdlg, UINT message, WPARAM wPa
                                                 if (val_int == c)
                                                         SendMessage(h, CB_SETCURSEL, c, 0);
                                         }
-
+                                        
                                         id += 2;
                                         break;
                                 }
@@ -178,7 +174,7 @@ static INT_PTR CALLBACK deviceconfig_dlgproc(HWND hdlg, UINT message, WPARAM wPa
                                                 case CONFIG_MIDI:
                                                 c = SendMessage(h, CB_GETCURSEL, 0, 0);
                                                 config_set_int(NULL, config->name, c);
-
+                                        
                                                 id += 2;
                                                 break;
                                         }
@@ -228,11 +224,7 @@ void deviceconfig_open(HWND hwnd, device_t *device)
         *data++ = 8; /*Point*/
         data += MultiByteToWideChar(CP_ACP, 0, "MS Sans Serif", -1, data, 50);
         
-#ifndef __MINGW64__
         if (((unsigned long)data) & 2)
-#else
-        if (((unsigned long long)data) & 2)
-#endif
                 data++;
 
         while (config->type != -1)
@@ -261,7 +253,7 @@ void deviceconfig_open(HWND hwnd, device_t *device)
                         break;
 
                         case CONFIG_SELECTION:
-			case CONFIG_MIDI:
+                        case CONFIG_MIDI:
                         /*Combo box*/
                         item = (DLGITEMTEMPLATE *)data;
                         item->x = 70;
@@ -280,11 +272,7 @@ void deviceconfig_open(HWND hwnd, device_t *device)
                         data += MultiByteToWideChar(CP_ACP, 0, config->description, -1, data, 256);
                         *data++ = 0;              // no creation data
                         
-#ifndef __MINGW64__
                         if (((unsigned long)data) & 2)
-#else
-                        if (((unsigned long long)data) & 2)
-#endif
                                 data++;
 
                         /*Static text*/
@@ -305,22 +293,14 @@ void deviceconfig_open(HWND hwnd, device_t *device)
                         data += MultiByteToWideChar(CP_ACP, 0, config->description, -1, data, 256);
                         *data++ = 0;              // no creation data
                         
-#ifndef __MINGW64__
                         if (((unsigned long)data) & 2)
-#else
-                        if (((unsigned long long)data) & 2)
-#endif
                                 data++;
 
                         y += 20;
                         break;
                 }
 
-#ifndef __MINGW64__
                 if (((unsigned long)data) & 2)
-#else
-                if (((unsigned long long)data) & 2)
-#endif
                         data++;
 
                 config++;
@@ -346,12 +326,8 @@ void deviceconfig_open(HWND hwnd, device_t *device)
         data += MultiByteToWideChar(CP_ACP, 0, "OK", -1, data, 50);
         *data++ = 0;              // no creation data
 
-#ifndef __MINGW64__
         if (((unsigned long)data) & 2)
-#else
-        if (((unsigned long long)data) & 2)
-#endif
-		data++;
+                data++;
                 
         item = (DLGITEMTEMPLATE *)data;
         item->x = 80;

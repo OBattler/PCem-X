@@ -18,14 +18,9 @@
 #include "x86.h"
 #include "cpu.h"
 #include "rom.h"
-#if DYNAREC
 #include "x86_ops.h"
 #include "codegen.h"
-#endif
 #include "intel_flash.h"
-#ifdef BROKEN_CHIPSETS
-#include "intel_flash_2mbit.h"
-#endif
 
 page_t *pages;
 page_t **page_lookup;
@@ -47,8 +42,8 @@ static mem_mapping_t base_mapping;
 static mem_mapping_t ram_low_mapping;
 static mem_mapping_t ram_high_mapping;
 static mem_mapping_t ram_mid_mapping;
-mem_mapping_t bios_mapping[16];
-static mem_mapping_t bios_high_mapping[16];
+mem_mapping_t bios_mapping[8];
+mem_mapping_t bios_high_mapping[8];
 static mem_mapping_t romext_mapping;
 
 int shadowbios,shadowbios_write;
@@ -128,7 +123,7 @@ int loadbios()
         biosmask = 0xffff;
         
         memset(romext,0x63,0x4000);
-        memset(rom, 0xff, 0x40000);
+        memset(rom, 0xff, 0x20000);
         
         pclog("Starting with romset %i\n", romset);
 
@@ -505,16 +500,6 @@ int loadbios()
 		biostype = BIOS_PHOENIX;
                 return 1;
                 
-                case ROM_PCI486:
-                f=romfopen("roms/hot-433/hot-433.ami","rb");               
-                if (!f) break;
-                fread(rom,           0x20000, 1, f);                
-                fclose(f);
-                biosmask = 0x1ffff;
-                //is486=1;
-		biostype = BIOS_AMI;
-                return 1;
-
                 case ROM_SIS471:
                 f = romfopen("roms/sis471/4siw005.bin", "rb");
                 if (!f) break;
@@ -566,6 +551,17 @@ int loadbios()
 		flash_1mbit_readfiles();
                 return 1;
 
+                case ROM_ACERV12LC:
+		f = romfopen("roms/acerv12lc/R03-B0.BIN", "rb");
+                if (!f) break;
+                fread(rom,           0x20000, 1, f);                
+                fclose(f);
+                biosmask = 0x1ffff;
+                //is486=1;
+		biostype = BIOS_ACER;
+		flash_1mbit_readfiles();
+                return 1;
+
                 case ROM_430NX:
                 f = romfopen("roms/430nx/IP.20", "rb");	/* Works */
                 if (!f) break;
@@ -593,15 +589,14 @@ int loadbios()
                 return 1;
 
                 case ROM_430HX:
-		// f = romfopen("roms/430hx/fw82439hx.bin", "rb");
-		f = romfopen("roms/430hx/T25I0207.AWD", "rb");
+		f = romfopen("roms/430hx/0207_J2.BIN", "rb");
                 if (!f) break;
                 fread(rom,           0x20000, 1, f);                
                 fclose(f);
                 biosmask = 0x1ffff;
                 //is486=1;
 		biostype = BIOS_AWARD;
-		// flash_1mbit_readfiles();
+		flash_1mbit_readfiles();
                 return 1;
 
                 case ROM_ACERV35N:
@@ -612,7 +607,7 @@ int loadbios()
                 biosmask = 0x1ffff;
                 //is486=1;
 		biostype = BIOS_ACER;
-		// flash_1mbit_readfiles();
+		flash_1mbit_readfiles();
                 return 1;
 
                 case ROM_430VX:
@@ -628,25 +623,25 @@ int loadbios()
                 biosmask = 0x1ffff;
                 //is486=1;
 		biostype = BIOS_AWARD;
-		// flash_1mbit_readfiles();
+		flash_1mbit_readfiles();
                 return 1;
 
                 case ROM_430TX:
-		// f = romfopen("roms/430tx/tx73w106.bin", "rb");
-		f = romfopen("roms/430tx/TX73J106.BIN", "rb");
+		f = romfopen("roms/430tx/LD5I0110.AWD", "rb");
                 if (!f) break;
                 fread(rom,           0x20000, 1, f);                
                 fclose(f);
                 biosmask = 0x1ffff;
                 //is486=1;
 		biostype = BIOS_AWARD;
-		// flash_1mbit_readfiles();
+		flash_1mbit_readfiles();
                 return 1;
 
                 case ROM_440FX:
 		// f = romfopen("roms/440fx/0215A-S.BIN", "rb");
-		f = romfopen("roms/440fx/NTMAW501.BIN", "rb");
+		f = romfopen("roms/440fx/NTMAW501.BIN", "rb");	/* Working Tyan BIOS. */
 		// f = romfopen("roms/440fx/NTMAW40E.BIN", "rb");
+		// f = romfopen("roms/440fx/NAKX0116.AWD", "rb");		/* ASUS BIOS. */
                 if (!f) break;
                 fread(rom,           0x20000, 1, f);                
                 fclose(f);
@@ -657,6 +652,27 @@ int loadbios()
                 return 1;
 
 #ifdef BROKEN_CHIPSETS
+                case ROM_PCI486:
+                f=romfopen("roms/hot-433/hot-433.ami","rb");               
+                if (!f) break;
+                fread(rom,           0x20000, 1, f);                
+                fclose(f);
+                biosmask = 0x1ffff;
+                //is486=1;
+		biostype = BIOS_AMI;
+                return 1;
+
+                case ROM_APOLLO:
+                f = romfopen("roms/apollo/S728P.ROM", "rb");
+                if (!f) break;
+                fread(rom,           0x20000, 1, f);                
+                fclose(f);
+                biosmask = 0x1ffff;
+                //is486=1;
+		biostype = BIOS_AMI;
+		flash_1mbit_readfiles();
+                return 1;
+
                 case ROM_GOLIATH:
 		f = romfopen("roms/goliath/S730P.ROM", "rb");
                 if (!f) break;
@@ -665,7 +681,7 @@ int loadbios()
                 biosmask = 0x1ffff;
                 //is486=1;
 		biostype = BIOS_AMI;
-		// flash_1mbit_readfiles();
+		flash_1mbit_readfiles();
                 return 1;
 
                 case ROM_440BX:
@@ -911,9 +927,7 @@ void flushmmucache()
                         exit(-1);
                 }
         }*/
-#if DYNAREC
         codegen_flush();
-#endif
 }
 
 void flushmmucache_nopc()
@@ -1189,11 +1203,10 @@ void addwritelookup(uint32_t virt, uint32_t phys)
         }
 //        if (page_lookup[virt >> 12] && (writelookup2[virt>>12] != 0xffffffff))
 //                fatal("Bad write mapping\n");
-#if DYNAREC
+
         if (pages[phys >> 12].block || (phys & ~0xfff) == recomp_page)
                 page_lookup[virt >> 12] = &pages[phys >> 12];//(uintptr_t)&ram[(uintptr_t)(phys & ~0xFFF) - (uintptr_t)(virt & ~0xfff)];
         else
-#endif
                 writelookup2[virt>>12] = (uintptr_t)&ram[(uintptr_t)(phys & ~0xFFF) - (uintptr_t)(virt & ~0xfff)];
 //        pclog("addwritelookup %08x %08x %p %p %016llx %p\n", virt, phys, (void *)page_lookup[virt >> 12], (void *)writelookup2[virt >> 12], pages[phys >> 12].dirty_mask, (void *)&pages[phys >> 12]);
         writelookupp[writelnext] = mmu_perm;
@@ -1232,9 +1245,7 @@ uint8_t *getpccache(uint32_t a)
                 return &_mem_exec[a >> 14][(uintptr_t)(a & 0x3000) - (uintptr_t)(a2 & ~0xFFF)];
         }
 
-	pclog("Bad getpccache %08X, resetting...\n", a);
-	return (uint8_t *) &empty;
-        // fatal("Bad getpccache %08X\n", a);
+        fatal("Bad getpccache %08X\n", a);
 }
 #define printf pclog
 
@@ -1242,7 +1253,6 @@ uint32_t mem_logical_addr;
 uint8_t readmembl(uint32_t addr)
 {
         mem_logical_addr = addr;
-
         if (cr0 >> 31)
         {
                 addr = mmutranslate_read(addr);
@@ -1283,7 +1293,6 @@ uint8_t readmemb386l(uint32_t seg, uint32_t addr)
                 printf("NULL segment! rb %04X(%08X):%08X %02X %08X\n",CS,cs,pc,opcode,addr);
                 return -1;
         }
-
         mem_logical_addr = addr = addr + seg;
 /*        if (readlookup2[mem_logical_addr >> 12] != 0xFFFFFFFF)
         {
@@ -1313,7 +1322,6 @@ void writememb386l(uint32_t seg, uint32_t addr, uint8_t val)
         }
         
         mem_logical_addr = addr = addr + seg;
-
         if (page_lookup[addr>>12])
         {
                 page_lookup[addr>>12]->write_b(addr, val, page_lookup[addr>>12]);
@@ -1548,7 +1556,7 @@ uint64_t readmemql(uint32_t seg, uint32_t addr)
                 printf("NULL segment! rl %04X(%08X):%08X %02X %08X\n",CS,cs,pc,opcode,addr);
                 return -1;
         }
-
+        
         if (cr0>>31)
         {
                 addr2 = mmutranslate_read(addr2);
@@ -1667,35 +1675,27 @@ uint32_t mem_read_raml(uint32_t addr, void *priv)
 
 void mem_write_ramb_page(uint32_t addr, uint8_t val, page_t *p)
 {      
-#if DYNAREC
         uint64_t mask = (uint64_t)1 << ((addr >> PAGE_MASK_SHIFT) & PAGE_MASK_MASK);
 //        pclog("mem_write_ramb_page: %08x %02x %08x %llx %llx\n", addr, val, cs+pc, p->dirty_mask, mask);
         p->dirty_mask |= mask;
-#endif
         p->mem[addr & 0xfff] = val;
 }
-
 void mem_write_ramw_page(uint32_t addr, uint16_t val, page_t *p)
 {
-#if DYNAREC
         uint64_t mask = (uint64_t)1 << ((addr >> PAGE_MASK_SHIFT) & PAGE_MASK_MASK);
         if ((addr & 0x3f) == 0x3f)
                 mask |= (mask << 1);
 //        pclog("mem_write_ramw_page: %08x %04x %08x\n", addr, val, cs+pc);
         p->dirty_mask |= mask;
-#endif
         *(uint16_t *)&p->mem[addr & 0xfff] = val;
 }
-
 void mem_write_raml_page(uint32_t addr, uint32_t val, page_t *p)
 {       
-#if DYNAREC
         uint64_t mask = (uint64_t)1 << ((addr >> PAGE_MASK_SHIFT) & PAGE_MASK_MASK);
         if ((addr & 0x3f) >= 0x3d)
                 mask |= (mask << 1);
 //        pclog("mem_write_raml_page: %08x %08x %08x\n", addr, val, cs+pc);
         p->dirty_mask |= mask;
-#endif
         *(uint32_t *)&p->mem[addr & 0xfff] = val;
 }
 
@@ -1785,7 +1785,6 @@ void mem_updatecache()
 
 void mem_invalidate_range(uint32_t start_addr, uint32_t end_addr)
 {
-#ifdef DYNAREC
         start_addr &= ~PAGE_MASK_MASK;
         end_addr = (end_addr + PAGE_MASK_MASK) & ~PAGE_MASK_MASK;        
         
@@ -1795,7 +1794,6 @@ void mem_invalidate_range(uint32_t start_addr, uint32_t end_addr)
                 
                 pages[start_addr >> 12].dirty_mask |= mask;
         }
-#endif
 }
 
 static inline int mem_mapping_read_allowed(uint32_t flags, int state)
@@ -1888,8 +1886,8 @@ static void mem_mapping_recalc(uint64_t base, uint64_t size)
                         }
                 }
                 mapping = mapping->next;
-        }
-	flushmmucache_cr3();
+        }       
+        flushmmucache_cr3();
 }
 
 void mem_mapping_add(mem_mapping_t *mapping,
@@ -2003,113 +2001,36 @@ void mem_set_mem_state(uint32_t base, uint32_t size, int state)
 
 void mem_add_bios()
 {
-#ifdef BROKEN_CHIPSETS
-	if (romset == ROM_440BX)
-	{
-		/* This was for Award.
-	        mem_mapping_add(&bios_mapping[0], 0x80000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom,                        MEM_MAPPING_EXTERNAL, 0);
-	        mem_mapping_add(&bios_mapping[1], 0x84000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x4000  & biosmask), MEM_MAPPING_EXTERNAL, 0);
-	        mem_mapping_add(&bios_mapping[2], 0x88000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x8000  & biosmask), MEM_MAPPING_EXTERNAL, 0);
-	        mem_mapping_add(&bios_mapping[3], 0x8c000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0xc000  & biosmask), MEM_MAPPING_EXTERNAL, 0);
-	        mem_mapping_add(&bios_mapping[4], 0x90000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x10000 & biosmask), MEM_MAPPING_EXTERNAL, 0);
-        	mem_mapping_add(&bios_mapping[5], 0x94000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x14000 & biosmask), MEM_MAPPING_EXTERNAL, 0);
-	        mem_mapping_add(&bios_mapping[6], 0x98000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x18000 & biosmask), MEM_MAPPING_EXTERNAL, 0);
-        	mem_mapping_add(&bios_mapping[7], 0x9c000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x1c000 & biosmask), MEM_MAPPING_EXTERNAL, 0);
-	        mem_mapping_add(&bios_mapping[8], 0xe0000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x20000 & biosmask), MEM_MAPPING_EXTERNAL, 0);
-	        mem_mapping_add(&bios_mapping[9], 0xe4000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x24000 & biosmask), MEM_MAPPING_EXTERNAL, 0);
-	        mem_mapping_add(&bios_mapping[10], 0xe8000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x28000 & biosmask), MEM_MAPPING_EXTERNAL, 0);
-	        mem_mapping_add(&bios_mapping[11], 0xec000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x2c000 & biosmask), MEM_MAPPING_EXTERNAL, 0);
-	        mem_mapping_add(&bios_mapping[12], 0xf0000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x30000 & biosmask), MEM_MAPPING_EXTERNAL, 0);
-        	mem_mapping_add(&bios_mapping[13], 0xf4000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x34000 & biosmask), MEM_MAPPING_EXTERNAL, 0);
-	        mem_mapping_add(&bios_mapping[14], 0xf8000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x38000 & biosmask), MEM_MAPPING_EXTERNAL, 0);
-        	mem_mapping_add(&bios_mapping[15], 0xfc000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x3c000 & biosmask), MEM_MAPPING_EXTERNAL, 0);
+	mem_mapping_add(&bios_mapping[0], 0xe0000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom,                        MEM_MAPPING_EXTERNAL, 0);
+	mem_mapping_add(&bios_mapping[1], 0xe4000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x4000  & biosmask), MEM_MAPPING_EXTERNAL, 0);
+	mem_mapping_add(&bios_mapping[2], 0xe8000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x8000  & biosmask), MEM_MAPPING_EXTERNAL, 0);
+	mem_mapping_add(&bios_mapping[3], 0xec000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0xc000  & biosmask), MEM_MAPPING_EXTERNAL, 0);
+	mem_mapping_add(&bios_mapping[4], 0xf0000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x10000 & biosmask), MEM_MAPPING_EXTERNAL, 0);
+	mem_mapping_add(&bios_mapping[5], 0xf4000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x14000 & biosmask), MEM_MAPPING_EXTERNAL, 0);
+	mem_mapping_add(&bios_mapping[6], 0xf8000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x18000 & biosmask), MEM_MAPPING_EXTERNAL, 0);
+	mem_mapping_add(&bios_mapping[7], 0xfc000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x1c000 & biosmask), MEM_MAPPING_EXTERNAL, 0);
 
-	        mem_mapping_add(&bios_high_mapping[0], 0xfff80000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom,                        0, 0);
-	        mem_mapping_add(&bios_high_mapping[1], 0xfff84000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x4000  & biosmask), 0, 0);
-	        mem_mapping_add(&bios_high_mapping[2], 0xfff88000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x8000  & biosmask), 0, 0);
-	        mem_mapping_add(&bios_high_mapping[3], 0xfff8c000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0xc000  & biosmask), 0, 0);
-	        mem_mapping_add(&bios_high_mapping[4], 0xfff90000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x10000 & biosmask), 0, 0);
-	        mem_mapping_add(&bios_high_mapping[5], 0xfff94000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x14000 & biosmask), 0, 0);
-	        mem_mapping_add(&bios_high_mapping[6], 0xfff98000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x18000 & biosmask), 0, 0);
-	        mem_mapping_add(&bios_high_mapping[7], 0xfff9c000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x1c000 & biosmask), 0, 0);
-	        mem_mapping_add(&bios_high_mapping[8], 0xfffe0000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x20000 & biosmask), 0, 0);
-	        mem_mapping_add(&bios_high_mapping[9], 0xfffe4000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x24000 & biosmask), 0, 0);
-	        mem_mapping_add(&bios_high_mapping[10], 0xfffe8000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x28000 & biosmask), 0, 0);
-	        mem_mapping_add(&bios_high_mapping[11], 0xfffec000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x2c000 & biosmask), 0, 0);
-	        mem_mapping_add(&bios_high_mapping[12], 0xffff0000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x30000 & biosmask), 0, 0);
-	        mem_mapping_add(&bios_high_mapping[13], 0xffff4000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x34000 & biosmask), 0, 0);
-	        mem_mapping_add(&bios_high_mapping[14], 0xffff8000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x38000 & biosmask), 0, 0);
-	        mem_mapping_add(&bios_high_mapping[15], 0xffffc000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x3c000 & biosmask), 0, 0);
-		*/
-
-		// *THIS* is for AMI
-	        mem_mapping_add(&bios_mapping[0], 0xc0000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom, MEM_MAPPING_EXTERNAL, 0);
-	        mem_mapping_add(&bios_mapping[1], 0xc4000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x4000 & biosmask), MEM_MAPPING_EXTERNAL, 0);
-	        mem_mapping_add(&bios_mapping[2], 0xc8000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x8000 & biosmask), MEM_MAPPING_EXTERNAL, 0);
-	        mem_mapping_add(&bios_mapping[3], 0xcc000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0xc000 & biosmask), MEM_MAPPING_EXTERNAL, 0);
-	        mem_mapping_add(&bios_mapping[4], 0xd0000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x10000 & biosmask), MEM_MAPPING_EXTERNAL, 0);
-        	mem_mapping_add(&bios_mapping[5], 0xd4000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x14000 & biosmask), MEM_MAPPING_EXTERNAL, 0);
-	        mem_mapping_add(&bios_mapping[6], 0xd8000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x18000 & biosmask), MEM_MAPPING_EXTERNAL, 0);
-        	mem_mapping_add(&bios_mapping[7], 0xdc000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x1c000 & biosmask), MEM_MAPPING_EXTERNAL, 0);
-	        mem_mapping_add(&bios_mapping[8], 0xe0000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x20000 & biosmask), MEM_MAPPING_EXTERNAL, 0);
-	        mem_mapping_add(&bios_mapping[9], 0xe4000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x24000 & biosmask), MEM_MAPPING_EXTERNAL, 0);
-	        mem_mapping_add(&bios_mapping[10], 0xe8000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x28000 & biosmask), MEM_MAPPING_EXTERNAL, 0);
-	        mem_mapping_add(&bios_mapping[11], 0xec000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x2c000 & biosmask), MEM_MAPPING_EXTERNAL, 0);
-	        mem_mapping_add(&bios_mapping[12], 0xf0000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x30000 & biosmask), MEM_MAPPING_EXTERNAL, 0);
-        	mem_mapping_add(&bios_mapping[13], 0xf4000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x34000 & biosmask), MEM_MAPPING_EXTERNAL, 0);
-	        mem_mapping_add(&bios_mapping[14], 0xf8000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x38000 & biosmask), MEM_MAPPING_EXTERNAL, 0);
-        	mem_mapping_add(&bios_mapping[15], 0xfc000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x3c000 & biosmask), MEM_MAPPING_EXTERNAL, 0);
-
-	        mem_mapping_add(&bios_high_mapping[0], 0xfffc0000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom,                        0, 0);
-	        mem_mapping_add(&bios_high_mapping[1], 0xfffc4000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x4000  & biosmask), 0, 0);
-	        mem_mapping_add(&bios_high_mapping[2], 0xfffc8000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x8000  & biosmask), 0, 0);
-	        mem_mapping_add(&bios_high_mapping[3], 0xfffcc000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0xc000  & biosmask), 0, 0);
-	        mem_mapping_add(&bios_high_mapping[4], 0xfffd0000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x10000 & biosmask), 0, 0);
-	        mem_mapping_add(&bios_high_mapping[5], 0xfffd4000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x14000 & biosmask), 0, 0);
-	        mem_mapping_add(&bios_high_mapping[6], 0xfffd8000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x18000 & biosmask), 0, 0);
-	        mem_mapping_add(&bios_high_mapping[7], 0xfffdc000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x1c000 & biosmask), 0, 0);
-	        mem_mapping_add(&bios_high_mapping[8], 0xfffe0000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x20000 & biosmask), 0, 0);
-	        mem_mapping_add(&bios_high_mapping[9], 0xfffe4000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x24000 & biosmask), 0, 0);
-	        mem_mapping_add(&bios_high_mapping[10], 0xfffe8000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x28000 & biosmask), 0, 0);
-	        mem_mapping_add(&bios_high_mapping[11], 0xfffec000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x2c000 & biosmask), 0, 0);
-	        mem_mapping_add(&bios_high_mapping[12], 0xffff0000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x30000 & biosmask), 0, 0);
-	        mem_mapping_add(&bios_high_mapping[13], 0xffff4000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x34000 & biosmask), 0, 0);
-	        mem_mapping_add(&bios_high_mapping[14], 0xffff8000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x38000 & biosmask), 0, 0);
-	        mem_mapping_add(&bios_high_mapping[15], 0xffffc000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x3c000 & biosmask), 0, 0);
-	}
-	else
-	{
-#endif
-	        mem_mapping_add(&bios_mapping[0], 0xe0000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom,                        MEM_MAPPING_EXTERNAL, 0);
-	        mem_mapping_add(&bios_mapping[1], 0xe4000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x4000  & biosmask), MEM_MAPPING_EXTERNAL, 0);
-	        mem_mapping_add(&bios_mapping[2], 0xe8000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x8000  & biosmask), MEM_MAPPING_EXTERNAL, 0);
-	        mem_mapping_add(&bios_mapping[3], 0xec000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0xc000  & biosmask), MEM_MAPPING_EXTERNAL, 0);
-	        mem_mapping_add(&bios_mapping[4], 0xf0000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x10000 & biosmask), MEM_MAPPING_EXTERNAL, 0);
-        	mem_mapping_add(&bios_mapping[5], 0xf4000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x14000 & biosmask), MEM_MAPPING_EXTERNAL, 0);
-	        mem_mapping_add(&bios_mapping[6], 0xf8000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x18000 & biosmask), MEM_MAPPING_EXTERNAL, 0);
-        	mem_mapping_add(&bios_mapping[7], 0xfc000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x1c000 & biosmask), MEM_MAPPING_EXTERNAL, 0);
-
-	        mem_mapping_add(&bios_high_mapping[0], 0xfffe0000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom,                        0, 0);
-	        mem_mapping_add(&bios_high_mapping[1], 0xfffe4000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x4000  & biosmask), 0, 0);
-	        mem_mapping_add(&bios_high_mapping[2], 0xfffe8000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x8000  & biosmask), 0, 0);
-	        mem_mapping_add(&bios_high_mapping[3], 0xfffec000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0xc000  & biosmask), 0, 0);
-	        mem_mapping_add(&bios_high_mapping[4], 0xffff0000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x10000 & biosmask), 0, 0);
-	        mem_mapping_add(&bios_high_mapping[5], 0xffff4000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x14000 & biosmask), 0, 0);
-	        mem_mapping_add(&bios_high_mapping[6], 0xffff8000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x18000 & biosmask), 0, 0);
-	        mem_mapping_add(&bios_high_mapping[7], 0xffffc000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x1c000 & biosmask), 0, 0);
-#ifdef BROKEN_CHIPSETS
-	}
-#endif
+	mem_mapping_add(&bios_high_mapping[0], 0xfffe0000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom,                        0, 0);
+	mem_mapping_add(&bios_high_mapping[1], 0xfffe4000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x4000  & biosmask), 0, 0);
+	mem_mapping_add(&bios_high_mapping[2], 0xfffe8000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x8000  & biosmask), 0, 0);
+	mem_mapping_add(&bios_high_mapping[3], 0xfffec000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0xc000  & biosmask), 0, 0);
+	mem_mapping_add(&bios_high_mapping[4], 0xffff0000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x10000 & biosmask), 0, 0);
+	mem_mapping_add(&bios_high_mapping[5], 0xffff4000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x14000 & biosmask), 0, 0);
+	mem_mapping_add(&bios_high_mapping[6], 0xffff8000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x18000 & biosmask), 0, 0);
+	mem_mapping_add(&bios_high_mapping[7], 0xffffc000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x1c000 & biosmask), 0, 0);
 }
+
+int mem_a20_key = 0, mem_a20_alt = 0;
+static int mem_a20_state = 1;
 
 void mem_init()
 {
         int c;
 
-	if (mem_size > 256)  mem_size = 256;
+	if (mem_size > 768)  mem_size = 768;
 
         ram = malloc(mem_size * 1024 * 1024);
-        rom = malloc(0x40000);
+        rom = malloc(0x20000);
         vram = malloc(0x800000);
         readlookup2  = malloc(1024 * 1024 * sizeof(uintptr_t));
         writelookup2 = malloc(1024 * 1024 * sizeof(uintptr_t));
@@ -2120,7 +2041,7 @@ void mem_init()
 
         memset(ram, 0, mem_size * 1024 * 1024);
         memset(pages, 0, ((mem_size * 1024 * 1024) >> 12) * sizeof(page_t));
-
+        
         memset(page_lookup, 0, (1 << 20) * sizeof(page_t *));
         
         for (c = 0; c < ((mem_size * 1024 * 1024) >> 12); c++)
@@ -2162,18 +2083,20 @@ void mem_init()
         mem_mapping_add(&romext_mapping,  0xc8000, 0x08000, mem_read_romext, mem_read_romextw, mem_read_romextl, NULL, NULL, NULL,   romext, 0, NULL);
 
 //        pclog("Mem resize %i %i\n",mem_size,c);
+        mem_a20_key = 2;
+        mem_a20_recalc();
 }
 
 void mem_resize()
 {
         int c;
-
-	if (mem_size > 256)  mem_size = 256;
+        
+	if (mem_size > 768)  mem_size = 768;
 
         free(ram);
         ram = malloc(mem_size * 1024 * 1024);
         memset(ram, 0, mem_size * 1024 * 1024);
-
+        
         free(pages);
         pages = malloc(((mem_size * 1024 * 1024) >> 12) * sizeof(page_t));
         memset(pages, 0, ((mem_size * 1024 * 1024) >> 12) * sizeof(page_t));
@@ -2216,14 +2139,12 @@ void mem_resize()
         mem_add_bios();
 
         mem_mapping_add(&romext_mapping,  0xc8000, 0x08000, mem_read_romext, mem_read_romextw, mem_read_romextl, NULL, NULL, NULL,   romext, 0, NULL);
-
-//        pclog("Mem resize %i %i\n",mem_size,c);
 }
 
 void mem_reset_page_blocks()
 {
         int c;
-
+        
         for (c = 0; c < ((mem_size * 1024 * 1024) >> 12); c++)
         {
                 pages[c].write_b = mem_write_ramb_page;
@@ -2233,9 +2154,6 @@ void mem_reset_page_blocks()
                 pages[c].block_2 = NULL;
         }
 }
-
-int mem_a20_key = 0, mem_a20_alt = 0;
-static int mem_a20_state = 0;
 
 void mem_a20_recalc()
 {

@@ -9,6 +9,7 @@ typedef struct svga_t
         int gdcaddr;
         uint8_t attrregs[32];
         int attraddr, attrff;
+	int attr_palette_enable;
         uint8_t seqregs[64];
         int seqaddr;
 
@@ -149,3 +150,10 @@ svga_t *svga_get_pri();
 void svga_set_override(svga_t *svga, int val);
 
 extern uint8_t mask_crtc[0x19];
+
+void svga_write_common(uint32_t addr, uint8_t val, void *p, uint8_t linear);
+uint8_t svga_read_common(uint32_t addr, void *p, uint8_t linear);
+
+void svga_close(svga_t *svga);
+
+void svga_doblit(int y1, int y2, int wx, int wy, svga_t *svga);

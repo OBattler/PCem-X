@@ -61,6 +61,8 @@ int ps2 = 0;
 #define	CMD_RW	discint==2 || discint==5 || discint==6 || discint==9 || discint==12 || discint==0x16 || discint==0x11 || discint==0x19 || discint==0x1D
 #define IS_FR	(fdd[vfdd[fdc.drive]].IMGTYPE == IMGT_FDI) || (fdd[vfdd[fdc.drive]].IMGTYPE == IMGT_RAW)
 
+int fifo_buf_read();
+
 double byterate()
 {
 	switch(fdc.rate)
@@ -167,12 +169,12 @@ void savedisc(int d)
                 {
                         for (s=0;s<fdd[d].SECTORS;s++)
                         {
-				printf("Saving? Is special: %s!\n", ISSPECIAL ? "Yes" : "No");
+				// printf("Saving? Is special: %s!\n", ISSPECIAL ? "Yes" : "No");
 				if ((ISSPECIAL && !(t & 1)) || !(ISSPECIAL))
 				{
-					printf("Saving: C%02X, H%02X, R%02X...\n", h, t, s);
+					// printf("Saving: C%02X, H%02X, R%02X...\n", h, t, s);
 					if (fdd[d].scid[h][t][s][3] >= 1)
-					printf("Sector code in sector ID is valid...\n");
+					// printf("Sector code in sector ID is valid...\n");
 					{
 	        	                        for (b=0;b<(128 << fdd[d].scid[h][t][s][3]);b++)
 	                	                {
@@ -267,32 +269,35 @@ int densel_pin()
 	/* If polarity is set to 1, invert it. */
 	if (densel_polarity == 0)  dsel = (dsel ? 0 : 1);
 
-	switch(densel_force)
+	if (!en3mode)  goto normal_densel;
+
+	switch(rwc_force[vfdd[fdc.drive]])
 	{
 		case 0:
-			/* Return DENSEL as per normal. */
-			if (!en3mode)  return dsel;
-			switch(rwc_force[vfdd[fdc.drive]])
+normal_densel:
+			pclog("densel_force is: %i\n", densel_force);
+			switch(densel_force)
 			{
-				case 0:	/* Normal mode. */
+				case 0:
+					/* Return DENSEL as per normal. */
 					return dsel;
-				case 1: /* Force 0. */
-					return 0;
-				case 2: /* Force 1. */
+				case 1:
+					/* Reserved, make it behave like normal. */
+					return dsel;
+				case 2:
+					/* Force 1. */
 					return 1;
-				case 3: /* Don't care, always DD @ 250 kbps. */
+				case 3:
+					/* Force 0. */
 					return 0;
 			}
-			return dsel;
 		case 1:
-			/* Reserved, make it behave like normal. */
-			return dsel;
-		case 2:
-			/* Force 1. */
-			return 1;
 		case 3:
 			/* Force 0. */
 			return 0;
+		case 2:
+			/* Force 1. */
+			return 1;
 	}
 }
 
@@ -441,9 +446,26 @@ int fdc_checkrate()
 
 	if (fdd[vfdd[fdc.drive]].TOTAL * fdd[vfdd[fdc.drive]].BPS > (4000 * 1000))  EMPTYF
 
-	/* If rwc_force is 3 and EN3MODE is 1, rate is always 250k. */
 	if (!en3mode)  goto normal_rate;
-	if (rwc_force[vfdd[fdc.drive]] == 3)  goto rate_250k;
+
+	/* If DRVTYPE is 1, fail for all rates other than 0 (or 1 if DRVRATE is 1). */
+	if ((rwc_force[vfdd[fdc.drive]] == 1) && (fdc.rate != RATE_500K))
+	{
+		if (fdc.rate == RATE_300K)
+		{
+			if (drt[vfdd[fdc.drive]] != 1)  x += fdc_fail(0xFF);
+		}
+		else
+		{
+			x += fdc_fail(0xFF);
+		}
+	}
+
+	/* If DRVTYPE is 2, fail for all rates other than 0. */
+	if ((rwc_force[vfdd[fdc.drive]] == 2) && (fdc.rate != RATE_500K))  x += fdc_fail(0xFF);
+
+	/* If DRVTYPE is 3, fail for all rates other than 2. */
+	if ((rwc_force[vfdd[fdc.drive]] == 3) && (fdc.rate != RATE_250K))  x += fdc_fail(0xFF);
 
 normal_rate:
 	switch(fdc.rate)
@@ -744,7 +766,7 @@ void fdc_seek()
                 timer_update_outstanding();
        	        fdc.stat = 0x80 | (1 << fdc.drive);
 
-		pclog("Recalibrated to track %i, real track %i, TRK0 is %i\n", fdc.pcn[fdc.drive], fdd[vfdd[fdc.drive]].track, fdd[vfdd[fdc.drive]].trk0);
+		// pclog("Recalibrated to track %i, real track %i, TRK0 is %i\n", fdc.pcn[fdc.drive], fdd[vfdd[fdc.drive]].track, fdd[vfdd[fdc.drive]].trk0);
 	}
 	else
 	{
@@ -1212,6 +1234,7 @@ void fdc_write(uint16_t addr, uint8_t val, void *priv)
 {
 	// printf("Write FDC %04X %02X %04X:%04X %i %02X %i rate=%i\n",addr,val,cs>>4,pc,ins,fdc.st0,ins,fdc.rate);
 	// printf("OUT 0x%04X, %02X\n", addr, val);
+	// if ((addr&7) == 3)  printf("OUT 0x%04X, %02X\n", addr, val);
         switch (addr&7)
         {
 		case 0: /*Configuration*/
@@ -1253,6 +1276,10 @@ void fdc_write(uint16_t addr, uint8_t val, void *priv)
 	                               	fdc.pnum=fdc.ptot=0;
 	                               	fdc_reset();
 	                       	}
+				/* else
+				{
+					if (val & (0x10 << (val & 0x3)))  fdd[vfdd[fdc.dor]].discchanged = 1;
+				} */
 	                }
         	        fdc.dor=val;
 			fdc.dor |= 0x30;
@@ -1265,10 +1292,14 @@ void fdc_write(uint16_t addr, uint8_t val, void *priv)
 		case 3:
 			if (!(fdc.dor&4))  return;
 			if (!(fdc.dor&0x80) && fdc.pcjr)  return;
-			fdc.tdr=val&3;
 			if (AT && en3mode)
 			{
-				if ((fdc.dor & 3) > 2)  rwc_force[fdc.dor & 3] = ((fdc.tdr >> 4) & 3);
+				fdc.tdr=val & 0x33;
+				if ((fdc.dor & 3) < 2)  rwc_force[fdc.dor & 3] = ((fdc.tdr >> 4) & 3);
+			}
+			else
+			{
+				fdc.tdr=val & 3;
 			}
 			return;
                 case 4:
@@ -1528,6 +1559,7 @@ bad_fdc_command:
 						// Check rate after the format stuff
 	                                        pclog("Rate (di = %08X) %i %i %i at %i RPM (dp %i, drt %i, df %i, ds %i)\n", discint, fdc.rate, VF_CLS, fdd[vfdd[fdc.drive]].driveempty, (M3_E ? 360 : 300), densel_polarity, drt[vfdd[fdc.drive]], densel_force, densel_pin());
 						if (discint < 0xFC)  fdc_checkrate();
+						// if (discint < 0xFC)  pclog("Rate OK\n");
 						if (discint == 0xFE)  pclog("Not ready\n");
 						if (discint == 0xFF)  pclog("Wrong rate\n");
 						if (discint == 0x100)  pclog("Write protected\n");
@@ -1644,6 +1676,7 @@ uint8_t fdc_read(uint16_t addr, void *priv)
         }
 	// /*if (addr!=0x3f4) */printf("%02X rate=%i\n",temp,fdc.rate);
 	// printf("IN 0x%04X, %02X\n", addr, temp);
+	// if (addr == 0x3F3)  printf("IN 0x%04X, %02X\n", addr, temp);
         return temp;
 }
 
@@ -1751,7 +1784,7 @@ void fdc_readwrite(int mode)
 			{
 				if((fdc.track[fdc.drive] << 1) != fdc.pcn[fdc.drive])
 				{
-					pclog("Wrong cylinder\n");
+					pclog("Wrong cylinder: %i != %i\n", (fdc.track[fdc.drive] << 1), fdc.pcn[fdc.drive]);
 					discint = 0x102;
 					fdc_poll();
 					return;
@@ -1761,7 +1794,7 @@ void fdc_readwrite(int mode)
 			{
 				if(fdc.track[fdc.drive] != fdc.pcn[fdc.drive])
 				{
-					pclog("Wrong cylinder\n");
+					pclog("Wrong cylinder: %i != %i\n", fdc.track[fdc.drive], fdc.pcn[fdc.drive]);
 					discint = 0x102;
 					fdc_poll();
 					return;
@@ -1773,7 +1806,7 @@ void fdc_readwrite(int mode)
 		sr = fdc_seek_by_id(*(uint32_t *) &(fdc.params[1]), &(fdc.track[fdc.drive]), &(fdc.head[fdc.drive]), &(fdc.sector[fdc.drive]));
 		if (!sr)
 		{
-			pclog("Seek by ID failed\n");
+			pclog("Seek by ID failed (%08X)\n", *(uint32_t *) &(fdc.params[1]));
 			discint = 0xFF;
 			fdc_poll();
 			return;
@@ -1978,13 +2011,33 @@ void fdc_readwrite(int mode)
 					{
 						// Multi-track mode
 						fdc.head[fdc.drive] ^= 1;
+#if 0
 						if ((fdc.head[fdc.drive] == 0) || (fdd[vfdd[fdc.drive]].SIDES == 1))
 						{
 							fdc.sector[fdc.drive] = 1;
 							fdc.head[fdc.drive] = 0;
 							fdc.pos[fdc.drive] = 0;
 							fdc.track[fdc.drive]++;
+							fdd_seek(vfdd[fdc.drive], 1, 1);
+							fdc.pcn[fdc.drive]++;
 							fdc.abort[fdc.drive] = 1;
+						}
+#endif
+						/* Multitrack should end at the end of the track. */
+						if ((fdc.head[fdc.drive] == 0) && (fdd[vfdd[fdc.drive]].SIDES == 2))
+						{
+							fdc.head[fdc.drive] = 1;
+							fdc.abort[fdc.drive] = 1;
+						}
+						if (fdd[vfdd[fdc.drive]].SIDES == 1)
+						{
+							fdc.head[fdc.drive] = 0;
+							fdc.abort[fdc.drive] = 1;
+						}
+						if (fdc.abort[fdc.drive])
+						{
+							fdc.sector[fdc.drive] = fdd[vfdd[fdc.drive]].spt[fdd[vfdd[fdc.drive]].track];
+							fdc.pos[fdc.drive] = 0;
 						}
 					}
 					else
@@ -1995,6 +2048,8 @@ end_of_track:
 						{
 							fdc.head[fdc.drive] = 0;
 							fdc.track[fdc.drive]++;
+							fdd_seek(vfdd[fdc.drive], 1, 1);
+							fdc.pcn[fdc.drive]++;
 						}
 						else
 							fdc.head[fdc.drive] = 1;
@@ -2011,6 +2066,8 @@ end_of_track:
 					if ((fdc.head[fdc.drive] == 0) || (fdd[vfdd[fdc.drive]].SIDES == 1))
 					{
 						fdc.track[fdc.drive]++;
+						fdd_seek(vfdd[fdc.drive], 1, 1);
+						fdc.pcn[fdc.drive]++;
 						if (fdd[vfdd[fdc.drive]].SIDES == 1)  fdc.head[fdc.drive] = 0;
 						if (fdc.track[fdc.drive] >= fdd[vfdd[fdc.drive]].TRACKS)
 						{
@@ -2194,6 +2251,13 @@ no_track_0:
                 case 8: /*Sense interrupt status*/               
 	                fdc.dat = fdc.st0;
 
+			/* Make first post-reset sense return ST0 as 0, which Grey Cat Linux apparently expects. */
+			if (fdc_reset_stat == 16)
+			{
+				fdc.st0 = 0;
+				fdc_reset_stat = 0;
+			}
+
 	                if (fdc_reset_stat)
         	        {
 				fdc.st0 &= 0xf8;
@@ -2203,6 +2267,7 @@ no_track_0:
 				else
 					fdc.st0|=(fdc.head[4 - fdc_reset_stat]?4:0)|(4 - fdc_reset_stat);
 	                        fdc_reset_stat--;
+				if (!fdc_reset_stat)  fdc_reset_stat = 16;
 	                }
 
 	                fdc.stat    = (fdc.stat & 0xf) | 0xd0;
@@ -2210,7 +2275,7 @@ no_track_0:
 	                fdc.res[9]  = fdc.st0;
 	                fdc.res[10] = fdc.pcn[fdc.drive];
 			// fdc.res[10] = fdc.track[fdc.drive];
-	                if (!fdc_reset_stat) fdc.st0 = 0x80;
+	                if ((!fdc_reset_stat) || (fdc_reset_stat == 16)) fdc.st0 = 0x80;
 
 	                paramstogo = 2;
 	                discint = 0;
@@ -2296,6 +2361,7 @@ no_track_0:
 			if (!(fdc.params[1] & 0x20))  fdc.fifo = 1;
 			fdc.tfifo = (fdc.params[1] & 0xF) + 1;
 			fdc.eis = (fdc.params[1] & 0x40) ? 1 : 0;
+			pclog("Implied seek now %s\n", fdc.eis ? "enabled" : "disabled");
 	                fdc.stat = 0x80;
 	                disctime = 0;
 	                return;
@@ -2452,6 +2518,8 @@ void fdc_init()
 	fdc_setswap(0);
 	fdc.dor |= (fdc.pcjr ? 0x80 : 4);
 	// fdc.track[1] = 0x16;
+	fdc.eis = 1;
+	fdc.config |= 0x40;
 }
 
 void fdc_hard_reset()
@@ -2470,6 +2538,8 @@ void fdc_hard_reset()
 	drv2en = 1;
 	fdc.dor |= (fdc.pcjr ? 0x80 : 4);
 	fdc_setswap(0);
+	fdc.eis = 1;
+	fdc.config |= 0x40;
 }
 
 void fdc_add_ex(uint16_t port, uint8_t superio)

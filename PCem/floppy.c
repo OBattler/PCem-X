@@ -298,7 +298,7 @@ void initsectors(int d)
                 {
                         for (s=0;s<255;s++)
                         {
-				memset(fdd[d].scid[h][t][s], 255, 4);
+				// memset(fdd[d].scid[h][t][s], 255, 4);
                         }
                 }
 		fdd[d].spt[t]=0;
@@ -316,7 +316,7 @@ void freesectors(int d)
         {
                 for (h=0;h<2;h++)
                 {
-			memset(fdd[d].trackbufs[h][t], 0, 50000);
+			// memset(fdd[d].trackbufs[h][t], 0, 50000);
                         for (s=0;s<255;s++)
                         {
 				fdd[d].disc[h][t][s] = NULL;
@@ -413,7 +413,7 @@ void ejectdisc(int d)
 	fdd[d].discmodified=0;
 }
 
-initialize_sector(int d, int t, int h, int s, int nb, uint8_t b)
+void initialize_sector(int d, int t, int h, int s, int nb, uint8_t b)
 {
 	int i = 0;
 
@@ -425,9 +425,12 @@ initialize_sector(int d, int t, int h, int s, int nb, uint8_t b)
 
 void set_sector_id(int d, int t, int h, int s, int sid, int nb)
 {
+	uint8_t t2 = t;
+	if (ISSPECIAL)  t2 >>= 1;
+
 	if ((fdd[d].IMGTYPE == IMGT_PEF) && (fdd[d].IDTYPE != 1))  return;
 
-	fdd[d].scid[h][t][s][0]=t;
+	fdd[d].scid[h][t][s][0]=t2;
 	fdd[d].scid[h][t][s][1]=h;
 	fdd[d].scid[h][t][s][2]=sid;
 	fdd[d].scid[h][t][s][3]=nb;
@@ -489,6 +492,7 @@ void set_sector_id_2m(int d, int t, int h, int s, int sid, int nb)
 void read_raw_sectors(FILE *f, int d, uint8_t st, uint8_t nt, uint8_t sh, uint8_t nh, uint8_t ss2, uint8_t ns, int nb, uint8_t si)
 {
 	unsigned int h,t,t2,s,b;
+	pclog("Read raw sectors: floppy is%s special\n", (ISSPECIAL) ? "" : " not");
 	for (t=st;t<(st+nt);t++)
 	{
 		for (h=sh;h<(sh+nh);h++)
@@ -498,7 +502,7 @@ void read_raw_sectors(FILE *f, int d, uint8_t st, uint8_t nt, uint8_t sh, uint8_
 				if ((ISSPECIAL && !(t & 1)) || (!(ISSPECIAL)))
 				{
 					t2 = t;
-					if (ISSPECIAL)  t2 >>= 1;
+					// if (ISSPECIAL)  t2 >>= 1;
 					if (si)  set_sector_id(d, t2, h, s, s + 1, nb);
 					for (b=0;b<(128 << nb);b++)
 					{
@@ -1465,7 +1469,7 @@ void clear_sector_states(int d)
 
 	for (s = 0; s < 21930; s++)
 	{
-		memset(fdd[d].sequential_sectors_index[s], 255, 4);
+		// memset(fdd[d].sequential_sectors_index[s], 255, 4);
 	}
 }
 

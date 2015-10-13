@@ -2254,10 +2254,19 @@ static void FP_RESTORE_ROUNDING()
 
 static int32_t x87_fround32(double b)
 {
+        int64_t a, c;
+        
         switch ((npxc>>10)&3)
         {
                 case 0: /*Nearest*/
-                return (int32_t)(b+0.5);
+                a = (int64_t)floor(b);
+                c = (int64_t)floor(b + 1.0);
+                if ((b - a) < (b - c))
+                        return a;
+                else if ((b - a) > (b - c))
+                        return b;
+                else
+                        return (a & 1) ? c : a;
                 case 1: /*Down*/
                 return (int32_t)floor(b);
                 case 2: /*Up*/
@@ -2268,10 +2277,19 @@ static int32_t x87_fround32(double b)
 }
 static int64_t x87_fround64(double b)
 {
+        int64_t a, c;
+        
         switch ((npxc>>10)&3)
         {
                 case 0: /*Nearest*/
-                return (int64_t)(b+0.5);
+                a = (int64_t)floor(b);
+                c = (int64_t)floor(b + 1.0);
+                if ((b - a) < (b - c))
+                        return a;
+                else if ((b - a) > (b - c))
+                        return b;
+                else
+                        return (a & 1) ? c : a;
                 case 1: /*Down*/
                 return (int64_t)floor(b);
                 case 2: /*Up*/
@@ -2496,6 +2514,34 @@ static void FP_OP_D(int op)
         addbyte(0x89); /*MOV [ESP], EAX*/
         addbyte(0x04);
         addbyte(0x24);
+        if (((npxc >> 10) & 3) && op == FPU_ADD)
+        {
+                addbyte(0x9b); /*FSTCW [ESP+8]*/
+                addbyte(0xd9);
+                addbyte(0x7c);
+                addbyte(0x24);
+                addbyte(0x08);
+                addbyte(0x66); /*MOV AX, [ESP+8]*/
+                addbyte(0x8b);
+                addbyte(0x44);
+                addbyte(0x24);
+                addbyte(0x08);
+                addbyte(0x66); /*AND AX, ~(3 << 10)*/
+                addbyte(0x25);
+                addword(~(3 << 10));
+                addbyte(0x66); /*OR AX, npxc & (3 << 10)*/
+                addbyte(0x0d);
+                addword(npxc & (3 << 10));
+                addbyte(0x66); /*MOV [ESP+12], AX*/
+                addbyte(0x89);
+                addbyte(0x44);
+                addbyte(0x24);
+                addbyte(0x0c);
+                addbyte(0xd9); /*FLDCW [ESP+12]*/
+                addbyte(0x6c);
+                addbyte(0x24);
+                addbyte(0x0c);
+        }
         addbyte(0x89); /*MOV [ESP+4], EDX*/
         addbyte(0x54);
         addbyte(0x24);
@@ -2515,6 +2561,13 @@ static void FP_OP_D(int op)
         addbyte(0x1c);
         addbyte(0xdd);
         addlong((uintptr_t)ST);
+        if (((npxc >> 10) & 3) && op == FPU_ADD)
+        {
+                addbyte(0xd9); /*FLDCW [ESP+8]*/
+                addbyte(0x6c);
+                addbyte(0x24);
+                addbyte(0x08);
+        }        
 }
 static void FP_OP_IW(int op)
 {

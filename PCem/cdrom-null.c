@@ -57,12 +57,20 @@ static void null_readsector(uint8_t *b, int sector)
 {
 }
 
+static void null_readsector_raw(uint8_t *b, int sector)
+{
+}
+
 static int null_readtoc(unsigned char *b, unsigned char starttrack, int msf, int maxlen, int single)
 {
         return 0;
 }
 
 static void null_readtoc_session(unsigned char *b, int msf, int maxlen)
+{
+}
+
+static int null_readtoc_raw(unsigned char *b, int maxlen)
 {
 }
 
@@ -94,8 +102,10 @@ static ATAPI null_atapi =
         null_ready,
         null_readtoc,
         null_readtoc_session,
+        null_readtoc_raw,
         null_getcurrentsubchannel,
         null_readsector,
+        null_readsector_raw,
         null_playaudio,
         null_seek,
         null_load,

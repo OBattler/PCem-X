@@ -108,7 +108,7 @@ opMOV(NL)
 opMOV(LE)
 opMOV(NLE)
 
-static int opRDPMC(uint32_t fetchdat)
+/* static int opRDPMC(uint32_t fetchdat)
 {
         if (ECX > 1 || (!(cr4 & CR4_PCE) && (cr0 & 1) && CPL))
         {
@@ -119,7 +119,7 @@ static int opRDPMC(uint32_t fetchdat)
 	EDX = pmc[ECX] >> 32;
         CLOCK_CYCLES(1);
         return 0;
-}
+} */
 
 static int internal_illegal()
 {
@@ -152,13 +152,6 @@ static int opSYSENTER(uint32_t fetchdat)
 	eflags &= ~0x00030200;
 	flags &= ~0x0200;
 
-#ifdef WRONG_SYSCODE
-	/* CS */
-	loadcs(cs_msr & 0xFFFC);
-
-	/* SS */
-	loadseg((cs_msr + 8) & 0xFFFC, &_ss);
-#else
 	/* CS */
 	_cs.seg = cs_msr & ~7;
 	if (cs_msr & 4)
@@ -167,7 +160,7 @@ static int opSYSENTER(uint32_t fetchdat)
 		{
 			pclog("Bigger than LDT limit %04X %04X CS\n",cs_msr,ldt.limit);
 			x86gpf(NULL, cs_msr & ~3);
-			return;
+			return 1;
 		}
 		_cs.seg +=ldt.base;
 	}
@@ -177,7 +170,7 @@ static int opSYSENTER(uint32_t fetchdat)
 		{
 			pclog("Bigger than GDT limit %04X %04X CS\n",cs_msr,gdt.limit);
 			x86gpf(NULL, cs_msr & ~3);
-			return;
+			return 1;
 		}
 		_cs.seg += gdt.base;
 	}
@@ -214,7 +207,6 @@ static int opSYSENTER(uint32_t fetchdat)
 	_ss.limit_high = 0xFFFFFFFF;
 
 	_ss.checked = 0;
-#endif
 
 	ESP = esp_msr;
 	pc = eip_msr;
@@ -238,13 +230,6 @@ static int opSYSEXIT(uint32_t fetchdat)
 	if (!(cr0 & 1))  return internal_illegal();
 	// fatal("SYSEXIT with regular parameters\n");
 
-#ifdef WRONG_SYSCODE
-	/* CS */
-	loadcs((cs_msr + 16) & 0xFFFC);
-
-	/* SS */
-	loadseg((cs_msr + 24) & 0xFFFC, &_ss);
-#else
 	/* CS */
 	_cs.seg = (cs_msr + 16) & ~7;
 	if (cs_msr & 4)
@@ -253,7 +238,7 @@ static int opSYSEXIT(uint32_t fetchdat)
 		{
 			pclog("Bigger than LDT limit %04X %04X CS\n",cs_msr,ldt.limit);
 			x86gpf(NULL, cs_msr & ~3);
-			return;
+			return 1;
 		}
 		_cs.seg +=ldt.base;
 	}
@@ -263,7 +248,7 @@ static int opSYSEXIT(uint32_t fetchdat)
 		{
 			pclog("Bigger than GDT limit %04X %04X CS\n",cs_msr,gdt.limit);
 			x86gpf(NULL, cs_msr & ~3);
-			return;
+			return 1;
 		}
 		_cs.seg += gdt.base;
 	}
@@ -301,7 +286,6 @@ static int opSYSEXIT(uint32_t fetchdat)
 	_ss.limit_high = 0xFFFFFFFF;
 
 	_ss.checked = 0;
-#endif
 
 	ESP = ECX;
 	pc = EDX;
@@ -335,7 +319,7 @@ static int opFXSAVESTOR_a16(uint32_t fetchdat)
 	{
 		pclog("Effective address %04X not on 16-byte boundary\n", eaaddr);
 		x86gpf(NULL, 0xD);
-		return;
+		return 1;
 	}
 
 	fxinst = (rmdat >> 3) & 7;
@@ -522,7 +506,7 @@ static int opFXSAVESTOR_a32(uint32_t fetchdat)
 	{
 		pclog("Effective address %08X not on 16-byte boundary\n", eaaddr);
 		x86gpf(NULL, 0xD);
-		return;
+		return 1;
 	}
 
 	fxinst = (rmdat >> 3) & 7;
@@ -689,4 +673,213 @@ static int opFXSAVESTOR_a32(uint32_t fetchdat)
 	}
 
 	return abrt;
+}
+
+#define AMD_SYSCALL_EIP	(star & 0xFFFFFFFF)
+#define AMD_SYSCALL_SB	((star >> 32) & 0xFFFF)
+#define AMD_SYSRET_SB	((star >> 48) & 0xFFFF)
+
+/* 0F 05 */
+static int opSYSCALL(uint32_t fetchdat)
+{
+	if (!(cr0 & 1))  return internal_illegal();
+	if (!AMD_SYSCALL_SB)  return internal_illegal();
+
+	/* Set VM, IF, RF to 0. */
+	/* eflags &= ~0x00030200;
+	flags &= ~0x0200; */
+
+	/* Let's do this by the AMD spec. */
+	ECX = pc;
+	pc = AMD_SYSCALL_EIP;
+
+	eflags &= ~0x00020200;
+	flags &= ~0x0200;
+
+	/* CS */
+	_cs.seg = AMD_SYSCALL_SB & ~7;
+	if (cs_msr & 4)
+	{
+		if (_cs.seg >= ldt.limit)
+		{
+			pclog("Bigger than LDT limit %04X %04X CS\n",cs_msr,ldt.limit);
+			x86gpf(NULL, cs_msr & ~3);
+			return 1;
+		}
+		_cs.seg +=ldt.base;
+	}
+	else
+	{
+		if (_cs.seg >= gdt.limit)
+		{
+			pclog("Bigger than GDT limit %04X %04X CS\n",cs_msr,gdt.limit);
+			x86gpf(NULL, cs_msr & ~3);
+			return 1;
+		}
+		_cs.seg += gdt.base;
+	}
+	cpl_override = 1;
+
+	temp_seg_data[0] = 0xFFFF;
+	temp_seg_data[1] = 0;
+	temp_seg_data[2] = 0x9B00;
+	temp_seg_data[3] = 0xC0;
+
+	cpl_override = 0;
+
+	use32 = 0x300;
+	CS = (AMD_SYSCALL_SB & ~3) | 0;
+
+	do_seg_load(&_cs, temp_seg_data);
+	use32 = 0x300;
+
+	CS = (CS & 0xFFFC) | 0;
+
+	_cs.limit = 0xFFFFFFFF;
+	_cs.limit_high = 0xFFFFFFFF;
+
+	/* SS */
+	temp_seg_data[0] = 0xFFFF;
+	temp_seg_data[1] = 0;
+	temp_seg_data[2] = 0x9300;
+	temp_seg_data[3] = 0xC0;
+	do_seg_load(&_ss, temp_seg_data);
+	_ss.seg = (AMD_SYSCALL_SB + 8) & 0xFFFC;
+	stack32 = 1;
+
+	_ss.limit = 0xFFFFFFFF;
+	_ss.limit_high = 0xFFFFFFFF;
+
+	_ss.checked = 0;
+
+	pc = eip_msr;
+
+	CLOCK_CYCLES(20);
+
+	/* pclog("SYSCALL completed:\n");
+	pclog("CS (%04X): base=%08X, limit=%08X, access=%02X, seg=%04X, limit_low=%08X, limit_high=%08X, checked=%i\n", CS, _cs.base, _cs.limit, _cs.access, _cs.seg, _cs.limit_low, _cs.limit_high, _cs.checked);
+	pclog("SS (%04X): base=%08X, limit=%08X, access=%02X, seg=%04X, limit_low=%08X, limit_high=%08X, checked=%i\n", SS, _ss.base, _ss.limit, _ss.access, _ss.seg, _ss.limit_low, _ss.limit_high, _ss.checked);
+	pclog("Model specific registers: cs_msr=%04X, esp_msr=%08X, eip_msr=%08X\n", cs_msr, esp_msr, eip_msr);
+	pclog("Other information: eflags=%08X flags=%04X use32=%04X stack32=%i\n", eflags, flags, use32, stack32); */
+
+	return 0;
+}
+
+/* 0F 07 */
+static int opSYSRET(uint32_t fetchdat)
+{
+	if (!cs_msr)  return internal_illegal();
+	if (!(cr0 & 1))  return internal_illegal();
+
+	pc = ECX;
+
+	eflags |= (1 << 9);
+	flags |= (1 << 9);
+
+	/* CS */
+	_cs.seg = AMD_SYSRET_SB & ~7;
+	if (cs_msr & 4)
+	{
+		if (_cs.seg >= ldt.limit)
+		{
+			pclog("Bigger than LDT limit %04X %04X CS\n",cs_msr,ldt.limit);
+			x86gpf(NULL, cs_msr & ~3);
+			return 1;
+		}
+		_cs.seg +=ldt.base;
+	}
+	else
+	{
+		if (_cs.seg >= gdt.limit)
+		{
+			pclog("Bigger than GDT limit %04X %04X CS\n",cs_msr,gdt.limit);
+			x86gpf(NULL, cs_msr & ~3);
+			return 1;
+		}
+		_cs.seg += gdt.base;
+	}
+	cpl_override = 1;
+
+	temp_seg_data[0] = 0xFFFF;
+	temp_seg_data[1] = 0;
+	temp_seg_data[2] = 0xFB00;
+	temp_seg_data[3] = 0xC0;
+
+	cpl_override = 0;
+
+	use32 = 0x300;
+	CS = (AMD_SYSRET_SB & ~3) | 3;
+
+	do_seg_load(&_cs, temp_seg_data);
+	flushmmucache_cr3();
+	use32 = 0x300;
+
+	CS = (CS & 0xFFFC) | 3;
+
+	_cs.limit = 0xFFFFFFFF;
+	_cs.limit_high = 0xFFFFFFFF;
+
+	/* SS */
+	temp_seg_data[0] = 0xFFFF;
+	temp_seg_data[1] = 0;
+	temp_seg_data[2] = 0xF300;
+	temp_seg_data[3] = 0xC0;
+	do_seg_load(&_ss, temp_seg_data);
+	_ss.seg = ((AMD_SYSRET_SB + 8) & 0xFFFC) | 3;
+	stack32 = 1;
+
+	_ss.limit = 0xFFFFFFFF;
+	_ss.limit_high = 0xFFFFFFFF;
+
+	_ss.checked = 0;
+
+	CLOCK_CYCLES(20);
+
+	/* pclog("SYSRET completed:\n");
+	pclog("CS (%04X): base=%08X, limit=%08X, access=%02X, seg=%04X, limit_low=%08X, limit_high=%08X, checked=%i\n", CS, _cs.base, _cs.limit, _cs.access, _cs.seg, _cs.limit_low, _cs.limit_high, _cs.checked);
+	pclog("SS (%04X): base=%08X, limit=%08X, access=%02X, seg=%04X, limit_low=%08X, limit_high=%08X, checked=%i\n", SS, _ss.base, _ss.limit, _ss.access, _ss.seg, _ss.limit_low, _ss.limit_high, _ss.checked);
+	pclog("Model specific registers: cs_msr=%04X, esp_msr=%08X, eip_msr=%08X\n", cs_msr, esp_msr, eip_msr);
+	pclog("Other information: eflags=%08X flags=%04X use32=%04X stack32=%i ECX=%08X EDX=%08X\n", eflags, flags, use32, stack32, ECX, EDX); */
+
+	return 0;
+}
+
+static int opLOADALL386(uint32_t fetchdat)
+{
+	uint32_t la_addr = es + EDI;
+
+        eflags = (readmemw(0, la_addr + 4) & 0xffffffd5) | 2;
+	flags = eflags & 0xffff;
+        flags_extract();
+        pc = readmeml(0, la_addr + 8);
+	EDI = readmeml(0, la_addr + 0xC);
+	ESI = readmeml(0, la_addr + 0x10);
+	EBP = readmeml(0, la_addr + 0x14);
+	ESP = readmeml(0, la_addr + 0x18);
+	EBX = readmeml(0, la_addr + 0x1C);
+	EDX = readmeml(0, la_addr + 0x20);
+	ECX = readmeml(0, la_addr + 0x24);
+	EAX = readmeml(0, la_addr + 0x28);
+	dr[6] = readmeml(0, la_addr + 0x2C);
+	dr[7] = readmeml(0, la_addr + 0x30);
+	tr.seg = readmemw(0, la_addr + 0x34);
+	ldt.seg = readmemw(0, la_addr + 0x38);
+        GS = readmemw(0, la_addr + 0x3C);
+        FS = readmemw(0, la_addr + 0x40);
+        DS = readmemw(0, la_addr + 0x44);
+        SS = readmemw(0, la_addr + 0x48);
+        CS = readmemw(0, la_addr + 0x4C);
+        ES = readmemw(0, la_addr + 0x50);
+	tr.base = readmemw(0, la_addr + 0x54) | (readmemb(0, la_addr + 0x58) << 16);
+	idt.base = readmemw(0, la_addr + 0x60) | (readmemb(0, la_addr + 0x64) << 16);
+	gdt.base = readmemw(0, la_addr + 0x6C) | (readmemb(0, la_addr + 0x70) << 16);
+	ldt.base = readmemw(0, la_addr + 0x78) | (readmemb(0, la_addr + 0x7C) << 16);
+	gs = readmemw(0, la_addr + 0x84) | (readmemb(0, la_addr + 0x88) << 16);
+	seg_fs = readmemw(0, la_addr + 0x90) | (readmemb(0, la_addr + 0x94) << 16);
+	ds = readmemw(0, la_addr + 0x9C) | (readmemb(0, la_addr + 0xA0) << 16);
+	ss = readmemw(0, la_addr + 0xA8) | (readmemb(0, la_addr + 0xAC) << 16);
+	cs = readmemw(0, la_addr + 0xB4) | (readmemb(0, la_addr + 0xB8) << 16);
+	es = readmemw(0, la_addr + 0xC0) | (readmemb(0, la_addr + 0xC4) << 16);
+        CLOCK_CYCLES(122);
+        return 0;
 }

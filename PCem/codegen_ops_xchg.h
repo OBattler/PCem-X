@@ -49,6 +49,9 @@ static uint32_t ropXCHG_b(uint8_t opcode, uint32_t fetchdat, uint32_t op_32, uin
         if ((fetchdat & 0xc0) != 0xc0)
                 return 0;
 
+        // if (((fetchdat & 0xff) == 0xec) && disable_xchg_dynarec)  return 0;
+        if (disable_xchg_dynarec)  return 0;
+
         dst_reg = LOAD_REG_B(fetchdat & 7);
         src_reg = LOAD_REG_B((fetchdat >> 3) & 7);
         temp_reg = COPY_REG(src_reg);

@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include "ibm.h"
 #include "device.h"
+#include "io.h"
 #include "mem.h"
 #include "timer.h"
 #include "video.h"

@@ -149,14 +149,14 @@ void et4000_recalctimings(svga_t *svga)
 	   40 * 16 = 640 */
 
 	// pclog("ET4000: svga->hdisp is %u\n", svga->hdisp);	
-	if ((svga->hdisp == 640) && (svga->bpp == 4))
+	/* if ((svga->hdisp == 640) && (svga->bpp == 4))
 	{
 		svga->vrammask = 0x3ffff;
 	}
 	else
 	{
 		svga->vrammask = 0xfffff;
-	}
+	} */
 }
 
 void *et4000_init()

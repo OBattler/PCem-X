@@ -205,8 +205,6 @@ static void ddraw_blit_memtoscreen(int x, int y, int y1, int y2, int w, int h)
                             p[xx] = 0xffffffff;
                 }
         }
-#else
-	readflash = 0;
 #endif
         lpdds_back2->Unlock(NULL);
         
@@ -246,7 +244,11 @@ static void ddraw_blit_memtoscreen_8(int x, int y, int w, int h)
                 {
                         p = (uint32_t *)(ddsd.lpSurface + (yy * ddsd.lPitch));
                         for (xx = 0; xx < w; xx++)
+			{
                             p[xx] = pal_lookup[buffer->line[y + yy][x + xx]];
+			    /* If brown circuity is disabled, double the green component. */
+			    if ((buffer->line[y + yy][x + xx] == 0x16) && !cga_brown)  p[xx] += (p[xx] & 0xff00);
+			}
                 }
         }
         p = (uint32_t *)(ddsd.lpSurface + (4 * ddsd.lPitch));
@@ -290,8 +292,6 @@ static void ddraw_blit_memtoscreen_8(int x, int y, int w, int h)
                 }
                 lpdds_back2->Unlock(NULL);
         }
-#else
-	readflash = 0;
 #endif
         
         hr = lpdds_pri->Blt(&r_dest, lpdds_back2, &r_src, DDBLT_WAIT, NULL);

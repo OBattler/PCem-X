@@ -13,3 +13,5 @@ void network_card_init();
 
 void initpcap();
 void closepcap();
+
+void vlan_reset();

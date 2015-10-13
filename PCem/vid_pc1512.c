@@ -456,6 +456,8 @@ static void *pc1512_init()
 
         pc1512->vram = malloc(0x10000);
         
+	overscan_x = overscan_y = 16;
+
         pc1512->cgacol = 7;
         pc1512->cgamode = 0x12;
                 

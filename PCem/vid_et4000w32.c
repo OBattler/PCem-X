@@ -127,6 +127,8 @@ void et4000w32p_out(uint16_t addr, uint8_t val, void *p)
                 return;
                 case 0x3D5:
 //                pclog("Write CRTC R%02X %02X\n", crtcreg, val);
+		if (svga->crtcreg <= 0x18)
+			val &= mask_crtc[svga->crtcreg];
                 if ((svga->crtcreg < 7) && (svga->crtc[0x11] & 0x80))
                         return;
                 if ((svga->crtcreg == 7) && (svga->crtc[0x11] & 0x80))
@@ -211,7 +213,10 @@ uint8_t et4000w32p_in(uint16_t addr, void *p)
                 
                 case 0x3DA:
                 svga->attrff = 0;
-                svga->cgastat ^= 0x30;
+                if (svga->cgastat & 0x01)
+                        svga->cgastat &= ~0x30;
+                else
+                        svga->cgastat ^= 0x30;
                 temp = svga->cgastat & 0x39;
                 if (svga->hdisp_on) temp |= 2;
                 if (!(svga->cgastat & 8)) temp |= 0x80;
@@ -892,20 +897,22 @@ void et4000w32p_hwcursor_draw(svga_t *svga, int displine)
         int x, offset;
         uint8_t dat;
         offset = svga->hwcursor_latch.xoff;
+	int y_add = enable_overscan ? 16 : 0;
+	int x_add = enable_overscan ? 8 : 0;
         for (x = 0; x < 64 - svga->hwcursor_latch.xoff; x += 4)
         {
                 dat = svga->vram[svga->hwcursor_latch.addr + (offset >> 2)];
-                if (!(dat & 2))          ((uint32_t *)buffer32->line[displine])[svga->hwcursor_latch.x + x + 32]  = (dat & 1) ? 0xFFFFFF : 0;
-                else if ((dat & 3) == 3) ((uint32_t *)buffer32->line[displine])[svga->hwcursor_latch.x + x + 32] ^= 0xFFFFFF;
+                if (!(dat & 2))          ((uint32_t *)buffer32->line[displine + y_add])[svga->hwcursor_latch.x + x + 32 + x_add]  = (dat & 1) ? 0xFFFFFF : 0;
+                else if ((dat & 3) == 3) ((uint32_t *)buffer32->line[displine + y_add])[svga->hwcursor_latch.x + x + 32 + x_add] ^= 0xFFFFFF;
                 dat >>= 2;
-                if (!(dat & 2))          ((uint32_t *)buffer32->line[displine])[svga->hwcursor_latch.x + x + 33]  = (dat & 1) ? 0xFFFFFF : 0;
-                else if ((dat & 3) == 3) ((uint32_t *)buffer32->line[displine])[svga->hwcursor_latch.x + x + 33] ^= 0xFFFFFF;
+                if (!(dat & 2))          ((uint32_t *)buffer32->line[displine + y_add])[svga->hwcursor_latch.x + x + 33 + x_add]  = (dat & 1) ? 0xFFFFFF : 0;
+                else if ((dat & 3) == 3) ((uint32_t *)buffer32->line[displine + y_add])[svga->hwcursor_latch.x + x + 33 + x_add] ^= 0xFFFFFF;
                 dat >>= 2;
-                if (!(dat & 2))          ((uint32_t *)buffer32->line[displine])[svga->hwcursor_latch.x + x + 34]  = (dat & 1) ? 0xFFFFFF : 0;
-                else if ((dat & 3) == 3) ((uint32_t *)buffer32->line[displine])[svga->hwcursor_latch.x + x + 34] ^= 0xFFFFFF;
+                if (!(dat & 2))          ((uint32_t *)buffer32->line[displine + y_add])[svga->hwcursor_latch.x + x + 34 + x_add]  = (dat & 1) ? 0xFFFFFF : 0;
+                else if ((dat & 3) == 3) ((uint32_t *)buffer32->line[displine + y_add])[svga->hwcursor_latch.x + x + 34 + x_add] ^= 0xFFFFFF;
                 dat >>= 2;
-                if (!(dat & 2))          ((uint32_t *)buffer32->line[displine])[svga->hwcursor_latch.x + x + 35]  = (dat & 1) ? 0xFFFFFF : 0;
-                else if ((dat & 3) == 3) ((uint32_t *)buffer32->line[displine])[svga->hwcursor_latch.x + x + 35] ^= 0xFFFFFF;
+                if (!(dat & 2))          ((uint32_t *)buffer32->line[displine + y_add])[svga->hwcursor_latch.x + x + 35 + x_add]  = (dat & 1) ? 0xFFFFFF : 0;
+                else if ((dat & 3) == 3) ((uint32_t *)buffer32->line[displine + y_add])[svga->hwcursor_latch.x + x + 35 + x_add] ^= 0xFFFFFF;
                 dat >>= 2;
                 offset += 4;
         }
@@ -1042,9 +1049,9 @@ void *et4000w32p_init()
         mem_mapping_add(&et4000->mmu_mapping,    0, 0, et4000w32p_mmu_read, NULL, NULL, et4000w32p_mmu_write, NULL, NULL, NULL, 0, et4000);
 
         et4000w32p_io_set(et4000);
-        
-        gfxpciid = pci_add(et4000w32p_pci_read, et4000w32p_pci_write, et4000);
 
+	pci_add(et4000w32p_pci_read, et4000w32p_pci_write, et4000);
+        
         et4000->pci_regs[0x04] = 7;
         
         et4000->pci_regs[0x30] = 0x00;

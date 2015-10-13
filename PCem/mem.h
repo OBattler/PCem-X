@@ -97,7 +97,8 @@ void mem_write_nulll(uint32_t addr, uint32_t val, void *p);
 
 FILE *romfopen(char *fn, char *mode);
 
-mem_mapping_t bios_mapping[16];
+mem_mapping_t bios_mapping[8];
+mem_mapping_t bios_high_mapping[8];
 
 
 typedef struct page_t
@@ -119,7 +120,7 @@ extern page_t **page_lookup;
 
 uint32_t mmutranslate_noabrt(uint32_t addr, int rw);
 
-static inline get_phys(uint32_t addr)
+static inline int get_phys(uint32_t addr)
 {
         if (!(cr0 >> 31))
                 return addr & rammask;
@@ -127,7 +128,7 @@ static inline get_phys(uint32_t addr)
         return mmutranslatereal(addr, 0) & rammask;
 }
 
-static inline get_phys_noabrt(uint32_t addr)
+static inline int get_phys_noabrt(uint32_t addr)
 {
         if (!(cr0 >> 31))
                 return addr & rammask;
@@ -144,3 +145,23 @@ void mem_write_ramw_page(uint32_t addr, uint16_t val, page_t *p);
 void mem_write_raml_page(uint32_t addr, uint32_t val, page_t *p);
 
 void mem_reset_page_blocks();
+
+void mem_flush_write_page(uint32_t addr, uint32_t virt);
+
+void flushmmucache();
+void flushmmucache_nopc();
+
+void flushmmucache_cr3();
+
+int loadbios();
+
+void mem_add_bios();
+
+void mem_updatecache();
+
+void mem_init();
+void mem_resize();
+
+void mmu_invalidate(uint32_t addr);
+
+void resetreadlookup();

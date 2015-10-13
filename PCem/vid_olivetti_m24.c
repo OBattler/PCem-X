@@ -453,6 +453,8 @@ void *m24_init()
         m24_t *m24 = malloc(sizeof(m24_t));
         memset(m24, 0, sizeof(m24_t));
 
+	overscan_x = overscan_y = 16;
+
         m24->vram = malloc(0x8000);
                 
         timer_add(m24_poll, &m24->vidtime, TIMER_ALWAYS_ENABLED, m24);

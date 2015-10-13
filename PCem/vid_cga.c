@@ -22,6 +22,8 @@ static uint8_t crtcmask[32] =
 
 void cga_recalctimings(cga_t *cga);
 
+static int old_cgacol = 0;
+
 void cga_out(uint16_t addr, uint8_t val, void *p)
 {
         cga_t *cga = (cga_t *)p;
@@ -49,7 +51,11 @@ void cga_out(uint16_t addr, uint8_t val, void *p)
                 return;
                 case 0x3D9:
                 cga->cgacol = val;
-		update_cga16_color(cga);
+		if (cga->cgacol != old_cgacol)
+		{
+			update_cga16_color(cga);
+			old_cgacol = cga->cgacol;
+		}
                 return;
         }
 }
@@ -121,20 +127,6 @@ void cga_recalctimings(cga_t *cga)
 	pclog("Recalc end\n");
 }
 
-#ifdef LEGACY_CGACOMP
-static int ntsc_col[8][8]=
-{
-        {0,0,0,0,0,0,0,0}, /*Black*/
-        {0,0,1,1,1,1,0,0}, /*Blue*/
-        {1,0,0,0,0,1,1,1}, /*Green*/
-        {0,0,0,0,1,1,1,1}, /*Cyan*/
-        {1,1,1,1,0,0,0,0}, /*Red*/
-        {0,1,1,1,1,0,0,0}, /*Magenta*/
-        {1,1,0,0,0,0,1,1}, /*Yellow*/
-        {1,1,1,1,1,1,1,1}  /*White*/
-};
-#endif
-
 void cga_poll(void *p)
 {
         cga_t *cga = (cga_t *)p;
@@ -151,6 +143,9 @@ void cga_poll(void *p)
         int i_buf[8] = {0, 0, 0, 0, 0, 0, 0, 0}, i_val, i_tot;
         int q_buf[8] = {0, 0, 0, 0, 0, 0, 0, 0}, q_val, q_tot;
         int r, g, b;
+	uint8_t *tline;
+	uint8_t tarray[65536];
+	memset(tarray, 0, 65536);
 	// pclog("Poll start\n");
         if (!cga->linepos)
         {
@@ -318,7 +313,6 @@ void cga_poll(void *p)
                         }
                         else
                         {
-#ifdef CGA_DIFF
                                 cols[0] = 0; cols[1] = (cga->cgacol & 15) + 16;
                                 for (x = 0; x < cga->crtc[1]; x++)
                                 {
@@ -330,26 +324,6 @@ void cga_poll(void *p)
                                                 dat <<= 1;
                                         }
                                 }
-#else
-                                for (x = 0; x < 40; x++)
-                                {
-                                        ca = ((cga->ma << 1) & 0x1fff) + ((cga->sc & 1) * 0x2000);
-                                        dat  = (cga->vram[ca]          << 8) | cga->vram[ca + 1];
-                                        dat2 = (cga->vram[ca + 0x4000] << 8) | cga->vram[ca + 0x4001];
-                                        dat3 = (cga->vram[ca + 0x8000] << 8) | cga->vram[ca + 0x8001];
-                                        dat4 = (cga->vram[ca + 0xc000] << 8) | cga->vram[ca + 0xc001];
-
-                                        cga->ma++;
-                                        for (c = 0; c < 16; c++)
-                                        {
-                                                buffer->line[cga->displine][(x << 4) + c + 8] = (((dat >> 15) | ((dat2 >> 15) << 1) | ((dat3 >> 15) << 2) | ((dat4 >> 15) << 3)) & (cga->cgacol & 15)) + 16;
-                                                dat  <<= 1;
-                                                dat2 <<= 1;
-                                                dat3 <<= 1;
-                                                dat4 <<= 1;
-                                        }
-                                }
-#endif
                         }
                 }
                 else
@@ -361,71 +335,26 @@ void cga_poll(void *p)
 
                 if (cga->cgamode & 1) x = (cga->crtc[1] << 3) + 16;
                 else                  x = (cga->crtc[1] << 4) + 16;
+
+		if (cga_color_burst != old_color_burst)
+		{
+			update_cga16_color(cga);
+			old_color_burst = cga_color_burst;
+		}
+
                 if (cga_comp)
                 {
+			tline = (uint8_t *) buffer32->line[cga->displine];
                         for (c = 0; c < x; c++)
                         {
-#ifdef LEGACY_CGACOMP
-                                y_buf[(c << 1) & 6] = ntsc_col[buffer->line[cga->displine][c] & 7][(c << 1) & 6] ? 0x6000 : 0;
-                                y_buf[(c << 1) & 6] += (buffer->line[cga->displine][c] & 8) ? 0x3000 : 0;
-                                i_buf[(c << 1) & 6] = y_buf[(c << 1) & 6] * i_filt[(c << 1) & 6];
-                                q_buf[(c << 1) & 6] = y_buf[(c << 1) & 6] * q_filt[(c << 1) & 6];
-                                y_tot = y_buf[0] + y_buf[1] + y_buf[2] + y_buf[3] + y_buf[4] + y_buf[5] + y_buf[6] + y_buf[7];
-                                i_tot = i_buf[0] + i_buf[1] + i_buf[2] + i_buf[3] + i_buf[4] + i_buf[5] + i_buf[6] + i_buf[7];
-                                q_tot = q_buf[0] + q_buf[1] + q_buf[2] + q_buf[3] + q_buf[4] + q_buf[5] + q_buf[6] + q_buf[7];
-
-                                y_val = y_tot >> 10;
-                                if (y_val > 255) y_val = 255;
-                                y_val <<= 16;
-                                i_val = i_tot >> 12;
-                                if (i_val >  39041) i_val =  39041;
-                                if (i_val < -39041) i_val = -39041;
-                                q_val = q_tot >> 12;
-                                if (q_val >  34249) q_val =  34249;
-                                if (q_val < -34249) q_val = -34249;
-
-                                r = (y_val + 249*i_val + 159*q_val) >> 16;
-                                g = (y_val -  70*i_val - 166*q_val) >> 16;
-                                b = (y_val - 283*i_val + 436*q_val) >> 16;
-
-                                y_buf[((c << 1) & 6) + 1] = ntsc_col[buffer->line[cga->displine][c] & 7][((c << 1) & 6) + 1] ? 0x6000 : 0;
-                                y_buf[((c << 1) & 6) + 1] += (buffer->line[cga->displine][c] & 8) ? 0x3000 : 0;
-                                i_buf[((c << 1) & 6) + 1] = y_buf[((c << 1) & 6) + 1] * i_filt[((c << 1) & 6) + 1];
-                                q_buf[((c << 1) & 6) + 1] = y_buf[((c << 1) & 6) + 1] * q_filt[((c << 1) & 6) + 1];
-                                y_tot = y_buf[0] + y_buf[1] + y_buf[2] + y_buf[3] + y_buf[4] + y_buf[5] + y_buf[6] + y_buf[7];
-                                i_tot = i_buf[0] + i_buf[1] + i_buf[2] + i_buf[3] + i_buf[4] + i_buf[5] + i_buf[6] + i_buf[7];
-                                q_tot = q_buf[0] + q_buf[1] + q_buf[2] + q_buf[3] + q_buf[4] + q_buf[5] + q_buf[6] + q_buf[7];
-
-                                y_val = y_tot >> 10;
-                                if (y_val > 255) y_val = 255;
-                                y_val <<= 16;
-                                i_val = i_tot >> 12;
-                                if (i_val >  39041) i_val =  39041;
-                                if (i_val < -39041) i_val = -39041;
-                                q_val = q_tot >> 12;
-                                if (q_val >  34249) q_val =  34249;
-                                if (q_val < -34249) q_val = -34249;
-
-                                r = (y_val + 249*i_val + 159*q_val) >> 16;
-                                g = (y_val -  70*i_val - 166*q_val) >> 16;
-                                b = (y_val - 283*i_val + 436*q_val) >> 16;
-                                if (r > 511) r = 511;
-                                if (g > 511) g = 511;
-                                if (b > 511) b = 511;
-
-                                // ((uint32_t *)buffer32->line[cga->displine])[c] = makecol32(r / 2, g / 2, b / 2);
-                                ((uint32_t *)buffer32->line[cga->displine])[c] = makecol32(r, g, b);
-#else
-				r = 0; g = 0; b = 0;
-				c2 = buffer->line[cga->displine][c];
-				if ((c & 1) != 0)  c2 <<= 2;
-				if ((c & 1) == 0)  c2 &= 0xF;
-				r = cga_comp_get_color(c2, c, 0);
-				g = cga_comp_get_color(c2, c, 1);
-				b = cga_comp_get_color(c2, c, 2);
-				// update_cga16_color(buffer->line[cga->displine][c], &r, &g, &b);
-                                ((uint32_t *)buffer32->line[cga->displine])[c] = makecol32(r, g, b);
-#endif
+				tarray[c] = buffer->line[cga->displine][c] & 0xf;
+                        }
+			// tline = Composite_Process(cga, 0, x, tline);
+			// Composite_Process(cga, 0, (cga->crtc[1] + 2) * 2, tarray);
+			Composite_Process(cga, 0, x >> 2, tarray);
+                        for (c = 0; c < x; c++)
+                        {
+				((uint32_t *) tline)[c] = ((uint32_t *) tarray)[c];
                         }
                 }
 
@@ -575,22 +504,15 @@ void *cga_standalone_init()
         cga_t *cga = malloc(sizeof(cga_t));
 	pclog("Allocating type memory...\n");
         memset(cga, 0, sizeof(cga_t));
+	old_cgacol = 0;
+
+	overscan_x = overscan_y = 16;
 
 	pclog("Allocating VRAM...\n");
         cga->vram = malloc(0x4000);
                 
-#ifdef LEGACY_CGACOMP
-	pclog("Setting NTSC colors...\n");
-        for (c = 0; c < 8; c++)
-        {
-                i_filt[c] = 512.0 * cos((3.14 * (cga_tint + c * 4) / 16.0) - 33.0 / 180.0);
-                q_filt[c] = 512.0 * sin((3.14 * (cga_tint + c * 4) / 16.0) - 33.0 / 180.0);
-        }
-#else
 	pclog("Configuring composite CGA\n");
-	configure_comp(180.0, 0, 0, 0);
-	update_cga16_color(cga);
-#endif
+	cga_comp_init(cga);
 
 	pclog("Adding memory mapping...\n");
         mem_mapping_add(&cga->mapping, 0xb8000, 0x08000, cga_read, NULL, NULL, cga_write, NULL, NULL,  NULL, 0, cga);
@@ -618,9 +540,21 @@ void cga_speed_changed(void *p)
         cga_recalctimings(cga);
 }
 
+device_t cga_new_device =
+{
+        "CGA (New)",
+        0,
+        cga_standalone_init,
+        cga_close,
+        NULL,
+        cga_speed_changed,
+        NULL,
+        NULL
+};
+
 device_t cga_device =
 {
-        "CGA",
+        "CGA (Old)",
         0,
         cga_standalone_init,
         cga_close,

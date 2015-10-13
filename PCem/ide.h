@@ -24,8 +24,10 @@ typedef struct ATAPI
         int (*ready)(void);
         int (*readtoc)(uint8_t *b, uint8_t starttrack, int msf, int maxlen, int single);
         void (*readtoc_session)(uint8_t *b, int msf, int maxlen);
+        int (*readtoc_raw)(uint8_t *b, int maxlen);
         uint8_t (*getcurrentsubchannel)(uint8_t *b, int msf);
         void (*readsector)(uint8_t *b, int sector);
+        void (*readsector_raw)(uint8_t *b, int sector);
         void (*playaudio)(uint32_t pos, uint32_t len, int ismsf);
         void (*seek)(uint32_t pos);
         void (*load)(void);
@@ -45,6 +47,10 @@ extern int ideboard;
 
 extern int idecallback[2];
 
+extern int soft_reset;
+
 extern char ide_fn[4][512];
 
 #endif //__IDE__
+
+void closeide(void);

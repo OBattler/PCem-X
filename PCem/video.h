@@ -29,13 +29,13 @@ typedef RGB PALETTE[256];
 
 extern BITMAP *buffer, *buffer32;
 
-int video_card_available(int card, int po);
-char *video_card_getname(int card, int po);
-struct device_t *video_card_getdevice(int card, int po);
-int video_card_has_config(int card, int po);
-int video_card_getid(char *s, int po);
-int video_old_to_new(int card, int po);
-int video_new_to_old(int card, int po);
+int video_card_available(int card);
+char *video_card_getname(int card);
+struct device_t *video_card_getdevice(int card);
+int video_card_has_config(int card);
+int video_card_getid(char *s);
+int video_old_to_new(int card);
+int video_new_to_old(int card);
 
 extern int video_fullscreen, video_fullscreen_scale, video_fullscreen_first;
 
@@ -88,3 +88,27 @@ extern int vid_resize;
 extern int font_index;
 
 void loadfont(char *s, int format, uint8_t fontdat[256][8], uint8_t fontdatm[256][16]);
+
+extern int cga_brown;
+
+extern int enable_overscan;
+extern int overscan_color;
+extern int overscan_x;
+extern int overscan_y;
+
+void startblit();
+void endblit();
+
+void updatewindowsize(int x, int y);
+
+void hline(BITMAP *b, int x1, int y, int x2, uint32_t col);
+void destroy_bitmap(BITMAP *b);
+
+void video_init();
+
+void initvideo();
+void closevideo();
+
+void set_window_title(char *s);
+
+void video_updatetiming();

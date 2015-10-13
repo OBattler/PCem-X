@@ -13,6 +13,7 @@ extern uint16_t ea_rseg;
 #define writememl(s,a,v) if (writelookup2[(uint32_t)((s)+(a))>>12]==-1 || (s)==0xFFFFFFFF || (((s)+(a))&0xFFF)>0xFFC) writememll(s,a,v); else *(uint32_t *)(writelookup2[(uint32_t)((s) + (a)) >> 12] + (uint32_t)((s) + (a))) = v
 #define writememq(s,a,v) if (writelookup2[(uint32_t)((s)+(a))>>12]==-1 || (s)==0xFFFFFFFF || (((s)+(a))&0xFFF)>0xFF8) writememql(s,a,v); else *(uint64_t *)(writelookup2[(uint32_t)((s) + (a)) >> 12] + (uint32_t)((s) + (a))) = v
 
+
 #define check_io_perm(port) if (!IOPLp || (eflags&VM_FLAG)) \
                         { \
                                 int tempi = checkio(port); \
@@ -68,22 +69,22 @@ extern uint16_t ea_rseg;
 
 static inline uint8_t fastreadb(uint32_t a)
 {
-	uint8_t *t;
-
+        uint8_t *t;
+        
         if ((a >> 12) == pccache) 
                 return *((uint8_t *)&pccache2[a]);
         t = getpccache(a);
         if (abrt)
-                return;
+                return 0;
         pccache = a >> 12;
-	pccache2 = t;
+        pccache2 = t;
         return *((uint8_t *)&pccache2[a]);
 }
 
 static inline uint16_t fastreadw(uint32_t a)
 {
-	uint8_t *t;
-	uint16_t val;
+        uint8_t *t;
+        uint16_t val;
         if ((a&0xFFF)>0xFFE)
         {
                 val = readmemb(0, a);
@@ -91,12 +92,12 @@ static inline uint16_t fastreadw(uint32_t a)
                 return val;
         }
         if ((a>>12)==pccache) return *((uint16_t *)&pccache2[a]);
-        t=getpccache(a);
+        t = getpccache(a);
         if (abrt)
-                return;
+                return 0;
 
         pccache = a >> 12;
-	pccache2 = t;
+        pccache2 = t;
         return *((uint16_t *)&pccache2[a]);
 }
 
@@ -110,7 +111,7 @@ static inline uint32_t fastreadl(uint32_t a)
                 {
                         t = getpccache(a);
                         if (abrt)
-				return 0;
+                                return 0;
                         pccache2 = t;
                         pccache=a>>12;
                         //return *((uint32_t *)&pccache2[a]);

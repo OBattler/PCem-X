@@ -3,6 +3,9 @@
 #include <string.h>
 #define printf pclog
 
+/* For CPU */
+extern int trap;
+
 /*Memory*/
 uint8_t *ram,*vram;
 
@@ -114,9 +117,7 @@ typedef struct
         uint8_t access;
         uint16_t seg;
         uint32_t limit_low, limit_high;
-#ifdef DYNAREC
         int checked; /*Non-zero if selector is known to be valid*/
-#endif
 } x86seg;
 
 x86seg gdt,ldt,idt,tr;
@@ -184,6 +185,7 @@ uint32_t dr[8];
 //#define IOPLV86 ((!(msw&1)) || (CPL<=IOPL))
 extern int cycles;
 extern int cycles_lost;
+extern int is486;
 extern uint8_t opcode;
 extern int insc;
 extern int fpucount;
@@ -214,6 +216,8 @@ typedef struct PIT
         int count[3];
         int using_timer[3];
         int initial[3];
+	int latched[3];
+	int disabled[3];
 } PIT;
 
 PIT pit;
@@ -270,17 +274,13 @@ char discfns[2][256];
 int driveempty[2];
 
 
-/*Config stuff*/
 #define GMDA (gfxcard==GFX_MDA || gfxcard==GFX_HERCULES || gfxcard==GFX_CPQVDU)
 #define MDA (GMDA && (romset<ROM_TANDY || romset>=ROM_IBMAT))
 #define GHERC (gfxcard==GFX_HERCULES)
 #define HERCULES (gfxcard==GFX_HERCULES && (romset<ROM_TANDY || romset>=ROM_IBMAT))
-#define AMSTRAD (romset==ROM_PC1512 || romset==ROM_PC1640 || romset==ROM_PC3086)
-#define AMSTRADIO (romset==ROM_PC1512 || romset==ROM_PC1640 || romset==ROM_PC200 || romset==ROM_PC2086 || romset == ROM_PC3086)
-#define TANDY (romset==ROM_TANDY/* || romset==ROM_IBMPCJR*/)
 #define VID_EGA ((gfxcard==GFX_EGA) || (gfxcard==GFX_JEGA) || (gfxcard==GFX_SUPEREGA) || (gfxcard==GFX_CPQEGA))
 #define VID_JEGA (gfxcard==GFX_JEGA)
-#define GFXVGA (gfxcard>=GFX_TVGA && gfxcard!=GFX_JEGA && gfxcard!=GFX_SUPEREGA && gfxcard!=GFX_CPQEGA && gfxcard!=GFX_CPQVDU)
+#define GFXVGA ((gfxcard>=GFX_TVGA && gfxcard<=GFX_PHOENIX_TRIO64) || (gfxcard>=GFX_CPQVGA))
 #define VGA ((GFXVGA || romset==ROM_ACER386) && romset!=ROM_PC1640 && romset!=ROM_PC1512 && romset!=ROM_TANDY && romset!=ROM_PC200)
 #define EGA (romset==ROM_PC1640 || VID_EGA || VGA)
 #define VID_SVGA ((gfxcard==GFX_ET4000) || (gfxcard==GFX_ET4000W32) || (gfxcard==GFX_BAHAMAS64) || (gfxcard==GFX_N9_9FX) || (gfxcard==GFX_VIRGE) || (gfxcard==GFX_TGUI9440) || (gfxcard==GFX_MACH64GX) || (gfxcard==GFX_CL_GD5429) || (gfxcard==GFX_CL_GD6235) || (gfxcard==GFX_VIRGEDX) || (gfxcard==GFX_CL_PHOENIX_TRIO32) || (gfxcard==GFX_CL_PHOENIX_TRIO64) || (gfxcard==GFX_CL_PHOENIX_VISION964) || (gfxcard==GFX_CL_GD5436) || (gfxcard==GFX_CL_GD5446) || (gfxcard==GFX_RIVA128))
@@ -289,14 +289,13 @@ int driveempty[2];
 #define OTI067 ((romset==ROM_ACER386) || (gfxcard==GFX_OTI067))
 #define ET4000 (gfxcard==GFX_ET4000 && VGA)
 #define ET4000W32 (gfxcard==GFX_ET4000W32 && VGA)
-// #define AT (romset>=ROM_IBMAT)
-// #define PCI (romset >= ROM_PCI486)
 #define PCJR (romset == ROM_IBMPCJR)
 
 #define AMIBIOS (romset==ROM_AMI386 || romset==ROM_AMI486 || romset == ROM_WIN486)
 
-uint8_t PCI, maxide, AT;
+uint8_t maxide;
 int GAMEBLASTER, GUS, SSI2001, voodoo_enabled;
+extern int AMSTRAD, AT, is386, PCI, TANDY;
 
 enum
 {
@@ -313,62 +312,64 @@ enum
         ROM_PC1640,
         ROM_PC2086,
         ROM_PC3086,        
+        ROM_AMIXT,      /*XT Clone with AMI BIOS*/
+	ROM_LTXT,
+	ROM_LXT3,
+	ROM_PX386,
+        ROM_DTK386,
+        ROM_PXXT,
+        ROM_JUKOPC,
         ROM_IBMAT,
         ROM_CMDPC30,
         ROM_AMI286,
         ROM_DELL200,
+#ifdef BROKEN_CHIPSETS
         ROM_MISC286,
+#endif
         ROM_IBMAT386,
         ROM_ACER386,
         ROM_MEGAPC,
         ROM_AMI386,
         ROM_AMI486,
         ROM_WIN486,
+#ifdef BROKEN_CHIPSETS
         ROM_PCI486,
+#endif
         ROM_SIS496,
         ROM_430VX,
         ROM_ENDEAVOR,
         ROM_REVENGE,
-	ROM_IBMPS1_2011,
-	ROM_DESKPRO_386,
-	ROM_AMIXT,
-	ROM_LTXT,
-	ROM_LXT3,
+        ROM_IBMPS1_2011,
+        ROM_DESKPRO_386,
+	/* From here on go romsets/models added by PCem-X. */
 	ROM_SIS471,
         ROM_430FX,
 	ROM_COLORBOOK,
-	ROM_PX386,
-	ROM_DTK386,
-	ROM_PXXT,
-	ROM_JUKOPC,
 	ROM_AMSYS,
 	ROM_KAYPROXT,
 	ROM_PX486,
 	ROM_430TX,
 	ROM_440FX,
-	ROM_440BX,
-	ROM_VPC2007,
 	ROM_PXSIS471,
         ROM_430LX,
 	ROM_430NX,
         ROM_430HX,
-        ROM_CPQ430HX,
 	ROM_ACERV35N,
-	ROM_SISP2,
-	ROM_GOLIATH,
 	ROM_PLATO,
+	ROM_ACERV12LC,
+#ifdef BROKEN_CHIPSETS
+        ROM_MISC286,
+	ROM_APOLLO,
+	ROM_440BX,
+	ROM_VPC2007,
+	ROM_GOLIATH,
+#endif
         
         ROM_MAX
 };
 
 extern int romspresent[ROM_MAX];
 
-//#define ROM_IBMPCJR 5 /*Not working! ROMs are corrupt*/
-// #define is386 (romset>=ROM_IBMAT386)
-#define is386sx 0
-
-uint8_t is386;
-extern int is486;
 int hasfpu;
 int romset;
 
@@ -391,21 +392,27 @@ enum
         GFX_OTI067,     /*Oak OTI-067*/
         GFX_MACH64GX,   /*ATI Graphics Pro Turbo (Mach64)*/
         GFX_CL_GD5429,  /*Cirrus Logic CL-GD5429*/
-        GFX_CL_GD6235,  /*Cirrus Logic CL-GD6235*/
         GFX_VIRGEDX,    /*S3 Virge/DX*/
         GFX_PHOENIX_TRIO32, /*S3 732/Trio32 (Phoenix)*/
         GFX_PHOENIX_TRIO64, /*S3 764/Trio64 (Phoenix)*/
-	GFX_PHOENIX_VISION964, /*S3 964/Vision964 (Phoenix/miro cyrstal)*/
-	GFX_JEGA,	/*JEGA*/
-	GFX_PARADISE,
-	GFX_CL_GD5436,
-	GFX_CL_GD5446,
-	GFX_SUPEREGA,
-	GFX_RIVA128,
+	/* From here on go graphics cards added by PCem-X. */
+        GFX_NEW_CGA,
 	GFX_CPQVDU,
 	GFX_CPQEGA,
+	GFX_SUPEREGA,
+	GFX_JEGA,	/*JEGA*/
 	GFX_CPQVGA,
+	GFX_PARADISE,
+        GFX_CL_GD6235,  /*Cirrus Logic CL-GD6235*/
 	GFX_CL_GD5422,
+	GFX_CL_GD5430,
+	GFX_DIAMOND5430,
+	GFX_CL_GD5434,
+	GFX_CL_GD5436,
+	GFX_CL_GD5440,
+	GFX_CL_GD5446,
+	GFX_PHOENIX_VISION964, /*S3 964/Vision964 (Phoenix/miro cyrstal)*/
+	GFX_RIVA128,
         
         GFX_MAX
 };
@@ -413,7 +420,6 @@ enum
 extern int gfx_present[GFX_MAX];
 
 int gfxcard;
-int gfxcardpci;
 
 int cpuspeed;
 
@@ -508,6 +514,7 @@ int keybsenddelay;
 
 /*CD-ROM*/
 extern int cdrom_drive;
+extern int old_cdrom_drive;
 extern int idecallback[2];
 extern int cdrom_enabled;
 
@@ -515,6 +522,7 @@ extern int cdrom_enabled;
 #define NE2000      1
 
 void pclog(const char *format, ...);
+void fatal(const char *format, ...);
 extern int nmi;
 
 extern int times;
@@ -541,39 +549,9 @@ void resetpc_cad();
 void ctrl_alt_esc();
 void simple_del();
 
-extern int machine_class;
-
-// IBM PC and compatibles
-#define MC_PCAT		0
-// IBM PCjr
-#define MC_PCJR		1
-// AX (Architecture eXtended)
-#define MC_AX		2
-// IBM PS/2
-#define MC_PS2		3
-// IBM PS/2 Model 30
-#define MC_PS2M30	4
-// IBM PS/55
-#define MC_PS55		5
-// Amstrad pre-MegaPC/PC70x86 machines
-#define MC_AMSTRAD	6
-// NEC PC-98x1 and APC III (emulate in separate fork of the emulator please)
-#define MC_NEC		7
-// Fujitsu FM-Towns and Marty (emulate in separate fork of the emulator please)
-#define MC_FUJITSU	8
-// RM Nimbus PC-186
-#define MC_NIMBUS	9
-// Invalid machine class
-#define MC_INVALID	-1
-
-extern int supports_slave;
-extern int has_pc87306;
+extern int has_nsc;
 
 extern int ps1xtide;
-
-extern int gfxpciid;
-
-extern int enable_dynarec;
 
 #define BIOS_NONE	0
 #define BIOS_IBM	1
@@ -596,6 +574,48 @@ extern uint16_t cs_msr;
 extern uint32_t esp_msr;
 extern uint32_t eip_msr;
 
+/* For the AMD K6. */
+extern uint64_t star;
+
 #define FPU_CW_Reserved_Bits (0xe0c0)
 
 extern int piix_type;
+
+extern int disable_xchg_dynarec;
+extern int cga_color_burst;
+
+extern int old_color_burst;
+
+void dumppic();
+void dumpregs();
+void cpu_set();
+void resetx86();
+void softresetx86();
+
+void fullspeed();
+
+void exec386(int cycs);
+void exec386_dynarec(int cycs);
+
+void execx86(int cycs);
+
+void get_executable_name(char *s, int size);
+
+void pmodeint(int num, int soft);
+void pmodeiret(int is32);
+
+void pmoderetf(int is32, uint16_t off);
+
+void loadcsjmp(uint16_t seg, uint32_t oxpc);
+void loadcscall(uint16_t seg);
+
+int checkio(int port);
+
+int rep386(int fv);
+
+void x86_int_sw(int num);
+
+int divl(uint32_t val);
+int idivl(int32_t val);
+
+void refreshread();

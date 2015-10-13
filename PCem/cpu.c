@@ -3,13 +3,10 @@
 #include "model.h"
 #include "io.h"
 #include "x86_ops.h"
-#ifdef DYNAREC
 #include "mem.h"
 #include "pci.h"
 #include "codegen.h"
-#endif
 
-#ifdef DYNAREC
 OpFn *x86_dynarec_opcodes;
 OpFn *x86_dynarec_opcodes_0f;
 OpFn *x86_dynarec_opcodes_d8_a16;
@@ -28,7 +25,6 @@ OpFn *x86_dynarec_opcodes_de_a16;
 OpFn *x86_dynarec_opcodes_de_a32;
 OpFn *x86_dynarec_opcodes_df_a16;
 OpFn *x86_dynarec_opcodes_df_a32;
-#endif
 
 OpFn *x86_opcodes;
 OpFn *x86_opcodes_0f;
@@ -55,11 +51,14 @@ enum
         CPUID_TSC = (1 << 4),
         CPUID_MSR = (1 << 5),
         CPUID_CMPXCHG8B = (1 << 8),
+	CPUID_AMDSEP = (1 << 10),
 	CPUID_SEP = (1 << 11),
 	CPUID_CMOV = (1 << 15),
         CPUID_MMX = (1 << 23),
 	CPUID_FXSR = (1 << 24)
 };
+
+int disable_xchg_dynarec;
 
 int cpu = 3, cpu_manufacturer = 0;
 CPU *cpu_s;
@@ -70,10 +69,13 @@ int cpu_busspeed;
 int cpu_hasrdtsc;
 int cpu_hasMMX, cpu_hasMSR;
 int cpu_hasCR4;
-
-int is80286;
+int cpu_use_dynarec;
 
 uint64_t cpu_CR4_mask;
+
+int is386;
+
+int is80286;
 
 uint64_t tsc = 0;
 
@@ -100,6 +102,11 @@ uint64_t ecx8x_msr[4] = {0, 0, 0, 0};
 uint64_t ecx116_msr = 0;
 uint64_t ecx11x_msr[4] = {0, 0, 0, 0};
 uint64_t ecx11e_msr = 0;
+uint64_t ecx1e0_msr = 0;
+
+/* AMD K6 MSR's. */
+uint64_t star = 0;
+uint64_t sfmask = 0;
 
 int timing_rr;
 int timing_mr, timing_mrl;
@@ -118,7 +125,7 @@ static struct
 /*Available cpuspeeds :
         0 = 16 MHz
         1 = 20 MHz
-7        2 = 25 MHz
+        2 = 25 MHz
         3 = 33 MHz
         4 = 40 MHz
         5 = 50 MHz
@@ -139,301 +146,314 @@ static struct
 CPU cpus_8088[] =
 {
         /*8088 standard*/
-	/*4772727*/
-#ifdef WRONG_8088
-        {"8088/4.77",    CPU_8088,  0,  3512199, 1.00, 0, 0, 0, 0},
-        {"8088/8",       CPU_8088,  1,  5887115, 1.00, 0, 0, 0, 0},
-        {"8088/10",      CPU_8088,  2,  7358893, 1.00, 0, 0, 0, 0},
-        {"8088/12",      CPU_8088,  3,  8830672, 1.00, 0, 0, 0, 0},
-        {"8088/16",      CPU_8088,  4, 11774229, 1.00, 0, 0, 0, 0},
-#else
-        {"8088/4.77",    CPU_8088,  0,  4772727, 1.33333333, 0, 0, 0, 0},
-        {"8088/8",       CPU_8088,  1,  8000000, 1.00, 0, 0, 0, 0},
-        {"8088/10",      CPU_8088,  2, 10000000, 1.00, 0, 0, 0, 0},
-        {"8088/12",      CPU_8088,  3, 12000000, 1.00, 0, 0, 0, 0},
-        {"8088/16",      CPU_8088,  4, 16000000, 1.00, 0, 0, 0, 0},
-#endif
+        {"8088/4.77",    CPU_8088,  0,  4772727, 1.33333333, 0, 0, 0, 0, 0},
+        {"8088/8",       CPU_8088,  1,  8000000, 1.00, 0, 0, 0, 0, 0},
+        {"8088/10",      CPU_8088,  2, 10000000, 1.00, 0, 0, 0, 0, 0},
+        {"8088/12",      CPU_8088,  3, 12000000, 1.00, 0, 0, 0, 0, 0},
+        {"8088/16",      CPU_8088,  4, 16000000, 1.00, 0, 0, 0, 0, 0},
         {"",             -1,        0, 0, 0}
 };
 
 CPU cpus_pcjr[] =
 {
         /*8088 PCjr*/
-        {"8088/4.77",    CPU_8088,  0,  4772727, 1.33333333, 0, 0, 0, 0},
+        {"8088/4.77",    CPU_8088,  0,  4772727, 1.33333333, 0, 0, 0, 0, 0},
         {"",             -1,        0, 0, 0}
 };
 
 CPU cpus_8086[] =
 {
         /*8086 standard*/
-        {"8086/7.16",    CPU_8086,  1,  3579545*2,     1.00, 0, 0, 0, 0},
-        {"8086/8",       CPU_8086,  1,  8000000,       1.00, 0, 0, 0, 0},
-        {"8086/9.54",    CPU_8086,  1, (3579545*8)/3,  1.00, 0, 0, 0, 0},
-        {"8086/10",      CPU_8086,  2, 10000000,       1.00, 0, 0, 0, 0},
-        {"8086/12",      CPU_8086,  3, 12000000,       1.00, 0, 0, 0, 0},
-        {"8086/16",      CPU_8086,  4, 16000000,       1.00, 0, 0, 0, 0},
+        {"8086/7.16",    CPU_8086,  1,  3579545*2,     1.00, 0, 0, 0, 0, 0},
+        {"8086/8",       CPU_8086,  1,  8000000,       1.00, 0, 0, 0, 0, 0},
+        {"8086/9.54",    CPU_8086,  1, (3579545*8)/3,  1.00, 0, 0, 0, 0, 0},
+        {"8086/10",      CPU_8086,  2, 10000000,       1.00, 0, 0, 0, 0, 0},
+        {"8086/12",      CPU_8086,  3, 12000000,       1.00, 0, 0, 0, 0, 0},
+        {"8086/16",      CPU_8086,  4, 16000000,       1.00, 0, 0, 0, 0, 0},
         {"",             -1,        0, 0, 0}
 };
 
 CPU cpus_pc1512[] =
 {
         /*8086 Amstrad*/
-        {"8086/8",       CPU_8086,  1,  8000000,       1.00, 0, 0, 0, 0},
+        {"8086/8",       CPU_8086,  1,  8000000,       1.00, 0, 0, 0, 0, 0},
         {"",             -1,        0, 0, 0}
 };
 
 CPU cpus_286[] =
 {
         /*286*/
-        {"286/6",        CPU_286,   0,  6000000, 1.00, 0, 0, 0, 0},
-        {"286/8",        CPU_286,   1,  8000000, 1.00, 0, 0, 0, 0},
-        {"286/10",       CPU_286,   2, 10000000, 1.00, 0, 0, 0, 0},
-        {"286/12",       CPU_286,   3, 12000000, 1.00, 0, 0, 0, 0},
-        {"286/16",       CPU_286,   4, 16000000, 1.00, 0, 0, 0, 0},
-        {"286/20",       CPU_286,   5, 20000000, 1.00, 0, 0, 0, 0},
-        {"286/25",       CPU_286,   6, 25000000, 1.00, 0, 0, 0, 0},
+        {"286/6",        CPU_286,   0,  6000000, 1.00, 0, 0, 0, 0, 0},
+        {"286/8",        CPU_286,   1,  8000000, 1.00, 0, 0, 0, 0, 0},
+        {"286/10",       CPU_286,   2, 10000000, 1.00, 0, 0, 0, 0, 0},
+        {"286/12",       CPU_286,   3, 12000000, 1.00, 0, 0, 0, 0, 0},
+        {"286/16",       CPU_286,   4, 16000000, 1.00, 0, 0, 0, 0, 0},
+        {"286/20",       CPU_286,   5, 20000000, 1.00, 0, 0, 0, 0, 0},
+        {"286/25",       CPU_286,   6, 25000000, 1.00, 0, 0, 0, 0, 0},
         {"",             -1,        0, 0, 0, 0}
 };
 
 CPU cpus_ibmat[] =
 {
         /*286*/
-        {"286/6",        CPU_286,   0,  6000000, 1.00, 0, 0, 0, 0},
-        {"286/8",        CPU_286,   0,  8000000, 1.00, 0, 0, 0, 0},
+        {"286/6",        CPU_286,   0,  6000000, 1.00, 0, 0, 0, 0, 0},
+        {"286/8",        CPU_286,   0,  8000000, 1.00, 0, 0, 0, 0, 0},
         {"",             -1,        0, 0, 0, 0}
 };
 
 CPU cpus_i386[] =
 {
         /*i386*/
-        {"i386SX/16",    CPU_386SX, 0, 16000000, 1.00, 0, 0x2308, 0, 0},
-        {"i386SX/20",    CPU_386SX, 1, 20000000, 1.00, 0, 0x2308, 0, 0},
-        {"i386SX/25",    CPU_386SX, 2, 25000000, 1.00, 0, 0x2308, 0, 0},
-        {"i386SX/33",    CPU_386SX, 3, 33333333, 1.00, 0, 0x2308, 0, 0},
-        {"i386DX/16",    CPU_386DX, 0, 16000000, 1.00, 0, 0x0308, 0, 0},
-        {"i386DX/20",    CPU_386DX, 1, 20000000, 1.00, 0, 0x0308, 0, 0},
-        {"i386DX/25",    CPU_386DX, 2, 25000000, 1.00, 0, 0x0308, 0, 0},
-        {"i386DX/33",    CPU_386DX, 3, 33333333, 1.00, 0, 0x0308, 0, 0},
+        {"i386SX/16",    CPU_386SX, 0, 16000000, 1.00, 0, 0x2308, 0, 0, 0},
+        {"i386SX/20",    CPU_386SX, 1, 20000000, 1.00, 0, 0x2308, 0, 0, 0},
+        {"i386SX/25",    CPU_386SX, 2, 25000000, 1.00, 0, 0x2308, 0, 0, 0},
+        {"i386SX/33",    CPU_386SX, 3, 33333333, 1.00, 0, 0x2308, 0, 0, 0},
+        {"i386DX/16",    CPU_386DX, 0, 16000000, 1.00, 0, 0x0308, 0, 0, 0},
+        {"i386DX/20",    CPU_386DX, 1, 20000000, 1.00, 0, 0x0308, 0, 0, 0},
+        {"i386DX/25",    CPU_386DX, 2, 25000000, 1.00, 0, 0x0308, 0, 0, 0},
+        {"i386DX/33",    CPU_386DX, 3, 33333333, 1.00, 0, 0x0308, 0, 0, 0},
         {"",             -1,        0, 0, 0}
 };
 
 CPU cpus_acer[] =
 {
         /*i386*/
-        {"i386SX/25",    CPU_386SX, 2, 25000000, 1.00, 0, 0x2308, 0, 0},
+        {"i386SX/25",    CPU_386SX, 2, 25000000, 1.00, 0, 0x2308, 0, 0, 0},
         {"",             -1,        0, 0, 0}
 };
 
 CPU cpus_Am386[] =
 {
         /*Am386*/
-        {"Am386SX/16",   CPU_386SX, 0, 16000000, 1.00, 0, 0x2308, 0, 0},
-        {"Am386SX/20",   CPU_386SX, 1, 20000000, 1.00, 0, 0x2308, 0, 0},
-        {"Am386SX/25",   CPU_386SX, 2, 25000000, 1.00, 0, 0x2308, 0, 0},
-        {"Am386SX/33",   CPU_386SX, 3, 33333333, 1.00, 0, 0x2308, 0, 0},
-        {"Am386SX/40",   CPU_386SX, 4, 40000000, 1.00, 0, 0x2308, 0, 0},
-        {"Am386DX/25",   CPU_386DX, 2, 25000000, 1.00, 0, 0x0308, 0, 0},
-        {"Am386DX/33",   CPU_386DX, 3, 33333333, 1.00, 0, 0x0308, 0, 0},
-        {"Am386DX/40",   CPU_386DX, 4, 40000000, 1.00, 0, 0x0308, 0, 0},
+        {"Am386SX/16",   CPU_386SX, 0, 16000000, 1.00, 0, 0x2308, 0, 0, 0},
+        {"Am386SX/20",   CPU_386SX, 1, 20000000, 1.00, 0, 0x2308, 0, 0, 0},
+        {"Am386SX/25",   CPU_386SX, 2, 25000000, 1.00, 0, 0x2308, 0, 0, 0},
+        {"Am386SX/33",   CPU_386SX, 3, 33333333, 1.00, 0, 0x2308, 0, 0, 0},
+        {"Am386SX/40",   CPU_386SX, 4, 40000000, 1.00, 0, 0x2308, 0, 0, 0},
+        {"Am386DX/25",   CPU_386DX, 2, 25000000, 1.00, 0, 0x0308, 0, 0, 0},
+        {"Am386DX/33",   CPU_386DX, 3, 33333333, 1.00, 0, 0x0308, 0, 0, 0},
+        {"Am386DX/40",   CPU_386DX, 4, 40000000, 1.00, 0, 0x0308, 0, 0, 0},
         {"",             -1,        0, 0, 0}
 };
 
 CPU cpus_486SDLC[] =
 {
         /*Cx486SLC/DLC*/
-        {"Cx486SLC/20",  CPU_486SLC, 1, 20000000, 1.00, 0, 0, 0, 0x0000},
-        {"Cx486SLC/25",  CPU_486SLC, 2, 25000000, 1.00, 0, 0, 0, 0x0000},
-        {"Cx486SLC/33",  CPU_486SLC, 3, 33333333, 1.00, 0, 0, 0, 0x0000},
-        {"Cx486SRx2/32", CPU_486SLC, 3, 32000000, 2.00, 0, 0, 0, 0x0006},
-        {"Cx486SRx2/40", CPU_486SLC, 4, 40000000, 2.00, 0, 0, 0, 0x0006},
-        {"Cx486SRx2/50", CPU_486SLC, 5, 50000000, 2.00, 0, 0, 0, 0x0006},
-        {"Cx486DLC/25",  CPU_486DLC, 2, 25000000, 1.00, 0, 0, 0, 0x0001},
-        {"Cx486DLC/33",  CPU_486DLC, 3, 33333333, 1.00, 0, 0, 0, 0x0001},
-        {"Cx486DLC/40",  CPU_486DLC, 4, 40000000, 1.00, 0, 0, 0, 0x0001},
-        {"Cx486DRx2/32", CPU_486DLC, 3, 32000000, 2.00, 0, 0, 0, 0x0007},
-        {"Cx486DRx2/40", CPU_486DLC, 4, 40000000, 2.00, 0, 0, 0, 0x0007},
-        {"Cx486DRx2/50", CPU_486DLC, 5, 50000000, 2.00, 0, 0, 0, 0x0007},
-        {"Cx486DRx2/66", CPU_486DLC, 8, 66666666, 2.00, 0, 0, 0, 0x0007},
+        {"Cx486SLC/20",  CPU_486SLC, 1, 20000000, 1.00, 0, 0, 0, 0x0000, 0},
+        {"Cx486SLC/25",  CPU_486SLC, 2, 25000000, 1.00, 0, 0, 0, 0x0000, 0},
+        {"Cx486SLC/33",  CPU_486SLC, 3, 33333333, 1.00, 0, 0, 0, 0x0000, 0},
+        {"Cx486SRx2/32", CPU_486SLC, 3, 32000000, 2.00, 0, 0, 0, 0x0006, 0},
+        {"Cx486SRx2/40", CPU_486SLC, 4, 40000000, 2.00, 0, 0, 0, 0x0006, 0},
+        {"Cx486SRx2/50", CPU_486SLC, 5, 50000000, 2.00, 0, 0, 0, 0x0006, 0},
+        {"Cx486DLC/25",  CPU_486DLC, 2, 25000000, 1.00, 0, 0, 0, 0x0001, 0},
+        {"Cx486DLC/33",  CPU_486DLC, 3, 33333333, 1.00, 0, 0, 0, 0x0001, 0},
+        {"Cx486DLC/40",  CPU_486DLC, 4, 40000000, 1.00, 0, 0, 0, 0x0001, 0},
+        {"Cx486DRx2/32", CPU_486DLC, 3, 32000000, 2.00, 0, 0, 0, 0x0007, 0},
+        {"Cx486DRx2/40", CPU_486DLC, 4, 40000000, 2.00, 0, 0, 0, 0x0007, 0},
+        {"Cx486DRx2/50", CPU_486DLC, 5, 50000000, 2.00, 0, 0, 0, 0x0007, 0},
+        {"Cx486DRx2/66", CPU_486DLC, 8, 66666666, 2.00, 0, 0, 0, 0x0007, 0},
         {"",             -1,        0, 0, 0}
 };
 
 CPU cpus_i486[] =
 {
         /*i486*/
-        {"i486SX/16",    CPU_i486SX, 0,  16000000, 1.00, 16000000, 0x42a, 0, 0},
-        {"i486SX/20",    CPU_i486SX, 1,  20000000, 1.00, 20000000, 0x42a, 0, 0},
-        {"i486SX/25",    CPU_i486SX, 2,  25000000, 1.00, 25000000, 0x42a, 0, 0},
-        {"i486SX/33",    CPU_i486SX, 3,  33333333, 1.00, 33333333, 0x42a, 0, 0},
-        {"i486SX2/50",   CPU_i486SX, 5,  50000000, 2.00, 25000000, 0x45b, 0, 0},
-        {"i486DX/25",    CPU_i486DX, 2,  25000000, 1.00, 25000000, 0x404, 0, 0},
-        {"i486DX/33",    CPU_i486DX, 3,  33333333, 1.00, 33333333, 0x404, 0, 0},
-        {"i486DX/50",    CPU_i486DX, 5,  50000000, 2.00, 25000000, 0x404, 0, 0},
-        {"i486DX2/40",   CPU_i486DX, 4,  40000000, 2.00, 20000000, 0x430, 0, 0},
-        {"i486DX2/50",   CPU_i486DX, 5,  50000000, 2.00, 25000000, 0x430, 0, 0},
-        {"i486DX2/66",   CPU_i486DX, 8,  66666666, 2.00, 33333333, 0x430, 0, 0},
-        {"iDX4/75",      CPU_i486DX, 9,  75000000, 3.00, 25000000, 0x481, 0x481, 0}, /*CPUID available on DX4, >= 75 MHz*/
-        {"iDX4/100",     CPU_i486DX,13, 100000000, 3.00, 33333333, 0x481, 0x481, 0}, /*Is on some real Intel DX2s, limit here is pretty arbitary*/
-#ifdef DYNAREC
-        {"Pentium OverDrive/63",       CPU_PENTIUM,     7,  62500000, 2.50, 25000000, 0x1531, 0x1531, 0},
-        {"Pentium OverDrive/83",       CPU_PENTIUM,    11,  83333333, 2.50, 33333333, 0x1532, 0x1532, 0},
-#endif
+        {"i486SX/16",    CPU_i486SX, 0,  16000000, 1.00, 16000000, 0x42a, 0, 0, CPU_SUPPORTS_DYNAREC},
+        {"i486SX/20",    CPU_i486SX, 1,  20000000, 1.00, 20000000, 0x42a, 0, 0, CPU_SUPPORTS_DYNAREC},
+        {"i486SX/25",    CPU_i486SX, 2,  25000000, 1.00, 25000000, 0x42a, 0, 0, CPU_SUPPORTS_DYNAREC},
+        {"i486SX/33",    CPU_i486SX, 3,  33333333, 1.00, 33333333, 0x42a, 0, 0, CPU_SUPPORTS_DYNAREC},
+        {"i486SX2/50",   CPU_i486SX, 5,  50000000, 2.00, 25000000, 0x45b, 0, 0, CPU_SUPPORTS_DYNAREC},
+        {"i486DX/25",    CPU_i486DX, 2,  25000000, 1.00, 25000000, 0x404, 0, 0, CPU_SUPPORTS_DYNAREC},
+        {"i486DX/33",    CPU_i486DX, 3,  33333333, 1.00, 33333333, 0x404, 0, 0, CPU_SUPPORTS_DYNAREC},
+        {"i486DX/50",    CPU_i486DX, 5,  50000000, 2.00, 25000000, 0x404, 0, 0, CPU_SUPPORTS_DYNAREC},
+        {"i486DX2/40",   CPU_i486DX, 4,  40000000, 2.00, 20000000, 0x430, 0, 0, CPU_SUPPORTS_DYNAREC},
+        {"i486DX2/50",   CPU_i486DX, 5,  50000000, 2.00, 25000000, 0x430, 0, 0, CPU_SUPPORTS_DYNAREC},
+        {"i486DX2/66",   CPU_i486DX, 8,  66666666, 2.00, 33333333, 0x430, 0, 0, CPU_SUPPORTS_DYNAREC},
+        {"iDX4/75",      CPU_i486DX, 9,  75000000, 3.00, 25000000, 0x481, 0x481, 0, CPU_SUPPORTS_DYNAREC}, /*CPUID available on DX4, >= 75 MHz*/
+        {"iDX4/100",     CPU_i486DX,13, 100000000, 3.00, 33333333, 0x481, 0x481, 0, CPU_SUPPORTS_DYNAREC}, /*Is on some real Intel DX2s, limit here is pretty arbitary*/
+        {"Pentium OverDrive/63",       CPU_PENTIUM,     7,  62500000, 2.50, 25000000, 0x1531, 0x1531, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium OverDrive/83",       CPU_PENTIUM,    11,  83333333, 2.50, 33333333, 0x1532, 0x1532, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
         {"",             -1,        0, 0, 0}
 };
 
 CPU cpus_Am486[] =
 {
         /*Am486/5x86*/
-        {"Am486SX/33",   CPU_Am486SX,  3,  33333333, 1.00, 33333333, 0x42a, 0, 0},
-        {"Am486SX/40",   CPU_Am486SX,  4,  40000000, 1.00, 20000000, 0x42a, 0, 0},
-        {"Am486SX2/50",  CPU_Am486SX,  5,  50000000, 2.00, 25000000, 0x45b, 0x45b, 0}, /*CPUID available on SX2, DX2, DX4, 5x86, >= 50 MHz*/
-        {"Am486SX2/66",  CPU_Am486SX,  8,  66666666, 2.00, 33333333, 0x45b, 0x45b, 0}, /*Isn't on all real AMD SX2s and DX2s, availability here is pretty arbitary (and distinguishes them from the Intel chips)*/
-        {"Am486DX/33",   CPU_Am486DX,  3,  33333333, 1.00, 33333333, 0x430, 0, 0},
-        {"Am486DX/40",   CPU_Am486DX,  4,  40000000, 1.00, 20000000, 0x430, 0, 0},
-        {"Am486DX2/50",  CPU_Am486DX,  5,  50000000, 2.00, 25000000, 0x470, 0x470, 0},
-        {"Am486DX2/66",  CPU_Am486DX,  8,  66666666, 2.00, 33333333, 0x470, 0x470, 0},
-        {"Am486DX2/80",  CPU_Am486DX, 10,  80000000, 2.00, 20000000, 0x470, 0x470, 0},
-        {"Am486DX4/75",  CPU_Am486DX,  9,  75000000, 3.00, 25000000, 0x482, 0x482, 0},
-        {"Am486DX4/90",  CPU_Am486DX, 12,  90000000, 3.00, 30000000, 0x482, 0x482, 0},
-        {"Am486DX4/100", CPU_Am486DX, 13, 100000000, 3.00, 33333333, 0x482, 0x482, 0},
-        {"Am486DX4/120", CPU_Am486DX, 14, 120000000, 3.00, 20000000, 0x482, 0x482, 0},
-        {"Am5x86/P75",   CPU_Am486DX, 16, 133333333, 4.00, 33333333, 0x4e0, 0x4e0, 0},
-        {"Am5x86/P75+",  CPU_Am486DX, 17, 150000000, 3.75, 20000000, 0x4e0, 0x4e0, 0},
-        {"Am5x86/P75 160 OC",   CPU_Am486DX, 18, 160000000, 4.80, 33333333, 0x4e0, 0x4e0, 0},
-        {"Am5x86/P75+ 160 OC",  CPU_Am486DX, 18, 160000000, 4.00, 20000000, 0x4e0, 0x4e0, 0},
+        {"Am486SX/33",   CPU_Am486SX,  3,  33333333, 1.00, 33333333, 0x42a, 0, 0, CPU_SUPPORTS_DYNAREC},
+        {"Am486SX/40",   CPU_Am486SX,  4,  40000000, 1.00, 20000000, 0x42a, 0, 0, CPU_SUPPORTS_DYNAREC},
+        {"Am486SX2/50",  CPU_Am486SX,  5,  50000000, 2.00, 25000000, 0x45b, 0x45b, 0, CPU_SUPPORTS_DYNAREC}, /*CPUID available on SX2, DX2, DX4, 5x86, >= 50 MHz*/
+        {"Am486SX2/66",  CPU_Am486SX,  8,  66666666, 2.00, 33333333, 0x45b, 0x45b, 0, CPU_SUPPORTS_DYNAREC}, /*Isn't on all real AMD SX2s and DX2s, availability here is pretty arbitary (and distinguishes them from the Intel chips)*/
+        {"Am486DX/33",   CPU_Am486DX,  3,  33333333, 1.00, 33333333, 0x430, 0, 0, CPU_SUPPORTS_DYNAREC},
+        {"Am486DX/40",   CPU_Am486DX,  4,  40000000, 1.00, 20000000, 0x430, 0, 0, CPU_SUPPORTS_DYNAREC},
+        {"Am486DX2/50",  CPU_Am486DX,  5,  50000000, 2.00, 25000000, 0x470, 0x470, 0, CPU_SUPPORTS_DYNAREC},
+        {"Am486DX2/66",  CPU_Am486DX,  8,  66666666, 2.00, 33333333, 0x470, 0x470, 0, CPU_SUPPORTS_DYNAREC},
+        {"Am486DX2/80",  CPU_Am486DX, 10,  80000000, 2.00, 20000000, 0x470, 0x470, 0, CPU_SUPPORTS_DYNAREC},
+        {"Am486DX4/75",  CPU_Am486DX,  9,  75000000, 3.00, 25000000, 0x482, 0x482, 0, CPU_SUPPORTS_DYNAREC},
+        {"Am486DX4/90",  CPU_Am486DX, 12,  90000000, 3.00, 30000000, 0x482, 0x482, 0, CPU_SUPPORTS_DYNAREC},
+        {"Am486DX4/100", CPU_Am486DX, 13, 100000000, 3.00, 33333333, 0x482, 0x482, 0, CPU_SUPPORTS_DYNAREC},
+        {"Am486DX4/120", CPU_Am486DX, 14, 120000000, 3.00, 20000000, 0x482, 0x482, 0, CPU_SUPPORTS_DYNAREC},
+        {"Am5x86/P75",   CPU_Am486DX, 16, 133333333, 4.00, 33333333, 0x4e0, 0x4e0, 0, CPU_SUPPORTS_DYNAREC},
+        {"Am5x86/P75+",  CPU_Am486DX, 17, 150000000, 3.75, 20000000, 0x4e0, 0x4e0, 0, CPU_SUPPORTS_DYNAREC},
+        {"Am5x86/P75 160 OC",   CPU_Am486DX, 18, 160000000, 4.80, 33333333, 0x4e0, 0x4e0, 0, CPU_SUPPORTS_DYNAREC},
+        {"Am5x86/P75+ 160 OC",  CPU_Am486DX, 18, 160000000, 4.00, 20000000, 0x4e0, 0x4e0, 0, CPU_SUPPORTS_DYNAREC},
         {"",             -1,        0, 0, 0}
 };
 
 CPU cpus_Cx486[] =
 {
         /*Cx486/5x86*/
-        {"Cx486S/25",    CPU_Cx486S,   2,  25000000, 1.00, 25000000, 0x420, 0, 0x0010},
-        {"Cx486S/33",    CPU_Cx486S,   3,  33333333, 1.00, 33333333, 0x420, 0, 0x0010},
-        {"Cx486S/40",    CPU_Cx486S,   4,  40000000, 1.00, 20000000, 0x420, 0, 0x0010},
-        {"Cx486DX/33",   CPU_Cx486DX,  3,  33333333, 1.00, 33333333, 0x430, 0, 0x051a},
-        {"Cx486DX/40",   CPU_Cx486DX,  4,  40000000, 1.00, 20000000, 0x430, 0, 0x051a},
-        {"Cx486DX2/50",  CPU_Cx486DX,  5,  50000000, 2.00, 25000000, 0x430, 0, 0x081b},
-        {"Cx486DX2/66",  CPU_Cx486DX,  8,  66666666, 2.00, 33333333, 0x430, 0, 0x0b1b},
-        {"Cx486DX2/80",  CPU_Cx486DX, 10,  80000000, 2.00, 20000000, 0x430, 0, 0x311b},
-        {"Cx486DX4/75",  CPU_Cx486DX,  9,  75000000, 3.00, 25000000, 0x480, 0, 0x361f},
-        {"Cx486DX4/100", CPU_Cx486DX, 13, 100000000, 3.00, 33333333, 0x480, 0, 0x361f},
-        {"Cx5x86/100",   CPU_Cx5x86,  13, 100000000, 3.00, 33333333, 0x480, 0, 0x002f},
-        {"Cx5x86/120",   CPU_Cx5x86,  14, 120000000, 3.00, 20000000, 0x480, 0, 0x002f},
-        {"Cx5x86/133",   CPU_Cx5x86,  16, 133333333, 4.00, 33333333, 0x480, 0, 0x002f},
+        {"Cx486S/25",    CPU_Cx486S,   2,  25000000, 1.00, 25000000, 0x420, 0, 0x0010, CPU_SUPPORTS_DYNAREC},
+        {"Cx486S/33",    CPU_Cx486S,   3,  33333333, 1.00, 33333333, 0x420, 0, 0x0010, CPU_SUPPORTS_DYNAREC},
+        {"Cx486S/40",    CPU_Cx486S,   4,  40000000, 1.00, 20000000, 0x420, 0, 0x0010, CPU_SUPPORTS_DYNAREC},
+        {"Cx486DX/33",   CPU_Cx486DX,  3,  33333333, 1.00, 33333333, 0x430, 0, 0x051a, CPU_SUPPORTS_DYNAREC},
+        {"Cx486DX/40",   CPU_Cx486DX,  4,  40000000, 1.00, 20000000, 0x430, 0, 0x051a, CPU_SUPPORTS_DYNAREC},
+        {"Cx486DX2/50",  CPU_Cx486DX,  5,  50000000, 2.00, 25000000, 0x430, 0, 0x081b, CPU_SUPPORTS_DYNAREC},
+        {"Cx486DX2/66",  CPU_Cx486DX,  8,  66666666, 2.00, 33333333, 0x430, 0, 0x0b1b, CPU_SUPPORTS_DYNAREC},
+        {"Cx486DX2/80",  CPU_Cx486DX, 10,  80000000, 2.00, 20000000, 0x430, 0, 0x311b, CPU_SUPPORTS_DYNAREC},
+        {"Cx486DX4/75",  CPU_Cx486DX,  9,  75000000, 3.00, 25000000, 0x480, 0, 0x361f, CPU_SUPPORTS_DYNAREC},
+        {"Cx486DX4/100", CPU_Cx486DX, 13, 100000000, 3.00, 33333333, 0x480, 0, 0x361f, CPU_SUPPORTS_DYNAREC},
+        {"Cx5x86/100",   CPU_Cx5x86,  13, 100000000, 3.00, 33333333, 0x480, 0, 0x002f, CPU_SUPPORTS_DYNAREC},
+        {"Cx5x86/120",   CPU_Cx5x86,  14, 120000000, 3.00, 20000000, 0x480, 0, 0x002f, CPU_SUPPORTS_DYNAREC},
+        {"Cx5x86/133",   CPU_Cx5x86,  16, 133333333, 4.00, 33333333, 0x480, 0, 0x002f, CPU_SUPPORTS_DYNAREC},
         {"",             -1,        0, 0, 0}
 };
 
 CPU cpus_WinChip[] =
 {
         /*IDT WinChip*/
-        {"WinChip 75",   CPU_WINCHIP,  9,  75000000, 1.50, 25000000, 0x540, 0x540, 0},
-        {"WinChip 90",   CPU_WINCHIP, 12,  90000000, 1.50, 30000000, 0x540, 0x540, 0},
-        {"WinChip 100",  CPU_WINCHIP, 13, 100000000, 1.50, 33333333, 0x540, 0x540, 0},
-        {"WinChip 120",  CPU_WINCHIP, 14, 120000000, 2.00, 30000000, 0x540, 0x540, 0},
-        {"WinChip 133",  CPU_WINCHIP, 16, 133333333, 2.00, 33333333, 0x540, 0x540, 0},
-        {"WinChip 150",  CPU_WINCHIP, 17, 150000000, 2.50, 30000000, 0x540, 0x540, 0},        
-        {"WinChip 166",  CPU_WINCHIP, 19, 166666666, 2.50, 33333333, 0x540, 0x540, 0},
-        {"WinChip 180",  CPU_WINCHIP, 20, 180000000, 3.00, 30000000, 0x540, 0x540, 0},
-        {"WinChip 200",  CPU_WINCHIP, 21, 200000000, 3.00, 33333333, 0x540, 0x540, 0},
-        {"WinChip 225",  CPU_WINCHIP, 23, 225000000, 3.00, 37500000, 0x540, 0x540, 0},
-        {"WinChip 240",  CPU_WINCHIP, 25, 240000000, 4.00, 30000000, 0x540, 0x540, 0},
+        {"WinChip 75",   CPU_WINCHIP,  9,  75000000, 1.50, 25000000, 0x540, 0x540, 0, CPU_SUPPORTS_DYNAREC},
+        {"WinChip 90",   CPU_WINCHIP, 12,  90000000, 1.50, 30000000, 0x540, 0x540, 0, CPU_SUPPORTS_DYNAREC},
+        {"WinChip 100",  CPU_WINCHIP, 13, 100000000, 1.50, 33333333, 0x540, 0x540, 0, CPU_SUPPORTS_DYNAREC},
+        {"WinChip 120",  CPU_WINCHIP, 14, 120000000, 2.00, 30000000, 0x540, 0x540, 0, CPU_SUPPORTS_DYNAREC},
+        {"WinChip 133",  CPU_WINCHIP, 16, 133333333, 2.00, 33333333, 0x540, 0x540, 0, CPU_SUPPORTS_DYNAREC},
+        {"WinChip 150",  CPU_WINCHIP, 17, 150000000, 2.50, 30000000, 0x540, 0x540, 0, CPU_SUPPORTS_DYNAREC},
+        {"WinChip 166",  CPU_WINCHIP, 19, 166666666, 2.50, 33333333, 0x540, 0x540, 0, CPU_SUPPORTS_DYNAREC},
+        {"WinChip 180",  CPU_WINCHIP, 20, 180000000, 3.00, 30000000, 0x540, 0x540, 0, CPU_SUPPORTS_DYNAREC},
+        {"WinChip 200",  CPU_WINCHIP, 21, 200000000, 3.00, 33333333, 0x540, 0x540, 0, CPU_SUPPORTS_DYNAREC},
+        {"WinChip 225",  CPU_WINCHIP, 23, 225000000, 3.00, 37500000, 0x540, 0x540, 0, CPU_SUPPORTS_DYNAREC},
+        {"WinChip 240",  CPU_WINCHIP, 25, 240000000, 4.00, 30000000, 0x540, 0x540, 0, CPU_SUPPORTS_DYNAREC},
         {"",             -1,        0, 0, 0}
 };
-#ifdef DYNAREC
 CPU cpus_Pentium5V[] =
 {
         /*Intel Pentium (5V, socket 4)*/
-        {"Pentium 60",       CPU_PENTIUM,     6,  60000000, 1.00, 30000000, 0x525, 0x525, 0},
-        {"Pentium 66",       CPU_PENTIUM,     8,  66666666, 1.00, 33333333, 0x525, 0x525, 0},
+        {"Pentium 50 (Q0399)",CPU_PENTIUM,    5,  50000000, 1.00, 25000000, 0x513, 0x513, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium 60",       CPU_PENTIUM,     6,  60000000, 1.00, 30000000, 0x515, 0x515, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium 66",       CPU_PENTIUM,     8,  66666666, 1.00, 33333333, 0x517, 0x517, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium OverDrive 100",CPU_PENTIUM,    13, 100000000, 2.00, 25000000, 0x51A, 0x51A, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium OverDrive 120",CPU_PENTIUM,    14, 120000000, 2.00, 30000000, 0x51A, 0x51A, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium OverDrive 133",CPU_PENTIUM,    16, 133333333, 2.00, 33333333, 0x51A, 0x51A, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
         {"",             -1,        0, 0, 0}
 };
 
 CPU cpus_PentiumS5[] =
 {
         /*Intel Pentium (Socket 5)*/
-        {"Pentium 75",       CPU_PENTIUM,     9,  75000000, 1.50, 25000000, 0x525, 0x525, 0},
-        {"Pentium 90",       CPU_PENTIUM,    12,  90000000, 1.50, 30000000, 0x525, 0x525, 0},
-        {"Pentium 100",      CPU_PENTIUM,    13, 100000000, 1.50, 33333333, 0x525, 0x525, 0},
-        {"Pentium 120",      CPU_PENTIUM,    14, 120000000, 2.00, 30000000, 0x525, 0x525, 0},
-        {"Pentium OverDrive MMX 125",       CPU_PENTIUMMMX,15,125000000, 2.50, 25000000, 0x1542, 0x1542, 0},
-        {"Pentium OverDrive MMX 150/50",    CPU_PENTIUMMMX,17,150000000, 3.00, 25000000, 0x1542, 0x1542, 0},
-        {"Pentium OverDrive MMX 150/60",    CPU_PENTIUMMMX,17,150000000, 2.50, 30000000, 0x1542, 0x1542, 0},
-        {"Pentium OverDrive MMX 166",       CPU_PENTIUMMMX,19,166000000, 2.50, 33333333, 0x1542, 0x1542, 0},
-        {"Pentium OverDrive MMX 180",       CPU_PENTIUMMMX,20,180000000, 3.00, 30000000, 0x1542, 0x1542, 0},
-        {"Pentium OverDrive MMX 200",       CPU_PENTIUMMMX,21,200000000, 3.00, 33333333, 0x1542, 0x1542, 0},
+        {"Pentium 75",       CPU_PENTIUM,     9,  75000000, 1.50, 25000000, 0x524, 0x524, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium 90",       CPU_PENTIUM,    12,  90000000, 1.50, 30000000, 0x524, 0x524, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium 100/50",   CPU_PENTIUM,    13, 100000000, 2.00, 25000000, 0x525, 0x525, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium 100/66",   CPU_PENTIUM,    13, 100000000, 1.50, 33333333, 0x525, 0x525, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium 120",      CPU_PENTIUM,    14, 120000000, 2.00, 30000000, 0x526, 0x526, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium OverDrive 125",CPU_PENTIUM,15, 120000000, 2.50, 25000000, 0x52c, 0x52c, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium OverDrive 150",CPU_PENTIUM,17, 150000000, 2.50, 30000000, 0x52c, 0x52c, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium OverDrive 166",CPU_PENTIUM,17, 166666666, 2.50, 33333333, 0x52c, 0x52c, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium OverDrive MMX 125",       CPU_PENTIUMMMX,15,125000000, 2.50, 25000000, 0x1542, 0x1542, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium OverDrive MMX 150/50",    CPU_PENTIUMMMX,17,150000000, 3.00, 25000000, 0x1542, 0x1542, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium OverDrive MMX 150/60",    CPU_PENTIUMMMX,17,150000000, 2.50, 30000000, 0x1542, 0x1542, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium OverDrive MMX 166",       CPU_PENTIUMMMX,19,166000000, 2.50, 33333333, 0x1542, 0x1542, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium OverDrive MMX 180",       CPU_PENTIUMMMX,20,180000000, 3.00, 30000000, 0x1542, 0x1542, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium OverDrive MMX 200",       CPU_PENTIUMMMX,21,200000000, 3.00, 33333333, 0x1542, 0x1542, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
         {"",             -1,        0, 0, 0}
 };
 
 CPU cpus_Pentium[] =
 {
         /*Intel Pentium*/
-        {"Pentium 75",       CPU_PENTIUM,     9,  75000000, 1.50, 25000000, 0x525, 0x525, 0},
-        {"Pentium 90",       CPU_PENTIUM,    12,  90000000, 1.50, 30000000, 0x525, 0x525, 0},
-        {"Pentium 100",      CPU_PENTIUM,    13, 100000000, 1.50, 33333333, 0x525, 0x525, 0},
-        {"Pentium 120",      CPU_PENTIUM,    14, 120000000, 2.00, 30000000, 0x525, 0x525, 0},
-        {"Pentium 133",      CPU_PENTIUM,    16, 133333333, 2.00, 33333333, 0x52c, 0x52c, 0},
-        {"Pentium 150",      CPU_PENTIUM,    17, 150000000, 2.50, 30000000, 0x52c, 0x52c, 0},
-        {"Pentium 166",      CPU_PENTIUM,    19, 166666666, 2.50, 33333333, 0x52c, 0x52c, 0},
-        {"Pentium 200",      CPU_PENTIUM,    21, 200000000, 3.00, 33333333, 0x52c, 0x52c, 0},
-        {"Pentium OverDrive MMX 125",       CPU_PENTIUMMMX,15,125000000, 2.50, 25000000, 0x1542, 0x1542, 0},
-        {"Pentium OverDrive MMX 150/50",    CPU_PENTIUMMMX,17,150000000, 3.00, 25000000, 0x1542, 0x1542, 0},
-        {"Pentium OverDrive MMX 150/60",    CPU_PENTIUMMMX,17,150000000, 2.50, 30000000, 0x1542, 0x1542, 0},
-        {"Pentium OverDrive MMX 166",       CPU_PENTIUMMMX,19,166000000, 2.50, 33333333, 0x1542, 0x1542, 0},
-        {"Pentium OverDrive MMX 180",       CPU_PENTIUMMMX,20,180000000, 3.00, 30000000, 0x1542, 0x1542, 0},
-        {"Pentium OverDrive MMX 200",       CPU_PENTIUMMMX,21,200000000, 3.00, 33333333, 0x1542, 0x1542, 0},
-        {"Pentium MMX 166",  CPU_PENTIUMMMX, 19, 166666666, 2.50, 33333333, 0x543, 0x543, 0},
-        {"Pentium MMX 200",  CPU_PENTIUMMMX, 21, 200000000, 3.00, 33333333, 0x543, 0x543, 0},
-        {"Pentium MMX 233",  CPU_PENTIUMMMX, 24, 233333333, 3.50, 33333333, 0x543, 0x543, 0},
-        {"Mobile Pentium MMX 120",  CPU_PENTIUMMMX, 14, 120000000, 2.00, 30000000, 0x543, 0x543, 0},
-        {"Mobile Pentium MMX 133",  CPU_PENTIUMMMX, 16, 133333333, 2.00, 33333333, 0x543, 0x543, 0},
-        {"Mobile Pentium MMX 150",  CPU_PENTIUMMMX, 17, 150000000, 2.50, 30000000, 0x544, 0x544, 0},
-        {"Mobile Pentium MMX 166",  CPU_PENTIUMMMX, 19, 166666666, 2.50, 33333333, 0x544, 0x544, 0},
-        {"Mobile Pentium MMX 200",  CPU_PENTIUMMMX, 21, 200000000, 3.00, 33333333, 0x581, 0x581, 0},
-        {"Mobile Pentium MMX 233",  CPU_PENTIUMMMX, 24, 233333333, 3.50, 33333333, 0x581, 0x581, 0},
-        {"Mobile Pentium MMX 266",  CPU_PENTIUMMMX, 26, 266666666, 4.00, 33333333, 0x582, 0x582, 0},
-        {"Mobile Pentium MMX 300",  CPU_PENTIUMMMX, 28, 300000000, 4.50, 33333333, 0x582, 0x582, 0},
+        {"Pentium 75",       CPU_PENTIUM,     9,  75000000, 1.50, 25000000, 0x524, 0x524, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium 90",       CPU_PENTIUM,    12,  90000000, 1.50, 30000000, 0x524, 0x524, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium 100/50",   CPU_PENTIUM,    13, 100000000, 2.00, 25000000, 0x525, 0x525, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium 100/66",   CPU_PENTIUM,    13, 100000000, 1.50, 33333333, 0x525, 0x525, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium 120",      CPU_PENTIUM,    14, 120000000, 2.00, 30000000, 0x526, 0x526, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium 133",      CPU_PENTIUM,    16, 133333333, 2.00, 33333333, 0x52c, 0x52c, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium 150",      CPU_PENTIUM,    17, 150000000, 2.50, 30000000, 0x52c, 0x52c, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium 166",      CPU_PENTIUM,    19, 166666666, 2.50, 33333333, 0x52c, 0x52c, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium 200",      CPU_PENTIUM,    21, 200000000, 3.00, 33333333, 0x52c, 0x52c, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium OverDrive 125",CPU_PENTIUM,15, 120000000, 2.50, 25000000, 0x52c, 0x52c, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium OverDrive 150",CPU_PENTIUM,17, 150000000, 2.50, 30000000, 0x52c, 0x52c, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium OverDrive 166",CPU_PENTIUM,17, 166666666, 2.50, 33333333, 0x52c, 0x52c, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium OverDrive MMX 125",       CPU_PENTIUMMMX,15,125000000, 2.50, 25000000, 0x1542, 0x1542, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium OverDrive MMX 150/50",    CPU_PENTIUMMMX,17,150000000, 3.00, 25000000, 0x1542, 0x1542, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium OverDrive MMX 150/60",    CPU_PENTIUMMMX,17,150000000, 2.50, 30000000, 0x1542, 0x1542, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium OverDrive MMX 166",       CPU_PENTIUMMMX,19,166000000, 2.50, 33333333, 0x1542, 0x1542, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium OverDrive MMX 180",       CPU_PENTIUMMMX,20,180000000, 3.00, 30000000, 0x1542, 0x1542, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium OverDrive MMX 200",       CPU_PENTIUMMMX,21,200000000, 3.00, 33333333, 0x1542, 0x1542, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium MMX 166",  CPU_PENTIUMMMX, 19, 166666666, 2.50, 33333333, 0x543, 0x543, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium MMX 200",  CPU_PENTIUMMMX, 21, 200000000, 3.00, 33333333, 0x543, 0x543, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium MMX 233",  CPU_PENTIUMMMX, 24, 233333333, 3.50, 33333333, 0x543, 0x543, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Mobile Pentium MMX 120",  CPU_PENTIUMMMX, 14, 120000000, 2.00, 30000000, 0x543, 0x543, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Mobile Pentium MMX 133",  CPU_PENTIUMMMX, 16, 133333333, 2.00, 33333333, 0x543, 0x543, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Mobile Pentium MMX 150",  CPU_PENTIUMMMX, 17, 150000000, 2.50, 30000000, 0x544, 0x544, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Mobile Pentium MMX 166",  CPU_PENTIUMMMX, 19, 166666666, 2.50, 33333333, 0x544, 0x544, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Mobile Pentium MMX 200",  CPU_PENTIUMMMX, 21, 200000000, 3.00, 33333333, 0x581, 0x581, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Mobile Pentium MMX 233",  CPU_PENTIUMMMX, 24, 233333333, 3.50, 33333333, 0x581, 0x581, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Mobile Pentium MMX 266",  CPU_PENTIUMMMX, 26, 266666666, 4.00, 33333333, 0x582, 0x582, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Mobile Pentium MMX 300",  CPU_PENTIUMMMX, 28, 300000000, 4.50, 33333333, 0x582, 0x582, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"",             -1,        0, 0, 0}
+};
+
+CPU cpus_K6[] =
+{
+        /*AMD K6*/
+        {"K6 (Model 6) 166",      CPU_K6,    19, 166666666, 2.50, 33333333, 0x562, 0x562, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"K6 (Model 6) 200",      CPU_K6,    21, 200000000, 3.00, 33333333, 0x562, 0x562, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"K6 (Model 6) 233",      CPU_K6,    24, 233333333, 3.50, 33333333, 0x562, 0x562, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"K6 (Model 7) 200",      CPU_K6,    21, 200000000, 3.00, 33333333, 0x570, 0x570, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"K6 (Model 7) 233",      CPU_K6,    24, 233333333, 3.50, 33333333, 0x570, 0x570, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"K6 (Model 7) 266",      CPU_K6,    26, 266666666, 4.00, 33333333, 0x570, 0x570, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"K6 (Model 7) 300",      CPU_K6,    28, 300000000, 4.50, 33333333, 0x570, 0x570, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
         {"",             -1,        0, 0, 0}
 };
 
 CPU cpus_PentiumPro[] =
 {
         /*Intel Pentium Pro and II Overdrive*/
-        {"Pentium Pro 150",  CPU_PENTIUMPRO, 17, 150000000, 2.50, 30000000, 0x612, 0x612, 0},
-        {"Pentium Pro 166",  CPU_PENTIUMPRO, 19, 166666666, 2.50, 33333333, 0x617, 0x617, 0},
-        {"Pentium Pro 180",  CPU_PENTIUMPRO, 20, 180000000, 3.00, 30000000, 0x617, 0x617, 0},
-        {"Pentium Pro 200",  CPU_PENTIUMPRO, 21, 200000000, 3.00, 33333333, 0x617, 0x617, 0},
-        {"Pentium II Overdrive 210",  CPU_PENTIUM2D, 22, 210000000, 3.50, 30000000, 0x1632, 0x1632, 0},
-        {"Pentium II Overdrive 233",  CPU_PENTIUM2D, 24, 233333333, 3.50, 33333333, 0x1632, 0x1632, 0},
-        {"Pentium II Overdrive 240",  CPU_PENTIUM2D, 25, 240000000, 4.00, 30000000, 0x1632, 0x1632, 0},
-        {"Pentium II Overdrive 266",  CPU_PENTIUM2D, 26, 266666666, 4.00, 33333333, 0x1633, 0x1633, 0},
-        {"Pentium II Overdrive 270",  CPU_PENTIUM2D, 27, 270000000, 4.50, 30000000, 0x1633, 0x1633, 0},
-        {"Pentium II Overdrive 300/66",CPU_PENTIUM2D, 28, 300000000, 4.50, 33333333, 0x1634, 0x1634, 0},
-        {"Pentium II Overdrive 300/60",CPU_PENTIUM2D, 28, 300000000, 5.00, 30000000, 0x1634, 0x1634, 0},
-        {"Pentium II Overdrive 333",  CPU_PENTIUM2D, 29, 333333333, 5.00, 33333333, 0x1634, 0x1634, 0},
+        {"Pentium Pro 150",  CPU_PENTIUMPRO, 17, 150000000, 2.50, 30000000, 0x612, 0x612, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium Pro 166",  CPU_PENTIUMPRO, 19, 166666666, 2.50, 33333333, 0x617, 0x617, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium Pro 180",  CPU_PENTIUMPRO, 20, 180000000, 3.00, 30000000, 0x617, 0x617, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium Pro 200",  CPU_PENTIUMPRO, 21, 200000000, 3.00, 33333333, 0x617, 0x617, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium II Overdrive 210",  CPU_PENTIUM2D, 22, 210000000, 3.50, 30000000, 0x1632, 0x1632, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium II Overdrive 233",  CPU_PENTIUM2D, 24, 233333333, 3.50, 33333333, 0x1632, 0x1632, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium II Overdrive 240",  CPU_PENTIUM2D, 25, 240000000, 4.00, 30000000, 0x1632, 0x1632, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium II Overdrive 266",  CPU_PENTIUM2D, 26, 266666666, 4.00, 33333333, 0x1633, 0x1633, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium II Overdrive 270",  CPU_PENTIUM2D, 27, 270000000, 4.50, 30000000, 0x1633, 0x1633, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium II Overdrive 300/66",CPU_PENTIUM2D, 28, 300000000, 4.50, 33333333, 0x1634, 0x1634, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium II Overdrive 300/60",CPU_PENTIUM2D, 28, 300000000, 5.00, 30000000, 0x1634, 0x1634, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium II Overdrive 333",  CPU_PENTIUM2D, 29, 333333333, 5.00, 33333333, 0x1634, 0x1634, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
         {"",             -1,        0, 0, 0}
 };
 
 CPU cpus_Pentium2[] =
 {
         /*Intel Pentium II Klamath*/
-        {"Pentium II 233",  CPU_PENTIUM2, 24, 233333333, 3.50, 33333333, 0x634, 0x634, 0},
-        {"Pentium II 266",  CPU_PENTIUM2, 26, 266666666, 4.00, 33333333, 0x634, 0x634, 0},
-        {"Pentium II 300",  CPU_PENTIUM2, 28, 300000000, 4.50, 33333333, 0x634, 0x634, 0},
+        {"Pentium II 233",  CPU_PENTIUM2, 24, 233333333, 3.50, 33333333, 0x634, 0x634, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium II 266",  CPU_PENTIUM2, 26, 266666666, 4.00, 33333333, 0x634, 0x634, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium II 300",  CPU_PENTIUM2, 28, 300000000, 4.50, 33333333, 0x634, 0x634, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
         {"",             -1,        0, 0, 0}
 };
 
 CPU cpus_Pentium2D[] =
 {
         /*Intel Pentium II Deschutes*/
-        {"Pentium II D 266", CPU_PENTIUM2D, 26, 266666666, 4.00, 33333333, 0x650, 0x650, 0},
-        {"Pentium II D 300", CPU_PENTIUM2D, 28, 300000000, 4.50, 33333333, 0x650, 0x650, 0},
-        {"Pentium II D 333", CPU_PENTIUM2D, 29, 333333333, 5.00, 33333333, 0x650, 0x650, 0},
-        {"Pentium II D 350", CPU_PENTIUM2D, 30, 350000000, 3.50, 50000000, 0x653, 0x653, 0},
-        {"Pentium II D 400", CPU_PENTIUM2D, 31, 400000000, 4.00, 50000000, 0x653, 0x653, 0},
-        {"Pentium II D 450", CPU_PENTIUM2D, 32, 450000000, 4.50, 50000000, 0x654, 0x654, 0},
-        {"Pentium II D 500", CPU_PENTIUM2D, 33, 500000000, 5.00, 50000000, 0x654, 0x654, 0},
+        {"Pentium II D 266", CPU_PENTIUM2D, 26, 266666666, 4.00, 33333333, 0x650, 0x650, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium II D 300", CPU_PENTIUM2D, 28, 300000000, 4.50, 33333333, 0x650, 0x650, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium II D 333", CPU_PENTIUM2D, 29, 333333333, 5.00, 33333333, 0x650, 0x650, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium II D 350", CPU_PENTIUM2D, 30, 350000000, 3.50, 50000000, 0x653, 0x653, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium II D 400", CPU_PENTIUM2D, 31, 400000000, 4.00, 50000000, 0x653, 0x653, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium II D 450", CPU_PENTIUM2D, 32, 450000000, 4.50, 50000000, 0x654, 0x654, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium II D 500", CPU_PENTIUM2D, 33, 500000000, 5.00, 50000000, 0x654, 0x654, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
         {"",             -1,        0, 0, 0}
 };
-#endif
+
 void cpu_set_edx()
 {
         EDX = models[model].cpu[cpu_manufacturer].cpus[cpu].edx_reset;
@@ -455,7 +475,8 @@ void cpu_set()
         CPUID    = cpu_s->cpuid_model;
         cpuspeed = cpu_s->speed;
         is8086   = (cpu_s->cpu_type > CPU_8088);
-        is80286   = (cpu_s->cpu_type == CPU_286);
+	is386	 = (cpu_s->cpu_type >= CPU_386SX);
+        is80286  = (cpu_s->cpu_type == CPU_286);
         is486    = (cpu_s->cpu_type >= CPU_i486SX) || (cpu_s->cpu_type == CPU_486SLC || cpu_s->cpu_type == CPU_486DLC);
         hasfpu   = (cpu_s->cpu_type >= CPU_i486DX);
         cpu_iscyrix = (cpu_s->cpu_type == CPU_486SLC || cpu_s->cpu_type == CPU_486DLC || cpu_s->cpu_type == CPU_Cx486S || cpu_s->cpu_type == CPU_Cx486DX || cpu_s->cpu_type == CPU_Cx5x86);
@@ -488,12 +509,8 @@ void cpu_set()
         pclog("hasfpu - %i\n",hasfpu);
         pclog("is486 - %i  %i\n",is486,cpu_s->cpu_type);
 
-#ifdef DYNAREC
         x86_setopcodes(ops_386, ops_386_0f, dynarec_ops_386, dynarec_ops_386_0f);
-#else
-        x86_setopcodes(ops_386, ops_386_0f);
-#endif                        
-#ifdef DYNAREC
+
         if (hasfpu)
         {
                 x86_dynarec_opcodes_d8_a16 = dynarec_ops_fpu_d8_a16;
@@ -533,7 +550,7 @@ void cpu_set()
                 x86_dynarec_opcodes_df_a16 = dynarec_ops_nofpu_a32;
         }
         codegen_timing_set(&codegen_timing_486);
-#endif
+
         if (hasfpu)
         {
                 x86_opcodes_d8_a16 = ops_fpu_d8_a16;
@@ -582,11 +599,7 @@ void cpu_set()
                 break;
                 
                 case CPU_286:
-#ifdef DYNAREC
                 x86_setopcodes(ops_286, ops_286_0f, dynarec_ops_286, dynarec_ops_286_0f);
-#else
-                x86_setopcodes(ops_286, ops_286_0f);
-#endif                        
                 timing_rr  = 2;   /*register dest - register src*/
                 timing_rm  = 7;   /*register dest - memory src*/
                 timing_mr  = 7;   /*memory dest   - register src*/
@@ -699,11 +712,7 @@ void cpu_set()
                 break;
 
                 case CPU_WINCHIP:
-#ifdef DYNAREC
                 x86_setopcodes(ops_386, ops_winchip_0f, dynarec_ops_386, dynarec_ops_winchip_0f);
-#else
-                x86_setopcodes(ops_386, ops_winchip_0f);
-#endif                        
                 timing_rr  = 1; /*register dest - register src*/
                 timing_rm  = 2; /*register dest - memory src*/
                 timing_mr  = 3; /*memory dest   - register src*/
@@ -720,7 +729,6 @@ void cpu_set()
                 cpu_CR4_mask = CR4_TSD | CR4_DE | CR4_MCE | CR4_PCE;
                 break;
 
-#ifdef DYNAREC                
                 case CPU_PENTIUM:
                 x86_setopcodes(ops_386, ops_pentium_0f, dynarec_ops_386, dynarec_ops_pentium_0f);
                 timing_rr  = 1; /*register dest - register src*/
@@ -743,6 +751,26 @@ void cpu_set()
 
                 case CPU_PENTIUMMMX:
                 x86_setopcodes(ops_386, ops_pentiummmx_0f, dynarec_ops_386, dynarec_ops_pentiummmx_0f);
+                timing_rr  = 1; /*register dest - register src*/
+                timing_rm  = 2; /*register dest - memory src*/
+                timing_mr  = 3; /*memory dest   - register src*/
+                timing_mm  = 3;
+                timing_rml = 2; /*register dest - memory src long*/
+                timing_mrl = 3; /*memory dest   - register src long*/
+                timing_mml = 3;
+                timing_bt  = 0; /*branch taken*/
+                timing_bnt = 1; /*branch not taken*/
+                cpu_hasrdtsc = 1;
+                msr.fcr = (1 << 8) | (1 << 9) | (1 << 12) |  (1 << 16) | (1 << 19) | (1 << 21);
+                cpu_hasMMX = 1;
+                cpu_hasMSR = 1;
+                cpu_hasCR4 = 1;
+                cpu_CR4_mask = CR4_TSD | CR4_DE | CR4_MCE | CR4_PCE;
+                codegen_timing_set(&codegen_timing_pentium);
+                break;
+
+                case CPU_K6:
+                x86_setopcodes(ops_386, ops_k6_0f, dynarec_ops_386, dynarec_ops_k6_0f);
                 timing_rr  = 1; /*register dest - register src*/
                 timing_rm  = 2; /*register dest - memory src*/
                 timing_mr  = 3; /*memory dest   - register src*/
@@ -801,7 +829,6 @@ void cpu_set()
                 cpu_CR4_mask = CR4_TSD | CR4_DE | CR4_MCE | CR4_PCE;
                 codegen_timing_set(&codegen_timing_pentium);
                 break;
-#endif
 
                 default:
                 fatal("cpu_set : unknown CPU type %i\n", cpu_s->cpu_type);
@@ -893,7 +920,7 @@ void cpu_CPUID()
                 else
                    EAX = 0;
                 break;
-#ifdef DYNAREC
+
                 case CPU_PENTIUM:
                 if (!EAX)
                 {
@@ -908,6 +935,74 @@ void cpu_CPUID()
                         EBX = ECX = 0;
                         EDX = CPUID_FPU | CPUID_TSC | CPUID_MSR | CPUID_CMPXCHG8B;
                 }
+		else if (EAX == 2)
+		{
+			EAX = 0x03020101;
+			EBX = ECX = 0;
+			EDX = 0x0C040843;
+		}
+                else
+                        EAX = 0;
+                break;
+
+                case CPU_K6:
+                if (!EAX)
+                {
+                        EAX = 0x00000001;
+                        EBX = 0x68747541;
+                        EDX = 0x69746E65;
+                        ECX = 0x444D4163;
+                }
+                else if (EAX == 1)
+                {
+                        EAX = CPUID;
+                        EBX = ECX = 0;
+                        EDX = CPUID_FPU | CPUID_TSC | CPUID_MSR | CPUID_CMPXCHG8B;
+                }
+                else if (EAX == 0x80000000)
+                {
+                        EAX = 0x80000005;
+                        EBX = ECX = EDX = 0;
+                }
+                else if (EAX == 0x80000001)
+                {
+                        EAX = CPUID + 0x100;
+                        EBX = ECX = 0;
+                        EDX = CPUID_FPU | CPUID_TSC | CPUID_MSR | CPUID_CMPXCHG8B | CPUID_AMDSEP;
+                }
+		else if (EAX == 0x80000002)
+		{
+			EAX = 0x2D444D41;
+			EBX = 0x6D74364B;
+			ECX = 0x202F7720;
+			EDX = 0x746C756D;
+		}
+		else if (EAX == 0x80000003)
+		{
+			EAX = 0x64656D69;
+			EBX = 0x65206169;
+			ECX = 0x6E657478;
+			EDX = 0x6E6F6973;
+		}
+		else if (EAX == 0x80000004)
+		{
+			EAX = 0x73;
+			EBX = ECX = EDX = 0;
+		}
+		else if (EAX == 0x80000005)
+		{
+			EAX = 0;
+			EBX = 0x02800140;
+			ECX = 0x20020220;
+			EDX = 0x20020220;
+		}
+		else if (EAX == 0x8FFFFFFF)
+		{
+			EAX = 0x4778654E;
+			EBX = 0x72656E65;
+			ECX = 0x6F697461;
+			EDX = 0x444D416E;
+		}
                 else
                         EAX = 0;
                 break;
@@ -1002,7 +1097,6 @@ void cpu_CPUID()
                 else
                         EAX = 0;
                 break;
-#endif
         }
 }
 
@@ -1046,7 +1140,33 @@ void cpu_RDMSR()
                         break;
                 }
                 break;
-#ifdef DYNAREC
+
+                case CPU_K6:
+                EAX = EDX = 0;
+                switch (ECX)
+                {
+                        case 0x0e:
+                        EAX = msr.tr12;
+                        break;
+                        case 0x10:
+                        EAX = tsc & 0xffffffff;
+                        EDX = tsc >> 32;
+                        break;
+                        case 0xC0000081:
+                        EAX = star & 0xffffffff;
+                        EDX = star >> 32;
+                        break;
+                        case 0xC0000084:
+                        EAX = sfmask & 0xffffffff;
+                        EDX = sfmask >> 32;
+                        break;
+			default:
+			pclog("Invalid MSR: %08X\n", ECX);
+			x86gpf(NULL, 0);
+			break;
+                }
+                break;
+
                 case CPU_PENTIUM:
                 case CPU_PENTIUMMMX:
                 EAX = EDX = 0;
@@ -1127,6 +1247,10 @@ void cpu_RDMSR()
 			if (models[model].cpu[cpu_manufacturer].cpus[cpu].cpu_type == CPU_PENTIUMPRO)  goto i686_invalid_rdmsr;
 			EAX = eip_msr;
 			break;
+			case 0x1E0:
+                        EAX = ecx1e0_msr & 0xffffffff;
+                        EDX = ecx1e0_msr >> 32;
+			break;
 			case 0x200 ... 0x20F:
 			if (ECX & 1)
 			{
@@ -1171,7 +1295,6 @@ i686_invalid_rdmsr:
 			break;
                 }
                 break;
-#endif
         }
 }
 
@@ -1217,7 +1340,24 @@ void cpu_WRMSR()
                         break;
                 }
                 break;
-#ifdef DYNAREC
+                case CPU_K6:
+                switch (ECX)
+                {
+                        case 0x0e:
+                        msr.tr12 = EAX & 0x228;
+                        break;
+                        case 0x10:
+                        tsc = EAX | ((uint64_t)EDX << 32);
+                        break;
+			case 0xC0000081:
+			star = EAX | ((uint64_t)EDX << 32);
+			break;
+			case 0xC0000084:
+			sfmask = EAX | ((uint64_t)EDX << 32);
+			break;
+                }
+                break;
+
                 case CPU_PENTIUM:
                 case CPU_PENTIUMMMX:
                 switch (ECX)
@@ -1227,7 +1367,7 @@ void cpu_WRMSR()
                         break;
                         case 0x10:
                         tsc = EAX | ((uint64_t)EDX << 32);
-                        break;
+                        break;			
                 }
                 break;
 
@@ -1280,6 +1420,9 @@ void cpu_WRMSR()
 			// pclog("WRMSR SYSENTER_EIP: old=%08X, new=%08X\n", eip_msr, EAX);
 			eip_msr = EAX;
 			break;
+			case 0x1E0:
+			ecx1e0_msr = EAX | ((uint64_t)EDX << 32);
+			break;			
 			case 0x200 ... 0x20F:
 			if (ECX & 1)
 				mtrr_physmask_msr[(ECX - 0x200) >> 1] = EAX | ((uint64_t)EDX << 32);
@@ -1312,7 +1455,6 @@ i686_invalid_wrmsr:
 			break;
                 }
                 break;
-#endif
         }
 }
 
@@ -1339,7 +1481,6 @@ uint8_t cyrix_read(uint16_t addr, void *priv)
         return 0xff;
 }
 
-#ifdef DYNAREC
 void x86_setopcodes(OpFn *opcodes, OpFn *opcodes_0f, OpFn *dynarec_opcodes, OpFn *dynarec_opcodes_0f)
 {
         x86_opcodes = opcodes;
@@ -1347,10 +1488,3 @@ void x86_setopcodes(OpFn *opcodes, OpFn *opcodes_0f, OpFn *dynarec_opcodes, OpFn
         x86_dynarec_opcodes = dynarec_opcodes;
         x86_dynarec_opcodes_0f = dynarec_opcodes_0f;
 }
-#else
-void x86_setopcodes(OpFn *opcodes, OpFn *opcodes_0f)
-{
-        x86_opcodes = opcodes;
-        x86_opcodes_0f = opcodes_0f;
-}
-#endif

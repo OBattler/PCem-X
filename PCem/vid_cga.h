@@ -37,4 +37,5 @@ uint8_t cga_read(uint32_t addr, void *p);
 void    cga_recalctimings(cga_t *cga);
 void    cga_poll(void *p);
 
+extern device_t cga_new_device;
 extern device_t cga_device;

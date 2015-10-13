@@ -10,6 +10,7 @@ typedef struct ega_t
         int gdcaddr;
         uint8_t attrregs[32];
         int attraddr, attrff;
+	int attr_palette_enable;
         uint8_t seqregs[64];
         int seqaddr;
         
@@ -78,3 +79,4 @@ uint8_t ega_read(uint32_t addr, void *p);
 extern device_t ega_device;
 extern device_t cpqega_device;
 extern device_t sega_device;
+extern device_t jega_device;

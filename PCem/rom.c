@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include "config.h"
 #include "ibm.h"
 #include "mem.h"
 #include "rom.h"

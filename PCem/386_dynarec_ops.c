@@ -1,4 +1,3 @@
-#ifdef DYNAREC
 #include "ibm.h"
 #include "cpu.h"
 #include "x86.h"
@@ -7,6 +6,7 @@
 #include "x86_flags.h"
 #include "mem.h"
 #include "codegen.h"
+#include "pic.h"
 
 #define CPU_BLOCK_END() cpu_block_end = 1
 
@@ -56,4 +56,3 @@ static inline void fetch_ea_16_long(uint32_t rmdat)
 #define CLOCK_CYCLES_ALWAYS(c) cycles -= (c)
 
 #include "386_ops.h"
-#endif

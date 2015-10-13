@@ -27,7 +27,7 @@ void cpqvdu_out(uint16_t addr, uint8_t val, void *p)
 {
         cpqvdu_t *cpqvdu = (cpqvdu_t *)p;
         uint8_t old;
-        pclog("cpqvdu_OUT %04X %02X\n", addr, val);
+        // pclog("cpqvdu_OUT %04X %02X\n", addr, val);
         switch (addr)
         {
                 case 0x3b0: case 0x3b2: case 0x3b4: case 0x3b6:
@@ -37,8 +37,7 @@ void cpqvdu_out(uint16_t addr, uint8_t val, void *p)
                 case 0x3b1: case 0x3b3: case 0x3b5: case 0x3b7:
                 case 0x3D5:
                 old = cpqvdu->crtc[cpqvdu->crtcreg];
-                // cpqvdu->crtc[cpqvdu->crtcreg] = val & crtcmask[cpqvdu->crtcreg];
-                cpqvdu->crtc[cpqvdu->crtcreg] = val;
+                cpqvdu->crtc[cpqvdu->crtcreg] = val & crtcmask[cpqvdu->crtcreg];
                 if (cpqvdu->crtc[10] == 6 && cpqvdu->crtc[11] == 7) /*Fix for Generic Turbo XT BIOS, which sets up cursor registers wrong*/
                 {
                         cpqvdu->crtc[10] = 0xb;
@@ -74,7 +73,7 @@ void cpqvdu_out(uint16_t addr, uint8_t val, void *p)
 uint8_t cpqvdu_in(uint16_t addr, void *p)
 {
         cpqvdu_t *cpqvdu = (cpqvdu_t *)p;
-        pclog("cpqvdu_IN %04X\n", addr);
+        // pclog("cpqvdu_IN %04X\n", addr);
         switch (addr)
         {
                 case 0x3b0: case 0x3b2: case 0x3b4: case 0x3b6:
@@ -140,7 +139,7 @@ void cpqvdu_recalctimings(cpqvdu_t *cpqvdu)
 {
         double disptime;
 	double _dispontime, _dispofftime;
-        pclog("Recalc - %i %i %i\n", cpqvdu->crtc[0], cpqvdu->crtc[1], cpqvdu->cpqvdumode & 1);
+        // pclog("Recalc - %i %i %i\n", cpqvdu->crtc[0], cpqvdu->crtc[1], cpqvdu->cpqvdumode & 1);
         if (cpqvdu->cpqvdumode & 1)
         {
                 disptime = cpqvdu->crtc[0] + 1;
@@ -607,6 +606,8 @@ void *cpqvdu_standalone_init()
         memset(cpqvdu, 0, sizeof(cpqvdu_t));
 
 	// loadfont("mda.rom", 0);
+
+	overscan_x = overscan_y = 16;
 
         cpqvdu->vram = malloc(0x4000);
                 

@@ -17,6 +17,8 @@ static int fdc37c665_curreg = 0;
 static uint8_t fdc37c665_regs[16];
 static uint8_t tries;
 
+#define smouse ((romset == ROM_SIS496) || (romset == ROM_430FX) || (romset == ROM_440FX))
+
 void fdc37c665_write(uint16_t port, uint8_t val, void *priv)
 {
 	uint8_t index = (port & 1) ? 0 : 1;
@@ -119,7 +121,7 @@ serial_set:
 						}
 						break;
 	                        }
-				if (romset == ROM_430FX)  mouse_serial_init();
+				if (smouse)  mouse_serial_init();
 			}
 			if (!(fdc37c665_regs[2] & 0x40))
 				serial2_remove();
@@ -217,6 +219,7 @@ void fdc37c665_init()
 	fdc_setswap(0);
 	serial1_set(0x3f8, 4);
 	serial2_set(0x2f8, 3);
+	if (smouse)  mouse_serial_init();
         io_sethandler(0x3f0, 0x0002, fdc37c665_read, NULL, NULL, fdc37c665_write, NULL, NULL,  NULL);
         fdc37c665_locked = 0;
 }

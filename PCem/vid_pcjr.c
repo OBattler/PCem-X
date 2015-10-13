@@ -608,6 +608,8 @@ static void *pcjr_video_init()
 
         pcjr->memctrl = -1;
         
+	overscan_x = overscan_y = 16;
+
         for (c = 0; c < 8; c++)
         {
                 i_filt[c] = 512.0 * cos((3.14 * (pcjr_tint + c * 4) / 16.0) - 33.0 / 180.0);

@@ -24,17 +24,14 @@ extern int cpu, cpu_manufacturer;
 
 /*586 class CPUs*/
 #define CPU_WINCHIP 14
-#ifdef DYNAREC
 #define CPU_PENTIUM 15
-#define CPU_PENTIUMMMX 16
-#endif
+#define CPU_K6 16
+#define CPU_PENTIUMMMX 17
 
 /*686 class CPUs*/
-#ifdef DYNAREC
-#define CPU_PENTIUMPRO 17
-#define CPU_PENTIUM2 18
-#define CPU_PENTIUM2D 19
-#endif
+#define CPU_PENTIUMPRO 18
+#define CPU_PENTIUM2 19
+#define CPU_PENTIUM2D 20
 
 #define MANU_INTEL 0
 #define MANU_AMD   1
@@ -60,6 +57,7 @@ typedef struct
         uint32_t edx_reset;
         uint32_t cpuid_model;
         uint16_t cyrix_id;
+	int cpu_flags;
 } CPU;
 
 extern CPU cpus_8088[];
@@ -72,14 +70,13 @@ extern CPU cpus_i486[];
 extern CPU cpus_Am486[];
 extern CPU cpus_Cx486[];
 extern CPU cpus_WinChip[];
-#ifdef DYNAREC
 extern CPU cpus_Pentium5V[];
 extern CPU cpus_PentiumS5[];
+extern CPU cpus_K6[];
 extern CPU cpus_Pentium[];
 extern CPU cpus_PentiumPro[];
 extern CPU cpus_Pentium2[];
 extern CPU cpus_Pentium2D[];
-#endif
 
 extern CPU cpus_pcjr[];
 extern CPU cpus_pc1512[];
@@ -103,6 +100,18 @@ extern int cpu_hasCR4;
 
 extern uint64_t cpu_CR4_mask;
 
+#define CPU_SUPPORTS_DYNAREC 1
+
+#ifdef ALLOW_PENTIUM_INT
+/*
+	This directive is for allowing interpreter on Pentium.
+	It is ONLY to be used for debugging purposes. It makes CPU_REQUIRES_DYNAREC a non-flag.
+*/
+#define CPU_REQUIRES_DYNAREC 0
+#else
+#define CPU_REQUIRES_DYNAREC 2
+#endif
+
 extern uint64_t tsc;
 
 void cyrix_write(uint16_t addr, uint8_t val, void *priv);
@@ -111,5 +120,9 @@ uint8_t cyrix_read(uint16_t addr, void *priv);
 extern int is8086;
 extern int is80286;
 
+void cpu_CPUID();
+
 void cpu_RDMSR();
 void cpu_WRMSR();
+
+extern int cpu_use_dynarec;

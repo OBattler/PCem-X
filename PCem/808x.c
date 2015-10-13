@@ -9,8 +9,6 @@
                                         4 clocks - fetch mod/rm
         2 clocks - fetch opcode 1       2 clocks - execute
         2 clocks - fetch opcode 2  etc*/
-/*	Modified by OBattler: Made it tentatively cycle-accurate (8088mph now says the emulated 8088/4.77 is the ral thing),
-	but there might be mistakes in my modifications. All input about 8088 emulation is welcome. */
 #include <stdio.h>
 #include "ibm.h"
 
@@ -19,6 +17,7 @@
 #include "mem.h"
 #include "nmi.h"
 #include "pic.h"
+#include "pit.h"
 #include "timer.h"
 #include "x86.h"
 
@@ -50,28 +49,33 @@ int i808x_memcycs()
 
 uint8_t readmemb(uint32_t a)
 {
-        // if (a!=(cs+pc)) memcycs+=1;
-	if (a!=(cs+pc)) memcycs+=i808x_memcycs();
+	if (!is8086)
+		if (a!=(cs+pc)) memcycs+=i808x_memcycs();
+	else
+		if (a!=(cs+pc)) memcycs+=4;
         if (readlookup2[(a)>>12]==-1) return readmembl(a);
         else return *(uint8_t *)(readlookup2[(a) >> 12] + (a));
 }
 
 uint8_t readmembf(uint32_t a)
 {
-	if (a!=(cs+pc)) memcycs+=i808x_memcycs();
+	if (!is8086)
+		if (a!=(cs+pc)) memcycs+=i808x_memcycs();
         if (readlookup2[(a)>>12]==-1) return readmembl(a);
         else return *(uint8_t *)(readlookup2[(a) >> 12] + (a));
 }
 
 uint16_t readmemw(uint32_t s, uint16_t a)
 {
-        // if (a!=(cs+pc)) memcycs+=(8>>is8086);
-	if (a!=(cs+pc)) memcycs+=i808x_memcycs();
+	if (!is8086)
+		if (a!=(cs+pc)) memcycs+=i808x_memcycs();
+	else
+        	if (a!=(cs+pc)) memcycs+=(8>>is8086);
         if ((readlookup2[((s)+(a))>>12]==-1 || (s)==0xFFFFFFFF)) return readmemwl(s,a);
         else return *(uint16_t *)(readlookup2[(s + a) >> 12] + s + a);
 }
 
-void refreshread() { /*pclog("Refreshread\n"); */FETCHCOMPLETE(); memcycs+=i808x_memcycs(); }
+void refreshread() { /*pclog("Refreshread\n"); */FETCHCOMPLETE(); memcycs+=4; }
 
 #undef fetchea
 #define fetchea()   { rmdat=FETCH();  \
@@ -83,23 +87,26 @@ void refreshread() { /*pclog("Refreshread\n"); */FETCHCOMPLETE(); memcycs+=i808x
 void writemembl(uint32_t addr, uint8_t val);
 void writememb(uint32_t a, uint8_t v)
 {
-        // memcycs+=4;
-	memcycs+=i808x_memcycs();
+	if (!is8086)
+		memcycs += i808x_memcycs();
+	else
+	        memcycs+=4;
         if (writelookup2[(a)>>12]==-1) writemembl(a,v);
         else *(uint8_t *)(writelookup2[a >> 12] + a) = v;
 }
 void writememwl(uint32_t seg, uint32_t addr, uint16_t val);
 void writememw(uint32_t s, uint32_t a, uint16_t v)
 {
-        // memcycs+=(8>>is8086);
-	memcycs+=i808x_memcycs();
+	if (!is8086)
+		memcycs += i808x_memcycs();
+	else
+	        memcycs+=(8>>is8086);
         if (writelookup2[((s)+(a))>>12]==-1 || (s)==0xFFFFFFFF) writememwl(s,a,v);
         else *(uint16_t *)(writelookup2[(s + a) >> 12] + s + a) = v;
 }
 void writememll(uint32_t seg, uint32_t addr, uint32_t val);
 void writememl(uint32_t s, uint32_t a, uint32_t v)
 {
-	// memcycs+=i808x_memcycs();
         if (writelookup2[((s)+(a))>>12]==-1 || (s)==0xFFFFFFFF) writememll(s,a,v);
         else *(uint32_t *)(writelookup2[(s + a) >> 12] + s + a) = v;
 }
@@ -667,9 +674,7 @@ void resetx86()
         mmu_perm=4;
         memset(inscounts, 0, sizeof(inscounts));
         x86seg_reset();
-#ifdef DYNAREC
         codegen_reset();
-#endif
         x86_was_reset = 1;
 }
 
@@ -692,7 +697,8 @@ void softresetx86()
         flags=2;
         idt.base = 0;
         x86seg_reset();
-	x86_was_reset = 1;
+        x86_was_reset = 1;
+	pclog("softresetx86() issued\n");
 }
 
 static void setznp8(uint8_t val)
@@ -1080,6 +1086,9 @@ int firstrepcycle;
 int skipnextprint=0;
 
 int instime=0;
+
+int trap;
+
 //#if 0
 void execx86(int cycs)
 {
@@ -1090,7 +1099,6 @@ void execx86(int cycs)
         uint32_t templ;
         int c;
         int tempi;
-        int trap;
 
 //        printf("Run x86! %i %i\n",cycles,cycs);
         cycles+=cycs;

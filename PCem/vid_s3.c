@@ -262,7 +262,12 @@ uint8_t s3_in(uint16_t addr, void *p)
 //        if (addr != 0x3da) pclog("S3 in %04X %08x:%02x\n", addr, CS, pc);
         switch (addr)
         {
-                case 0x3c5:
+                case 0x3c1:
+                if (svga->attraddr > 0x14)
+                        return 0xff;
+                break;
+                        
+                 case 0x3c5:
                 if (svga->seqaddr >= 0x10 && svga->seqaddr < 0x20)
                         return svga->seqregs[svga->seqaddr];
                 break;
@@ -1608,8 +1613,8 @@ void s3_accel_start(int count, int cpu_input, uint32_t mix_dat, uint32_t cpu_dat
                                         if (cpu_input/* && (s3->accel.multifunc[0xa] & 0xc0) == 0x80*/) return;
                                         if (s3->accel.sy < 0)
                                         {
-                                                s3->accel.cur_x = s3->accel.cx;
-                                                s3->accel.cur_y = s3->accel.cy;
+//                                                s3->accel.cur_x = s3->accel.cx;
+//                                                s3->accel.cur_y = s3->accel.cy;
                                                 return;
                                         }
                                 }
@@ -1751,6 +1756,8 @@ void s3_hwcursor_draw(svga_t *svga, int displine)
         uint16_t dat[2];
         int xx;
         int offset = svga->hwcursor_latch.x - svga->hwcursor_latch.xoff;
+	int y_add = enable_overscan ? 16 : 0;
+	int x_add = enable_overscan ? 8 : 0;
 
         if (svga->interlace && svga->hwcursor_oddeven)
                 svga->hwcursor_latch.addr += 16;
@@ -1765,9 +1772,9 @@ void s3_hwcursor_draw(svga_t *svga, int displine)
                         if (offset >= svga->hwcursor_latch.x)
                         {
                                 if (!(dat[0] & 0x8000))
-                                   ((uint32_t *)buffer32->line[displine])[offset + 32]  = (dat[1] & 0x8000) ? 0xffffff : 0;
+                                   ((uint32_t *)buffer32->line[displine + y_add])[offset + 32 + x_add]  = (dat[1] & 0x8000) ? 0xffffff : 0;
                                 else if (dat[1] & 0x8000)
-                                   ((uint32_t *)buffer32->line[displine])[offset + 32] ^= 0xffffff;
+                                   ((uint32_t *)buffer32->line[displine + y_add])[offset + 32 + x_add] ^= 0xffffff;
 //                                pclog("Plot %i, %i (%i %i) %04X %04X\n", offset, displine, x+xx, svga_hwcursor_on, dat[0], dat[1]);
                         }
 
@@ -1858,7 +1865,7 @@ uint8_t s3_pci_read(int func, int addr, void *p)
                 case 0x08: return 0; /*Revision ID*/
                 case 0x09: return 0; /*Programming interface*/
 
-                case 0x0a: return 0x01; /*Supports VGA interface*/
+                case 0x0a: return 0x00; /*Supports VGA interface*/
                 case 0x0b: return 0x03;
 
                 case 0x10: return 0x00; /*Linear frame buffer address*/
@@ -1906,6 +1913,7 @@ void s3_pci_write(int func, int addr, uint8_t val, void *p)
                         uint32_t addr = (s3->pci_regs[0x32] << 16) | (s3->pci_regs[0x33] << 24);
 //                        pclog("S3 bios_rom enabled at %08x\n", addr);
                         mem_mapping_set_addr(&s3->bios_rom.mapping, addr, 0x8000);
+                        mem_mapping_enable(&s3->bios_rom.mapping);
                 }
                 else
                 {
@@ -1913,6 +1921,10 @@ void s3_pci_write(int func, int addr, uint8_t val, void *p)
                         mem_mapping_disable(&s3->bios_rom.mapping);
                 }
                 return;
+
+		case 0x3C:
+		s3->pci_regs[0x3C] = val;
+		return;
         }
 }
 
@@ -1968,7 +1980,7 @@ static void *s3_init(char *bios_fn, int chip)
 
         s3_io_set(s3);
 
-        gfxpciid = pci_add(s3_pci_read, s3_pci_write, s3);
+	pci_add(s3_pci_read, s3_pci_write, s3);
 
         s3->pci_regs[0x04] = 7;
 

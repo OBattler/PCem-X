@@ -6,6 +6,7 @@
 #include "ibm.h"
 
 #include "fdc.h"
+#include "ide.h"
 #include "io.h"
 #include "lpt.h"
 #include "mouse_serial.h"
@@ -18,9 +19,9 @@ static int w83877f_curreg = 0;
 static uint8_t w83877f_regs[40];
 static uint8_t tries;
 
-static winbond_port = 0x3f0;
-static winbond_key = 0x89;
-static winbond_key_times = 1;
+static int winbond_port = 0x3f0;
+static int winbond_key = 0x89;
+static int winbond_key_times = 1;
 
 void w83877f_write(uint16_t port, uint8_t val, void *priv);
 uint8_t w83877f_read(uint16_t port, void *priv);
@@ -196,7 +197,7 @@ static void w83877f_remap()
         io_removehandler(0x250, 0x0002, w83877f_read, NULL, NULL, w83877f_write, NULL, NULL,  NULL);
         io_removehandler(0x3f0, 0x0002, w83877f_read, NULL, NULL, w83877f_write, NULL, NULL,  NULL);
         io_sethandler(HEFRAS ? 0x3f0 : 0x250, 0x0002, w83877f_read, NULL, NULL, w83877f_write, NULL, NULL,  NULL);
-	pclog("W83877F mapped to %04X\n", HEFRAS ? 0x3f0 : 0x250);
+	// pclog("W83877F mapped to %04X\n", HEFRAS ? 0x3f0 : 0x250);
 	winbond_port = (HEFRAS ? 0x3f0 : 0x250);
 	winbond_key_times = HEFRAS + 1;
 	winbond_key = (HEFRAS ? 0x86 : 0x88) | HEFERE;
@@ -263,7 +264,7 @@ static uint16_t make_port(uint8_t reg)
 			break;
 	}
 
-	pclog("Made port %04X (reg %02X)\n", p, reg);
+	// pclog("Made port %04X (reg %02X)\n", p, reg);
 	return p;
 }
 
@@ -273,7 +274,7 @@ void w83877f_write(uint16_t port, uint8_t val, void *priv)
 	uint8_t valxor = 0;
 	uint8_t max = 40;
         int temp;
-        pclog("w83877f_write : port=%04x reg %02X = %02X locked=%i\n", port, w83877f_curreg, val, w83877f_locked);
+        // pclog("w83877f_write : port=%04x reg %02X = %02X locked=%i\n", port, w83877f_curreg, val, w83877f_locked);
 
 	if (index)
 	{
@@ -338,7 +339,11 @@ process_value:
 			if (valxor & 0x20)
 			{
 				serial1_remove();
-				if (!(w83877f_regs[4] & 0x20))  serial1_set(make_port(0x24), (w83877f_regs[0x28] & 0xF0) >> 8);
+				if (!(w83877f_regs[4] & 0x20))
+				{
+					serial1_set(make_port(0x24), (w83877f_regs[0x28] & 0xF0) >> 8);
+					mouse_serial_init();
+				}
 			}
 			if (valxor & 0x80)
 			{
@@ -412,7 +417,11 @@ process_value:
 		case 0x24:
 			if (valxor & 0xfe)
 			{
-				if (!(w83877f_regs[4] & 0x20))  serial1_set(make_port(0x24), (w83877f_regs[0x28] & 0xF0) >> 8);
+				if (!(w83877f_regs[4] & 0x20))
+				{
+					serial1_set(make_port(0x24), (w83877f_regs[0x28] & 0xF0) >> 8);
+					mouse_serial_init();
+				}
 			}
 			break;
 		case 0x25:
@@ -430,7 +439,11 @@ process_value:
 			if (valxor & 0xf0)
 			{
 				if ((w83877f_regs[0x28] & 0xf0) == 0)  w83877f_regs[0x28] |= 0x40;
-				if (!(w83877f_regs[4] & 0x20))  serial1_set(make_port(0x24), (w83877f_regs[0x28] & 0xF0) >> 8);
+				if (!(w83877f_regs[4] & 0x20))
+				{
+					serial1_set(make_port(0x24), (w83877f_regs[0x28] & 0xF0) >> 8);
+					mouse_serial_init();
+				}
 			}
 			break;
 	}
@@ -438,7 +451,7 @@ process_value:
 
 uint8_t w83877f_read(uint16_t port, void *priv)
 {
-        pclog("w83877f_read : port=%04x reg %02X locked=%i\n", port, w83877f_curreg, w83877f_locked);
+        // pclog("w83877f_read : port=%04x reg %02X locked=%i\n", port, w83877f_curreg, w83877f_locked);
 	uint8_t index = (port & 1) ? 0 : 1;
 
 	if (!w83877f_locked)
@@ -450,7 +463,7 @@ uint8_t w83877f_read(uint16_t port, void *priv)
 		return w83877f_curreg;
 	else
 	{
-		pclog("0x03F1: %02X\n", w83877f_regs[w83877f_curreg]);
+		// pclog("0x03F1: %02X\n", w83877f_regs[w83877f_curreg]);
 		if ((w83877f_curreg < 0x18) && (w83877f_rw_locked))  return 0xff;
 		if (w83877f_curreg == 7)  return (rwc_force[0] | (rwc_force[1] << 2));
 		return w83877f_regs[w83877f_curreg];
@@ -462,6 +475,7 @@ void w83877f_init()
 	fdc_remove_stab();
 	lpt2_remove();
 	w83877f_regs[3] = 0x30;
+	w83877f_regs[7] = 0xF5;
 	w83877f_regs[9] = 0x0A;
 	w83877f_regs[0xA] = 0x1F;
 	w83877f_regs[0xC] = 0x28;
@@ -481,8 +495,9 @@ void w83877f_init()
 
 	densel_polarity = 1;
 	densel_force = 0;
-	rwc_force[0] = 0;
-	rwc_force[1] = 0;
+	rwc_force[0] = rwc_force[1] = 1;
+	drt[0] = drt[1] = 0;
+	densel_polarity_mid[0] = densel_polarity_mid[1] = 1;
 	en3mode = 0;
 	swwp = 0;
 	diswr = 0;

@@ -398,6 +398,8 @@ void tgui_hwcursor_draw(svga_t *svga, int displine)
         uint32_t dat[2];
         int xx;
         int offset = svga->hwcursor_latch.x - svga->hwcursor_latch.xoff;
+	int y_add = enable_overscan ? 16 : 0;
+	int x_add = enable_overscan ? 8 : 0;
         
         dat[0] = (svga->vram[svga->hwcursor_latch.addr]     << 24) | (svga->vram[svga->hwcursor_latch.addr + 1] << 16) | (svga->vram[svga->hwcursor_latch.addr + 2] << 8) | svga->vram[svga->hwcursor_latch.addr + 3];
         dat[1] = (svga->vram[svga->hwcursor_latch.addr + 4] << 24) | (svga->vram[svga->hwcursor_latch.addr + 5] << 16) | (svga->vram[svga->hwcursor_latch.addr + 6] << 8) | svga->vram[svga->hwcursor_latch.addr + 7];
@@ -406,9 +408,9 @@ void tgui_hwcursor_draw(svga_t *svga, int displine)
                 if (offset >= svga->hwcursor_latch.x)
                 {
                         if (!(dat[0] & 0x80000000))
-                                ((uint32_t *)buffer32->line[displine])[offset + 32]  = (dat[1] & 0x80000000) ? 0xffffff : 0;
+                                ((uint32_t *)buffer32->line[displine + y_add])[offset + 32 + x_add]  = (dat[1] & 0x80000000) ? 0xffffff : 0;
                         else if (dat[1] & 0x80000000)
-                                ((uint32_t *)buffer32->line[displine])[offset + 32] ^= 0xffffff;
+                                ((uint32_t *)buffer32->line[displine + y_add])[offset + 32 + x_add] ^= 0xffffff;
 //                        pclog("Plot %i, %i (%i %i) %04X %04X\n", offset, displine, x+xx, svga_hwcursor_on, dat[0], dat[1]);
                 }
                            
@@ -504,7 +506,7 @@ void *tgui9440_init()
         io_sethandler(0x03c0, 0x0020, tgui_in, NULL, NULL, tgui_out, NULL, NULL, tgui);
         io_sethandler(0x43c8, 0x0002, tgui_in, NULL, NULL, tgui_out, NULL, NULL, tgui);
 
-        gfxpciid = pci_add(tgui_pci_read, tgui_pci_write, tgui);
+	pci_add(tgui_pci_read, tgui_pci_write, tgui);
 
         return tgui;
 }

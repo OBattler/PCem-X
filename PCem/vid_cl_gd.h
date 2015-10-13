@@ -1,14 +1,30 @@
 // ID
-#define CIRRUS_ID_CLGD6235  (0x22<<2)
+#define CIRRUS_ID_CLGD6225  (0x02<<2)
+#define CIRRUS_ID_CLGD5402  (0x06<<2)		/* Also Acumos AVGA2 */
+#define CIRRUS_ID_CLGD7542  (0x0B<<2)		/* Nordic */
+#define CIRRUS_ID_CLGD7543  (0x0C<<2)		/* Viking - guess */
+#define CIRRUS_ID_CLGD7541  (0x0D<<2)		/* Nordic Lite */
+#define CIRRUS_ID_CLGD6215  (0x12<<2)
+#define CIRRUS_ID_CLGD6235  (0x22<<2)		/* Also 5402 */
 #define CIRRUS_ID_CLGD5422  (0x23<<2)
 #define CIRRUS_ID_CLGD5426  (0x24<<2)
-#define CIRRUS_ID_CLGD5424  (0x25<<2)
+#define CIRRUS_ID_CLGD5424  (0x25<<2)		/* Also 5422-80 */
 #define CIRRUS_ID_CLGD5428  (0x26<<2)
 #define CIRRUS_ID_CLGD5429  (0x27<<2)
 #define CIRRUS_ID_CLGD5430  (0x28<<2)
+#define CIRRUS_ID_CLGD5432  0xA2
+#define CIRRUS_ID_CLGD5434O (0x29<<2)		/* O = obsolete, never used? */
 #define CIRRUS_ID_CLGD5434  (0x2A<<2)
 #define CIRRUS_ID_CLGD5436  (0x2B<<2)
+#define CIRRUS_ID_CLGD5436U (0x3A<<2)
+#define CIRRUS_ID_CLGD5440  (0x2C<<2)
+#define CIRRUS_ID_CLGD5442  (0x2D<<2)
 #define CIRRUS_ID_CLGD5446  (0x2E<<2)
+#define CIRRUS_ID_CLGD5455  (0x2F<<2)		/* Laguna 3D */
+#define CIRRUS_ID_CLGD6205  (0x32<<2)		/* Laguna 3D */
+#define CIRRUS_ID_CLGD5462  (0x34<<2)		/* Laguna */
+#define CIRRUS_ID_CLGD5464  (0xD5)		/* Laguna BD */
+#define CIRRUS_ID_CLGD5465  (0xD6)		/* Laguna 3D */
 
 // sequencer 0x07
 #define CIRRUS_SR7_BPP_VGA            0x00
@@ -195,7 +211,11 @@ cirrus_bitblt_rop_t cirrus_rop;
 
 extern device_t gd5422_device;
 extern device_t gd5429_device;
+extern device_t gd5430_device;
+extern device_t dia5430_device;
+extern device_t gd5434_device;
 extern device_t gd5436_device;
+extern device_t gd5440_device;
 extern device_t gd5446_device;
 extern device_t gd6235_device;
 

@@ -22,7 +22,6 @@
 #include "vid_et4000.h"
 #include "vid_et4000w32.h"
 #include "vid_hercules.h"
-#include "vid_jega.h"
 #include "vid_mda.h"
 #include "vid_nv_riva128.h"
 #include "vid_olivetti_m24.h"
@@ -51,16 +50,21 @@ static VIDEO_CARD video_cards[] =
         {"ATI Graphics Pro Turbo (Mach64 GX)",     &mach64gx_device,            GFX_MACH64GX},
         {"ATI VGA Charger (ATI-28800)",            &ati28800_device,            GFX_VGACHARGER},
         {"ATI VGA Edge-16 (ATI-18800)",            &ati18800_device,            GFX_VGAEDGE16},
-        {"CGA",                                    &cga_device,                 GFX_CGA},
+        {"CGA (New)",                              &cga_new_device,             GFX_NEW_CGA},
+        {"CGA (Old)",                              &cga_device,                 GFX_CGA},
         {"Cirrus Logic CL-GD6235",                 &gd6235_device,              GFX_CL_GD6235},
         {"Cirrus Logic CL-GD5422",                 &gd5422_device,              GFX_CL_GD5422},
         {"Cirrus Logic CL-GD5429",                 &gd5429_device,              GFX_CL_GD5429},
+        {"Cirrus Logic CL-GD5430",                 &gd5430_device,              GFX_CL_GD5430},
+        {"Cirrus Logic CL-GD5434",                 &gd5434_device,              GFX_CL_GD5434},
         {"Cirrus Logic CL-GD5436",                 &gd5436_device,              GFX_CL_GD5436},
+        {"Cirrus Logic CL-GD5440",                 &gd5440_device,              GFX_CL_GD5440},
         {"Cirrus Logic CL-GD5446",                 &gd5446_device,              GFX_CL_GD5446},
         {"Compaq VDU",                             &cpqvdu_device,              GFX_CPQVDU},
         {"Compaq EGA",                             &cpqega_device,              GFX_CPQEGA},
         {"Compaq/Paradise VGA",                    &cpqvga_device,              GFX_CPQVGA},
         {"Diamond Stealth 32 (Tseng ET4000/w32p)", &et4000w32p_device,          GFX_ET4000W32},
+        {"Diamond CL-GD5430",                      &dia5430_device,             GFX_DIAMOND5430},
         {"Diamond Stealth 3D 2000 (S3 ViRGE)",     &s3_virge_device,            GFX_VIRGE},
         {"EGA",                                    &ega_device,                 GFX_EGA},
         {"Hercules",                               &hercules_device,            GFX_HERCULES},
@@ -83,118 +87,74 @@ static VIDEO_CARD video_cards[] =
         {"",                                       NULL,                        0}
 };
 
-static VIDEO_CARD video_cards_pci[] =
-{
-        {"ATI Graphics Pro Turbo (Mach64 GX)",     &mach64gx_device,            GFX_MACH64GX},
-        {"Diamond Stealth 32 (Tseng ET4000/w32p)", &et4000w32p_device,          GFX_ET4000W32},
-        {"Diamond Stealth 3D 2000 (S3 ViRGE)",     &s3_virge_device,            GFX_VIRGE},
-        {"Number Nine 9FX (S3 Trio64)",            &s3_9fx_device,              GFX_N9_9FX},
-        {"nVidia RIVA 128",                        &riva128_device,             GFX_RIVA128},
-        {"Paradise Bahamas 64 (S3 Vision864)",     &s3_bahamas64_device,        GFX_BAHAMAS64},
-        {"Phoenix S3 Trio32",                      &s3_phoenix_trio32_device,   GFX_PHOENIX_TRIO32},
-        {"Phoenix S3 Trio64",                      &s3_phoenix_trio64_device,   GFX_PHOENIX_TRIO64},
-        {"Phoenix S3 Vision964",                   &s3_phoenix_vision964_device,GFX_PHOENIX_VISION964},
-        {"S3 ViRGE/DX",                            &s3_virge_375_device,        GFX_VIRGEDX},
-        {"Trident TGUI9440",                       &tgui9440_device,            GFX_TGUI9440},
-        {"",                                       NULL,                        0}
-};
+int cga_color_burst = 1;
+int cga_brown = 1;
 
-int video_card_available(int card, int po)
+int old_color_burst;
+
+int enable_overscan = 1;
+int overscan_color = 0;
+int overscan_x = 0;
+int overscan_y = 0;
+
+int video_card_available(int card)
 {
-	if (po)
-	{
-	        if (video_cards_pci[card].device)
-        	        return device_available(video_cards_pci[card].device);
-	}
-	else
-	{
-	        if (video_cards[card].device)
-        	        return device_available(video_cards[card].device);
-	}
+        if (video_cards[card].device)
+                return device_available(video_cards[card].device);
 
         return 1;
 }
 
-char *video_card_getname(int card, int po)
+char *video_card_getname(int card)
 {
-	if (po)  return video_cards_pci[card].name;
         return video_cards[card].name;
 }
 
-device_t *video_card_getdevice(int card, int po)
+device_t *video_card_getdevice(int card)
 {
-	if (po)  return video_cards_pci[card].device;
         return video_cards[card].device;
 }
 
-int video_card_has_config(int card, int po)
+int video_card_has_config(int card)
 {
-	if (po)  return video_cards_pci[card].device->config ? 1 : 0;
         return video_cards[card].device->config ? 1 : 0;
 }
 
-int video_card_getid(char *s, int po)
+int video_card_getid(char *s)
 {
         int c = 0;
 
-	if (po)
-	{
-	        while (video_cards_pci[c].device)
-        	{
-                	if (!strcmp(video_cards_pci[c].name, s))
-	                        return c;
-        	        c++;
-	        }
-	}
-	else
-	{
-	        while (video_cards[c].device)
-        	{
-                	if (!strcmp(video_cards[c].name, s))
-	                        return c;
-        	        c++;
-	        }
-	}
-
+        while (video_cards[c].device)
+        {
+                if (!strcmp(video_cards[c].name, s))
+                        return c;
+                c++;
+        }
+        
         return 0;
 }
 
-int video_old_to_new(int card, int po)
+int video_old_to_new(int card)
 {
         int c = 0;
-
-	if (po)
-	{
-	        while (video_cards_pci[c].device)
-        	{
-                	if (video_cards_pci[c].legacy_id == card)
-                        	return c;
-	                c++;
-	        }
-	}
-	else
-	{
-	        while (video_cards[c].device)
-        	{
-                	if (video_cards[c].legacy_id == card)
-                        	return c;
-	                c++;
-	        }
-	}
-
+        
+        while (video_cards[c].device)
+        {
+                if (video_cards[c].legacy_id == card)
+                        return c;
+                c++;
+        }
+        
         return 0;
 }
 
-int video_new_to_old(int card, int po)
+int video_new_to_old(int card)
 {
-	if (po)  return video_cards_pci[card].legacy_id;
         return video_cards[card].legacy_id;
 }
 
 int video_fullscreen = 0, video_fullscreen_scale, video_fullscreen_first;
 uint32_t *video_15to32, *video_16to32;
-
-int gfxpciid;
 
 int egareads=0,egawrites=0;
 int changeframecount=2;
@@ -286,6 +246,8 @@ void video_init()
 {
         pclog("Video_init %i %i\n",romset,gfxcard);
 
+	overscan_x = overscan_y = 0;
+
         switch (romset)
         {
 		/* Uses own interface, standard font. */
@@ -337,13 +299,8 @@ void video_init()
                 case ROM_IBMPS1_2011:
                 device_add(&ps1vga_device);
                 return;
-
-		// case ROM_440BX:
-		case ROM_VPC2007:
-		device_add(video_cards_pci[video_old_to_new(gfxcardpci, 1)].device);
-		return;
         }
-        device_add(video_cards[video_old_to_new(gfxcard, 0)].device);
+        device_add(video_cards[video_old_to_new(gfxcard)].device);
 }
 
 
@@ -588,9 +545,10 @@ void initvideo()
 {
         int c, d, e;
 
-        buffer32 = create_bitmap(2048, 2048);
+	/* Account for overscan. */
+        buffer32 = create_bitmap(2064, 2056);
 
-        buffer = create_bitmap(2048, 2048);
+        buffer = create_bitmap(2064, 2056);
 
         for (c = 0; c < 64; c++)
         {

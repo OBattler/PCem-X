@@ -431,6 +431,8 @@ void clgd_hwcursor_draw(svga_t *svga, int displine)
         int offset = svga->hwcursor_latch.x - svga->hwcursor_latch.xoff;
 	int largecur = (svga->seqregs[0x12] & 4);
 	int cursize = (largecur) ? 64 : 32;
+	int y_add = enable_overscan ? 16 : 0;
+	int x_add = enable_overscan ? 8 : 0;
         
         pclog("HWcursor %i %i  %i %i  %x %02X %02X\n", svga->hwcursor_latch.x, svga->hwcursor_latch.y,  offset, displine, svga->hwcursor_latch.addr, vram[svga->hwcursor_latch.addr], vram[svga->hwcursor_latch.addr + 0x80]);
         for (x = 0; x < cursize; x += 8)
@@ -442,9 +444,9 @@ void clgd_hwcursor_draw(svga_t *svga, int displine)
                         if (offset >= svga->hwcursor_latch.x)
                         {
                                 if (dat[1] & 0x80)
-                                        ((uint32_t *)buffer32->line[displine])[offset + cursize] = 0;
+                                        ((uint32_t *)buffer32->line[displine + y_add])[offset + cursize + x_add] = 0;
                                 if (dat[0] & 0x80)
-                                        ((uint32_t *)buffer32->line[displine])[offset + cursize] ^= 0xffffff;
+                                        ((uint32_t *)buffer32->line[displine + y_add])[offset + cursize + x_add] ^= 0xffffff;
                         }
                            
                         offset++;
@@ -1571,9 +1573,29 @@ void *gd5429_init()
 	return clgd_common_init("roms/5429.vbi", CIRRUS_ID_CLGD5429);
 }
 
+void *gd5430_init()
+{
+	return clgd_common_init("roms/pci.BIN", CIRRUS_ID_CLGD5430);
+}
+
+void *dia5430_init()
+{
+	return clgd_common_init("roms/diamondvlbus.BIN", CIRRUS_ID_CLGD5430);
+}
+
+void *gd5434_init()
+{
+	return clgd_common_init("roms/japan.BIN", CIRRUS_ID_CLGD5434);
+}
+
 void *gd5436_init()
 {
 	return clgd_common_init("roms/5436.VBI", CIRRUS_ID_CLGD5436);
+}
+
+void *gd5440_init()
+{
+	return clgd_common_init("roms/5440BIOS.BIN", CIRRUS_ID_CLGD5440);
 }
 
 void *gd5446_init()
@@ -1591,9 +1613,29 @@ static int gd5429_available()
         return rom_present("roms/5429.vbi");
 }
 
+static int gd5430_available()
+{
+        return rom_present("roms/pci.BIN");
+}
+
+static int dia5430_available()
+{
+        return rom_present("roms/diamondvlbus.BIN");
+}
+
+static int gd5434_available()
+{
+        return rom_present("roms/japan.BIN");
+}
+
 static int gd5436_available()
 {
         return rom_present("roms/5436.VBI");
+}
+
+static int gd5440_available()
+{
+        return rom_present("roms/5440BIOS.BIN");
 }
 
 static int gd5446_available()
@@ -1662,6 +1704,45 @@ device_t gd5429_device =
         clgd_add_status_info
 };
 
+device_t gd5430_device =
+{
+        "Cirrus Logic GD5430",
+        // DEVICE_NOT_WORKING,
+	0,
+        gd5430_init,
+        clgd_close,
+        gd5430_available,
+        clgd_speed_changed,
+        clgd_force_redraw,
+        clgd_add_status_info
+};
+
+device_t dia5430_device =
+{
+        "Diamond CL-GD5430",
+        // DEVICE_NOT_WORKING,
+	0,
+        dia5430_init,
+        clgd_close,
+        dia5430_available,
+        clgd_speed_changed,
+        clgd_force_redraw,
+        clgd_add_status_info
+};
+
+device_t gd5434_device =
+{
+        "Cirrus Logic GD5434",
+        // DEVICE_NOT_WORKING,
+	0,
+        gd5434_init,
+        clgd_close,
+        gd5434_available,
+        clgd_speed_changed,
+        clgd_force_redraw,
+        clgd_add_status_info
+};
+
 device_t gd5436_device =
 {
         "Cirrus Logic GD5436",
@@ -1670,6 +1751,19 @@ device_t gd5436_device =
         gd5436_init,
         clgd_close,
         gd5436_available,
+        clgd_speed_changed,
+        clgd_force_redraw,
+        clgd_add_status_info
+};
+
+device_t gd5440_device =
+{
+        "Cirrus Logic GD5440",
+        // DEVICE_NOT_WORKING,
+	0,
+        gd5440_init,
+        clgd_close,
+        gd5440_available,
         clgd_speed_changed,
         clgd_force_redraw,
         clgd_add_status_info

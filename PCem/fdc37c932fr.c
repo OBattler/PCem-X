@@ -127,7 +127,7 @@ void fdc37c932fr_write(uint16_t port, uint8_t val, void *priv)
 	uint16_t ld_port = 0;
 	uint16_t ld_port2 = 0;
         int temp;
-        pclog("fdc37c932fr_write : port=%04x reg %02X = %02X locked=%i\n", port, fdc37c932fr_curreg, val, fdc37c932fr_locked);
+        // pclog("fdc37c932fr_write : port=%04x reg %02X = %02X locked=%i\n", port, fdc37c932fr_curreg, val, fdc37c932fr_locked);
 
 	if (index)
 	{
@@ -217,13 +217,17 @@ process_value:
 					}
 					break;
 				case 0xF0:
-					if (valxor & 1)  fdc_os2 = (val & 1) ? 1 : 0;
+					if (valxor & 0x01)  en3mode = (val & 0x01);
 					if (valxor & 0x10)  fdc_setswap((val & 0x10) >> 4);
 					break;
 				case 0xF1:
 					if (valxor & 0xC)  densel_force = (val & 0xC) >> 2;
 					if (valxor & 0x10)  densel_polarity_mid[0] = (val & 0x10) ? 0 : 1;
 					if (valxor & 0x20)  densel_polarity_mid[1] = (val & 0x20) ? 0 : 1;
+					break;
+				case 0xF2:
+					if (valxor & 0x0C)  rwc_force[1] = (valxor & 0x0C) >> 2;
+					if (valxor & 0x03)  rwc_force[0] = (valxor & 0x03);
 					break;
 				case 0xF4:
 					if (valxor & 0x18)  drt[0] = (val & 0x18) >> 3;
@@ -394,7 +398,7 @@ process_value:
 
 uint8_t fdc37c932fr_read(uint16_t port, void *priv)
 {
-        pclog("fdc37c932fr_read : port=%04x reg %02X locked=%i\n", port, fdc37c932fr_curreg, fdc37c932fr_locked);
+        // pclog("fdc37c932fr_read : port=%04x reg %02X locked=%i\n", port, fdc37c932fr_curreg, fdc37c932fr_locked);
 	uint8_t index = (port & 1) ? 0 : 1;
 
 	if (!fdc37c932fr_locked)
@@ -408,12 +412,13 @@ uint8_t fdc37c932fr_read(uint16_t port, void *priv)
 	{
 		if (fdc37c932fr_curreg < 0x30)
 		{
-			pclog("0x03F1: %02X\n", fdc37c932fr_regs[fdc37c932fr_curreg]);
+			// pclog("0x03F1: %02X\n", fdc37c932fr_regs[fdc37c932fr_curreg]);
 			return fdc37c932fr_regs[fdc37c932fr_curreg];
 		}
 		else
 		{
-			pclog("0x03F1 (CD=%02X): %02X\n", fdc37c932fr_regs[7], fdc37c932fr_ld_regs[fdc37c932fr_regs[7]][fdc37c932fr_curreg]);
+			// pclog("0x03F1 (CD=%02X): %02X\n", fdc37c932fr_regs[7], fdc37c932fr_ld_regs[fdc37c932fr_regs[7]][fdc37c932fr_curreg]);
+			if ((fdc37c932fr_regs[7] == 0) && (fdc37c932fr_curreg == 0xF2))  return (rwc_force[0] | (rwc_force[1] << 2));
 			return fdc37c932fr_ld_regs[fdc37c932fr_regs[7]][fdc37c932fr_curreg];
 		}
 	}
@@ -506,6 +511,9 @@ void fdc37c932fr_init()
 	densel_polarity_mid[1] = 1;
 	densel_force = 0;
 	fdc_setswap(0);
+	rwc_force[0] = rwc_force[1] = 0;
+	drt[0] = drt[1] = 0;
+	densel_polarity_mid[0] = densel_polarity_mid[1] = 1;
         io_sethandler(0x3f0, 0x0002, fdc37c932fr_read, NULL, NULL, fdc37c932fr_write, NULL, NULL,  NULL);
         fdc37c932fr_locked = 0;
 }
