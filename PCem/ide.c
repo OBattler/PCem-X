@@ -2171,7 +2171,7 @@ static void atapicommand(int ide_board)
 				len=idebufferb[4];
 				ide->packetstatus=4;
 				ide->cylinder=len;
-				ide->secount=0;
+				ide->secount=2;
 				ide->pos=0;
 				idecallback[ide_board]=6*IDE_TIME;
 				ide->packlen=len;

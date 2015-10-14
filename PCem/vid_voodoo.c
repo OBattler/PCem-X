@@ -1862,8 +1862,8 @@ static void voodoo_half_triangle(voodoo_t *voodoo, voodoo_params_t *params, vood
                 if (x2 > x && state->xdir < 0)
                         goto next_line;
 
-                fb_mem = &voodoo->fb_mem[params->draw_offset + (real_y * voodoo->row_width)];
-                aux_mem = &voodoo->fb_mem[params->aux_offset + (real_y * voodoo->row_width)];
+                fb_mem = (uint16_t *) &voodoo->fb_mem[params->draw_offset + (real_y * voodoo->row_width)];
+                aux_mem = (uint16_t *) &voodoo->fb_mem[params->aux_offset + (real_y * voodoo->row_width)];
                 
                 if (voodoo_output)
 //                         pclog("%03i: x=%08x x2=%08x xstart=%08x xend=%08x dx=%08x start_x2=%08x\n", state->y, x, x2, state->xstart, state->xend, dx, start_x2);
@@ -4058,13 +4058,14 @@ static void voodoo_generate_filter(voodoo_t *voodoo)
 
                         voodoo->thefilter[g][h] = thiscol;
                         voodoo->thefilterg[g][h] = thiscolg;
-                }
+						}
 
                 lined = g + 4;
                 if (lined > 1023)
                         lined = 1023;
                 voodoo->purpleline[g] = lined;
         }
+
 }
 
 static void voodoo_filterline(voodoo_t *voodoo, uint16_t *fil, int column, uint16_t *src, int line)
@@ -4265,7 +4266,7 @@ void *voodoo_init()
         voodoo->render_threads = device_get_config_int("render_threads");
         voodoo->odd_even_mask = voodoo->render_threads - 1;
                 
-        voodoo_generate_filter(voodoo);   /*generate filter lookup tables*/
+        // voodoo_generate_filter(voodoo);   /*generate filter lookup tables*/
         
         pci_add(voodoo_pci_read, voodoo_pci_write, voodoo);
 
@@ -4292,7 +4293,7 @@ void *voodoo_init()
         if (voodoo->render_threads == 2)
                 voodoo->render_thread[1] = thread_create(render_thread_2, voodoo);
 
-        for (c = 0; c < 0x100; c++)
+		for (c = 0; c < 0x100; c++)
         {
                 rgb332[c].r = c & 0xe0;
                 rgb332[c].g = (c << 3) & 0xe0;
@@ -4303,7 +4304,7 @@ void *voodoo_init()
                 rgb332[c].b = rgb332[c].b | (rgb332[c].b >> 4);
                 rgb332[c].a = 0xff;
         }
-                
+				
         for (c = 0; c < 0x10000; c++)
         {
                 rgb565[c].r = (c >> 8) & 0xf8;
@@ -4330,7 +4331,7 @@ void *voodoo_init()
                 argb4444[c].r |= (argb4444[c].r >> 4);
                 argb4444[c].g |= (argb4444[c].g >> 4);
                 argb4444[c].b |= (argb4444[c].b >> 4);
-        }
+		}
 
         return voodoo;
 }

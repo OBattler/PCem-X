@@ -172,7 +172,6 @@ void mainthread(LPVOID param)
         old_time = GetTickCount();
         while (!quited)
         {
-#if 0
 		if (firststart)
 		{
 			pause = 1;
@@ -181,7 +180,6 @@ void mainthread(LPVOID param)
 			pause = 0;
 			firststart = 0;
 		}
-#endif
                 if (updatestatus)
                 {
                         updatestatus = 0;

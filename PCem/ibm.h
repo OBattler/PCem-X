@@ -274,23 +274,6 @@ char discfns[2][256];
 int driveempty[2];
 
 
-#define GMDA (gfxcard==GFX_MDA || gfxcard==GFX_HERCULES || gfxcard==GFX_CPQVDU)
-#define MDA (GMDA && (romset<ROM_TANDY || romset>=ROM_IBMAT))
-#define GHERC (gfxcard==GFX_HERCULES)
-#define HERCULES (gfxcard==GFX_HERCULES && (romset<ROM_TANDY || romset>=ROM_IBMAT))
-#define VID_EGA ((gfxcard==GFX_EGA) || (gfxcard==GFX_JEGA) || (gfxcard==GFX_SUPEREGA) || (gfxcard==GFX_CPQEGA))
-#define VID_JEGA (gfxcard==GFX_JEGA)
-#define GFXVGA ((gfxcard>=GFX_TVGA && gfxcard<=GFX_PHOENIX_TRIO64) || (gfxcard>=GFX_CPQVGA))
-#define VGA ((GFXVGA || romset==ROM_ACER386) && romset!=ROM_PC1640 && romset!=ROM_PC1512 && romset!=ROM_TANDY && romset!=ROM_PC200)
-#define EGA (romset==ROM_PC1640 || VID_EGA || VGA)
-#define VID_SVGA ((gfxcard==GFX_ET4000) || (gfxcard==GFX_ET4000W32) || (gfxcard==GFX_BAHAMAS64) || (gfxcard==GFX_N9_9FX) || (gfxcard==GFX_VIRGE) || (gfxcard==GFX_TGUI9440) || (gfxcard==GFX_MACH64GX) || (gfxcard==GFX_CL_GD5429) || (gfxcard==GFX_CL_GD6235) || (gfxcard==GFX_VIRGEDX) || (gfxcard==GFX_CL_PHOENIX_TRIO32) || (gfxcard==GFX_CL_PHOENIX_TRIO64) || (gfxcard==GFX_CL_PHOENIX_VISION964) || (gfxcard==GFX_CL_GD5436) || (gfxcard==GFX_CL_GD5446) || (gfxcard==GFX_RIVA128))
-#define SVGA (VID_SVGA && VGA)
-#define TRIDENT (gfxcard==GFX_TVGA && !OTI067)
-#define OTI067 ((romset==ROM_ACER386) || (gfxcard==GFX_OTI067))
-#define ET4000 (gfxcard==GFX_ET4000 && VGA)
-#define ET4000W32 (gfxcard==GFX_ET4000W32 && VGA)
-#define PCJR (romset == ROM_IBMPCJR)
-
 #define AMIBIOS (romset==ROM_AMI386 || romset==ROM_AMI486 || romset == ROM_WIN486)
 
 uint8_t maxide;
@@ -420,6 +403,23 @@ enum
 extern int gfx_present[GFX_MAX];
 
 int gfxcard;
+
+#define GMDA (gfxcard==GFX_MDA || gfxcard==GFX_HERCULES || gfxcard==GFX_CPQVDU)
+#define MDA (GMDA && (romset<ROM_TANDY || romset>=ROM_IBMAT))
+#define GHERC (gfxcard==GFX_HERCULES)
+#define HERCULES (gfxcard==GFX_HERCULES && (romset<ROM_TANDY || romset>=ROM_IBMAT))
+#define VID_EGA ((gfxcard==GFX_EGA) || (gfxcard==GFX_JEGA) || (gfxcard==GFX_SUPEREGA) || (gfxcard==GFX_CPQEGA))
+#define VID_JEGA (gfxcard==GFX_JEGA)
+#define GFXVGA ((gfxcard>=GFX_TVGA && gfxcard<=GFX_PHOENIX_TRIO64) || (gfxcard>=GFX_CPQVGA))
+#define VGA ((GFXVGA || romset==ROM_ACER386) && romset!=ROM_PC1640 && romset!=ROM_PC1512 && romset!=ROM_TANDY && romset!=ROM_PC200)
+#define EGA (romset==ROM_PC1640 || VID_EGA || VGA)
+#define VID_SVGA ((gfxcard==GFX_ET4000) || (gfxcard==GFX_ET4000W32) || (gfxcard==GFX_BAHAMAS64) || (gfxcard==GFX_N9_9FX) || (gfxcard==GFX_VIRGE) || (gfxcard==GFX_TGUI9440) || (gfxcard==GFX_MACH64GX) || (gfxcard==GFX_CL_GD5429) || (gfxcard==GFX_CL_GD6235) || (gfxcard==GFX_VIRGEDX) || (gfxcard==GFX_PHOENIX_TRIO32) || (gfxcard==GFX_PHOENIX_TRIO64) || (gfxcard==GFX_PHOENIX_VISION964) || (gfxcard==GFX_CL_GD5436) || (gfxcard==GFX_CL_GD5446) || (gfxcard==GFX_RIVA128))
+#define SVGA (VID_SVGA && VGA)
+#define TRIDENT (gfxcard==GFX_TVGA && !OTI067)
+#define OTI067 ((romset==ROM_ACER386) || (gfxcard==GFX_OTI067))
+#define ET4000 (gfxcard==GFX_ET4000 && VGA)
+#define ET4000W32 (gfxcard==GFX_ET4000W32 && VGA)
+#define PCJR (romset == ROM_IBMPCJR)
 
 int cpuspeed;
 
