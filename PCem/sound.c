@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include "ibm.h"
 #include "device.h"
+#include "cdrom-ioctl.h"
 
 #include "filters.h"
 

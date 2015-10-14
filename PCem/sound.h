@@ -16,3 +16,9 @@ void sound_reset();
 
 #define CD_FREQ 44100
 #define CD_BUFLEN (CD_FREQ / 10)
+
+void givealbuffer(int16_t *buf);
+void givealbuffer_cd(int16_t *buf);
+
+void initalmain(int argc, char *argv[]);
+void inital();

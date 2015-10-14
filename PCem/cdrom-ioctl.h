@@ -7,4 +7,7 @@
 extern int ioctl_open(char d);
 extern void ioctl_reset();
 
+void ioctl_audio_callback(int16_t *output, int len);
+void ioctl_audio_stop();
+
 #endif /* ! CDROM_IOCTL_H */
