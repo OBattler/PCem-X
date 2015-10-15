@@ -5,27 +5,27 @@ WINDRES = windres.exe
 initcflags = -O3 -fomit-frame-pointer -DDYNAREC
 basecflags = $(initcflags) -ffast-math -msse -msse2 -msse3 -mssse3 -mfpmath=sse -march=native -mtune=native
 CXXFLAGS = $(basecflags)
-OBJ = 386.o 386_dynarec.o 386_dynarec_ops.o 808x.o acer386sx.o ali1429.o amstrad.o cdrom-ioctl.o \
-	codegen.o codegen_ops.o codegen_timing_486.o codegen_timing_pentium.o codegen_x86.o colorbook_io.o compaq.o config.o cpqio.o cpu.o dac.o \
-	device.o dma.o fdc.o fdc37c665.o fdc37c932fr.o floppy.o gameport.o headland.o i430lx.o i430fx.o i430hx.o i430tx.o i430vx.o i440fx.o ide.o intel.o \
-	intel_flash.o io.o jim.o keyboard.o keyboard_amstrad.o keyboard_at.o keyboard_olim24.o \
-	keyboard_pcjr.o keyboard_xt.o lpt.o mcr.o mem.o memregs.o model.o mouse.o mouse_ps2.o mouse_serial.o \
-	ne2000.o neat.o nethandler.o nmi.o nvr.o olivetti_m24.o opti.o pc.o pc87306.o pci.o pic.o piix.o pit.o ppi.o ps1.o rom.o serial.o \
-	sio.o sis496.o sis85c471.o sound.obj sound_ad1848.o sound_adlib.o sound_adlibgold.o sound_cms.o sound_dbopl.o \
-	sound_emu8k.o sound_gus.o sound_mpu401_uart.o sound_opl.o sound_pas16.o sound_resid.o \
-	sound_sb.o sound_sb_dsp.o sound_sn76489.o sound_speaker.o sound_ssi2001.o sound_wss.o \
-	soundopenal.o timer.o vid_ati_eeprom.o vid_ati_mach64.o vid_ati18800.o \
-	vid_ati28800.o vid_ati68860_ramdac.o vid_cga.o vid_cga_comp.o vid_cl_gd.o vid_cl_gd_blit.o vid_cl_ramdac.o vid_cpqvdu.o vid_ega.o vid_et4000.o \
-	vid_et4000w32.o vid_et4000w32i.o vid_hercules.o vid_icd2061.o vid_ics2595.o vid_mda.o \
-	vid_nv_riva128.o vid_olivetti_m24.o vid_oti067.o vid_paradise.o vid_pc1512.o vid_pc1640.o vid_pc200.o \
-	vid_pcjr.o vid_s3.o vid_s3_virge.o vid_sdac_ramdac.o vid_stg_ramdac.o vid_svga.o \
-	vid_svga_render.o vid_tandy.o vid_tgui9440.o vid_tkd8001_ramdac.o vid_tvga.o vid_unk_ramdac.o \
-	vid_vga.o vid_voodoo.obj video.o w83877f.o w83977f.o wd76c10.o win.o win-config.o win-d3d.o win-d3d-fs.o win-ddraw.o \
-	win-ddraw-fs.o win-deviceconfig.o win-hdconf.o win-joystick.o win-keyboard.o win-midi.o win-mouse.o \
-	win-status.o win-time.o win-video.o x86seg.o x87.o xtide.o pc.res
-FMOBJ = dbopl.o
-SIDOBJ = convolve.o convolve-sse.o envelope.o extfilt.o filter.o pot.o sid.o voice.o wave6581__ST.o wave6581_P_T.o wave6581_PS_.o wave6581_PST.o wave8580__ST.o wave8580_P_T.o wave8580_PS_.o wave8580_PST.o wave.o
-SLIRPOBJ = bootp.o ip_icmp.o misc.o socket.o tcp_timer.o cksum.o ip_input.o queue.o tcp_input.o tftp.o debug.o ip_output.o sbuf.o tcp_output.o udp.o if.o mbuf.o slirp.o tcp_subr.o
+OBJ = 386.o32 386_dynarec.o32 386_dynarec_ops.o32 808x.o32 acer386sx.o32 ali1429.o32 amstrad.o32 cdrom-ioctl.o32 \
+	codegen.o32 codegen_ops.o32 codegen_timing_486.o32 codegen_timing_pentium.o32 codegen_x86.o32 colorbook_io.o32 compaq.o32 config.o32 cpqio.o32 cpu.o32 dac.o32 \
+	device.o32 dma.o32 fdc.o32 fdc37c665.o32 fdc37c932fr.o32 floppy.o32 gameport.o32 headland.o32 i430lx.o32 i430fx.o32 i430hx.o32 i430tx.o32 i430vx.o32 i440fx.o32 ide.obj intel.o32 \
+	intel_flash.o32 io.o32 jim.o32 keyboard.o32 keyboard_amstrad.o32 keyboard_at.o32 keyboard_olim24.o32 \
+	keyboard_pcjr.o32 keyboard_xt.o32 lpt.o32 mcr.o32 mem.o32 memregs.o32 model.o32 mouse.o32 mouse_ps2.o32 mouse_serial.o32 \
+	ne2000.o32 neat.o32 nethandler.o32 nmi.o32 nvr.o32 olivetti_m24.o32 opti.o32 pc.o32 pc87306.o32 pci.o32 pic.o32 piix.o32 pit.o32 ppi.o32 ps1.o32 rom.o32 serial.o32 \
+	sio.o32 sis496.o32 sis85c471.o32 sound.obj sound_ad1848.o32 sound_adlib.o32 sound_adlibgold.o32 sound_cms.o32 sound_dbopl.o32 \
+	sound_emu8k.o32 sound_gus.o32 sound_mpu401_uart.o32 sound_opl.o32 sound_pas16.o32 sound_resid.o32 \
+	sound_sb.o32 sound_sb_dsp.o32 sound_sn76489.o32 sound_speaker.o32 sound_ssi2001.o32 sound_wss.o32 \
+	soundopenal.o32 timer.o32 vid_ati_eeprom.o32 vid_ati_mach64.o32 vid_ati18800.o32 \
+	vid_ati28800.o32 vid_ati68860_ramdac.o32 vid_cga.o32 vid_cga_comp.o32 vid_cl_gd.o32 vid_cl_gd_blit.o32 vid_cl_ramdac.o32 vid_cpqvdu.o32 vid_ega.o32 vid_et4000.o32 \
+	vid_et4000w32.o32 vid_et4000w32i.o32 vid_hercules.o32 vid_icd2061.o32 vid_ics2595.o32 vid_mda.o32 \
+	vid_nv_riva128.o32 vid_olivetti_m24.o32 vid_oti067.o32 vid_paradise.o32 vid_pc1512.o32 vid_pc1640.o32 vid_pc200.o32 \
+	vid_pcjr.o32 vid_s3.o32 vid_s3_virge.o32 vid_sdac_ramdac.o32 vid_stg_ramdac.o32 vid_svga.o32 \
+	vid_svga_render.o32 vid_tandy.o32 vid_tgui9440.o32 vid_tkd8001_ramdac.o32 vid_tvga.o32 vid_unk_ramdac.o32 \
+	vid_vga.o32 vid_voodoo.obj video.o32 w83877f.o32 w83977f.o32 wd76c10.o32 win.o32 win-config.o32 win-d3d.o32 win-d3d-fs.o32 win-ddraw.o32 \
+	win-ddraw-fs.o32 win-deviceconfig.o32 win-hdconf.o32 win-joystick.o32 win-keyboard.o32 win-midi.o32 win-mouse.o32 \
+	win-status.o32 win-time.o32 win-video.o32 x86seg.o32 x87.o32 xtide.o32 pc.res32
+FMOBJ = dbopl.o32
+SIDOBJ = convolve.o32 convolve-sse.o32 envelope.o32 extfilt.o32 filter.o32 pot.o32 sid.o32 voice.o32 wave6581__ST.o32 wave6581_P_T.o32 wave6581_PS_.o32 wave6581_PST.o32 wave8580__ST.o32 wave8580_P_T.o32 wave8580_PS_.o32 wave8580_PST.o32 wave.o32
+SLIRPOBJ = bootp.o32 ip_icmp.o32 misc.o32 socket.o32 tcp_timer.o32 cksum.o32 ip_input.o32 queue.o32 tcp_input.o32 tftp.o32 debug.o32 ip_output.o32 sbuf.o32 tcp_output.o32 udp.o32 if.o32 mbuf.o32 slirp.o32 tcp_subr.o32
 
 LIBS = -mwindows -lwinmm -lopenal32 -lopenal32.dll -lddraw -ldinput -ldxguid -lgcov -ld3d9 -lwsock32 -liphlpapi -lstdc++ -static-libstdc++ -static-libgcc -static
 
@@ -35,18 +35,22 @@ PCem-X.exe: $(OBJ) $(FMOBJ) $(SIDOBJ) $(SLIRPOBJ)
 fall : PCem-X.exe
 
 clean :
-	rm *.o
+	rm *.o32
+	rm *.obj
 	rm *.exe
-	rm *.res
+	rm *.res32
 
 %.obj : %.c
 	$(CC) $(initcflags) -o $@ -c $<
 
-%.o : %.c
-	$(CC) $(CFLAGS) -c $<
+%.o32 : %.c
+	$(CC) $(CFLAGS) -o $@ -c $<
 
-%.o : %.cc
-	$(CPP) $(CFLAGS) -c $<
+%.o32 : %.cc
+	$(CPP) $(CFLAGS) -o $@ -c $<
 
-pc.res: pc.rc
-	$(WINDRES) -i pc.rc --input-format=rc -o pc.res -O coff 
+%.o32 : %.cpp
+	$(CPP) $(CFLAGS) -o $@ -c $<
+
+pc.res32: pc.rc
+	$(WINDRES) -i pc.rc --input-format=rc -o pc.res32 -O coff 
