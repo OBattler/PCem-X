@@ -41,36 +41,30 @@ void writememll(uint32_t seg, uint32_t addr, uint32_t val);
 
 #undef readmemb
 #undef readmemw
+#if 0
 int i808x_memcycs()
 {
 	if (is8086)  return 4;
-	return 8;
+	return 15;
 }
+#endif
 
 uint8_t readmemb(uint32_t a)
 {
-	if (!is8086)
-		if (a!=(cs+pc)) memcycs+=i808x_memcycs();
-	else
-		if (a!=(cs+pc)) memcycs+=4;
+	if (a!=(cs+pc)) memcycs+=4;
         if (readlookup2[(a)>>12]==-1) return readmembl(a);
         else return *(uint8_t *)(readlookup2[(a) >> 12] + (a));
 }
 
 uint8_t readmembf(uint32_t a)
 {
-	if (!is8086)
-		if (a!=(cs+pc)) memcycs+=i808x_memcycs();
         if (readlookup2[(a)>>12]==-1) return readmembl(a);
         else return *(uint8_t *)(readlookup2[(a) >> 12] + (a));
 }
 
 uint16_t readmemw(uint32_t s, uint16_t a)
 {
-	if (!is8086)
-		if (a!=(cs+pc)) memcycs+=i808x_memcycs();
-	else
-        	if (a!=(cs+pc)) memcycs+=(8>>is8086);
+       	if (a!=(cs+pc)) memcycs+=(8>>is8086);
         if ((readlookup2[((s)+(a))>>12]==-1 || (s)==0xFFFFFFFF)) return readmemwl(s,a);
         else return *(uint16_t *)(readlookup2[(s + a) >> 12] + s + a);
 }
@@ -87,20 +81,14 @@ void refreshread() { /*pclog("Refreshread\n"); */FETCHCOMPLETE(); memcycs+=4; }
 void writemembl(uint32_t addr, uint8_t val);
 void writememb(uint32_t a, uint8_t v)
 {
-	if (!is8086)
-		memcycs += i808x_memcycs();
-	else
-	        memcycs+=4;
+        memcycs+=4;
         if (writelookup2[(a)>>12]==-1) writemembl(a,v);
         else *(uint8_t *)(writelookup2[a >> 12] + a) = v;
 }
 void writememwl(uint32_t seg, uint32_t addr, uint16_t val);
 void writememw(uint32_t s, uint32_t a, uint16_t v)
 {
-	if (!is8086)
-		memcycs += i808x_memcycs();
-	else
-	        memcycs+=(8>>is8086);
+        memcycs+=(8>>is8086);
         if (writelookup2[((s)+(a))>>12]==-1 || (s)==0xFFFFFFFF) writememwl(s,a,v);
         else *(uint16_t *)(writelookup2[(s + a) >> 12] + s + a) = v;
 }
@@ -261,7 +249,7 @@ inline void FETCHCLEAR()
 //        fetchcycles=0;
         prefetchpc=pc;
         prefetchw=0;
-        memcycs=cycdiff-cycles;
+        memcycs=(cycdiff-cycles) << (is8086 ? 0 : 1);
         fetchclocks=0;
 //        memcycs=cycles;
 /*        prefetchqueue[0]=readmembf(cs+prefetchpc);
@@ -407,6 +395,7 @@ static void fetcheal()
                 eaaddr+=(*mod1add[0][rm])+(*mod1add[1][rm]);
                 easeg=*mod1seg[rm];
                 eaaddr&=0xFFFF;
+		if (!is8086)  memcycs+=8;
         }
 }
 
@@ -884,6 +873,7 @@ void rep(int fv)
                 goto startrep;
                 break;
                 case 0x6E: /*REP OUTSB*/
+		if (!is80286)  goto rep_default;
                 if (c>0)
                 {
                         temp2=readmemb(ds+SI);
@@ -1065,6 +1055,7 @@ void rep(int fv)
                 else firstrepcycle=1;
                 break;
                 default:
+rep_default:
                         pc=ipc;
                         cycles-=20;
                         FETCHCLEAR();
@@ -1708,67 +1699,79 @@ void execx86(int cycs)
                         cycles-=12;
                         break;
 
-
+			case 0x60:
                         case 0x70: /*JO*/
                         offset=(int8_t)FETCH();
                         if (flags&V_FLAG) { pc+=offset; cycles-=12; FETCHCLEAR(); }
                         cycles-=4;
                         break;
+			case 0x61:
                         case 0x71: /*JNO*/
                         offset=(int8_t)FETCH();
                         if (!(flags&V_FLAG)) { pc+=offset; cycles-=12; FETCHCLEAR(); }
                         cycles-=4;
                         break;
+			case 0x62:
                         case 0x72: /*JB*/
                         offset=(int8_t)FETCH();
                         if (flags&C_FLAG) { pc+=offset; cycles-=12; FETCHCLEAR(); }
                         cycles-=4;
                         break;
+			case 0x63:
                         case 0x73: /*JNB*/
                         offset=(int8_t)FETCH();
                         if (!(flags&C_FLAG)) { pc+=offset; cycles-=12; FETCHCLEAR(); }
                         cycles-=4;
                         break;
+			case 0x64:
                         case 0x74: /*JE*/
                         offset=(int8_t)FETCH();
                         if (flags&Z_FLAG) { pc+=offset; cycles-=12; FETCHCLEAR(); }
                         cycles-=4;
                         break;
+			case 0x65:
                         case 0x75: /*JNE*/
                         offset=(int8_t)FETCH();
                         cycles-=4;
                         if (!(flags&Z_FLAG)) { pc+=offset; cycles-=12; FETCHCLEAR(); }
                         break;
+			case 0x66:
                         case 0x76: /*JBE*/
                         offset=(int8_t)FETCH();
                         if (flags&(C_FLAG|Z_FLAG)) { pc+=offset; cycles-=12; FETCHCLEAR(); }
                         cycles-=4;
                         break;
+			case 0x67:
                         case 0x77: /*JNBE*/
                         offset=(int8_t)FETCH();
                         if (!(flags&(C_FLAG|Z_FLAG))) { pc+=offset; cycles-=12; FETCHCLEAR(); }
                         cycles-=4;
                         break;
+			case 0x68:
                         case 0x78: /*JS*/
                         offset=(int8_t)FETCH();
                         if (flags&N_FLAG)  { pc+=offset; cycles-=12; FETCHCLEAR(); }
                         cycles-=4;
                         break;
+			case 0x69:
                         case 0x79: /*JNS*/
                         offset=(int8_t)FETCH();
                         if (!(flags&N_FLAG))  { pc+=offset; cycles-=12; FETCHCLEAR(); }
                         cycles-=4;
                         break;
+			case 0x6A:
                         case 0x7A: /*JP*/
                         offset=(int8_t)FETCH();
                         if (flags&P_FLAG)  { pc+=offset; cycles-=12; FETCHCLEAR(); }
                         cycles-=4;
                         break;
+			case 0x6B:
                         case 0x7B: /*JNP*/
                         offset=(int8_t)FETCH();
                         if (!(flags&P_FLAG))  { pc+=offset; cycles-=12; FETCHCLEAR(); }
                         cycles-=4;
                         break;
+			case 0x6C:
                         case 0x7C: /*JL*/
                         offset=(int8_t)FETCH();
                         temp=(flags&N_FLAG)?1:0;
@@ -1776,6 +1779,7 @@ void execx86(int cycs)
                         if (temp!=temp2)  { pc+=offset; cycles-=12; FETCHCLEAR(); }
                         cycles-=4;
                         break;
+			case 0x6D:
                         case 0x7D: /*JNL*/
                         offset=(int8_t)FETCH();
                         temp=(flags&N_FLAG)?1:0;
@@ -1783,6 +1787,7 @@ void execx86(int cycs)
                         if (temp==temp2)  { pc+=offset; cycles-=12; FETCHCLEAR(); }
                         cycles-=4;
                         break;
+			case 0x6E:
                         case 0x7E: /*JLE*/
                         offset=(int8_t)FETCH();
                         temp=(flags&N_FLAG)?1:0;
@@ -1790,6 +1795,7 @@ void execx86(int cycs)
                         if ((flags&Z_FLAG) || (temp!=temp2))  { pc+=offset; cycles-=12; FETCHCLEAR(); }
                         cycles-=4;
                         break;
+			case 0x6F:
                         case 0x7F: /*JNLE*/
                         offset=(int8_t)FETCH();
                         temp=(flags&N_FLAG)?1:0;
@@ -2317,6 +2323,7 @@ void execx86(int cycs)
                         cycles-=4;
                         break;
 
+                        case 0xC0: /*RET*/
                         case 0xC2: /*RET*/
                         tempw=getword();
                         if (ssegs) ss=oldss;
@@ -2327,6 +2334,7 @@ void execx86(int cycs)
                         cycles-=24;
                         FETCHCLEAR();
                         break;
+                        case 0xC1: /*RET*/
                         case 0xC3: /*RET*/
                         if (ssegs) ss=oldss;
                         pc=readmemw(ss,SP);
@@ -2364,6 +2372,7 @@ void execx86(int cycs)
                         cycles-=((mod==3)?4:14);
                         break;
 
+                        case 0xC8: /*RETF*/
                         case 0xCA: /*RETF*/
                         tempw=getword();
                         if (ssegs) ss=oldss;
@@ -2375,6 +2384,7 @@ void execx86(int cycs)
                         cycles-=33;
                         FETCHCLEAR();
                         break;
+                        case 0xC9: /*RETF*/
                         case 0xCB: /*RETF*/
                         if (ssegs) ss=oldss;
                         pc=readmemw(ss,SP);
@@ -2932,12 +2942,14 @@ void execx86(int cycs)
                         temp=FETCH();
                         outb(temp,AL);
                         cycles-=14;
+			if (!is8086)  cycles--;
                         break;
                         case 0xE7: /*OUT AX*/
                         temp=FETCH();
                         outb(temp,AL);
                         outb(temp+1,AH);
                         cycles-=14;
+			if (!is8086)  cycles--;
                         break;
 
                         case 0xE8: /*CALL rel 16*/
@@ -2986,14 +2998,17 @@ void execx86(int cycs)
                         case 0xEE: /*OUT DX,AL*/
                         outb(DX,AL);
                         cycles-=12;
+			if (!is8086)  cycles--;
                         break;
                         case 0xEF: /*OUT DX,AX*/
                         outb(DX,AL);
                         outb(DX+1,AH);
                         cycles-=12;
+			if (!is8086)  cycles--;
                         break;
 
                         case 0xF0: /*LOCK*/
+                        case 0xF1: /*LOCK*/
                         cycles-=4;
                         break;
 

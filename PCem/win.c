@@ -448,8 +448,8 @@ int WINAPI WinMain (HINSTANCE hThisInstance,
         wincl.cbSize = sizeof (WNDCLASSEX);
 
         /* Use default icon and mouse-pointer */
-        wincl.hIcon = LoadIcon (NULL, IDI_APPLICATION);
-        wincl.hIconSm = LoadIcon (NULL, IDI_APPLICATION);
+        wincl.hIcon = LoadIcon (hinstance, 100);
+        wincl.hIconSm = LoadIcon (hinstance, 100);
         wincl.hCursor = NULL;//LoadCursor (NULL, IDC_ARROW);
         wincl.lpszMenuName = NULL;                 /* No menu */
         wincl.cbClsExtra = 0;                      /* No extra bytes after the window class */
@@ -487,6 +487,7 @@ int WINAPI WinMain (HINSTANCE hThisInstance,
         );
 
         /* Make the window visible on the screen */
+
         ShowWindow (hwnd, nFunsterStil);
 
 //        win_set_window(hwnd);

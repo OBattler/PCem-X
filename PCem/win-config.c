@@ -194,6 +194,9 @@ static BOOL CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPAR
                 h=GetDlgItem(hdlg, IDC_CHECKFORCE43);
                 SendMessage(h, BM_SETCHECK, force_43, 0);
 
+                h=GetDlgItem(hdlg, IDC_CHECKOVERSCAN);
+                SendMessage(h, BM_SETCHECK, enable_overscan, 0);
+
                 h=GetDlgItem(hdlg, IDC_CHECKPS1XTIDE);
                 SendMessage(h, BM_SETCHECK, ps1xtide, 0);
 
@@ -320,6 +323,9 @@ static BOOL CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPAR
 
                         h = GetDlgItem(hdlg, IDC_CHECKFORCE43);
                         force_43 = SendMessage(h, BM_GETCHECK, 0, 0);
+
+                        h = GetDlgItem(hdlg, IDC_CHECKOVERSCAN);
+                        enable_overscan = SendMessage(h, BM_GETCHECK, 0, 0);
 
                         h = GetDlgItem(hdlg, IDC_CHECKPS1XTIDE);
                         temp_ps1xtide = SendMessage(h, BM_GETCHECK, 0, 0);
