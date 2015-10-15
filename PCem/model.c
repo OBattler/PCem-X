@@ -377,6 +377,7 @@ void ps1_init()
 {
 	PCI = 0;
 	maxide = 2;
+	AT = 1;
         common_init();
         pit_set_out_func(1, pit_refresh_timer_at);
         dma16_init();
