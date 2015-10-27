@@ -388,8 +388,10 @@ void et4000w32p_mmu_write(uint32_t addr, uint8_t val, void *p)
                 }
                 else
                 {
-                        svga->vram[(addr & 0x1fff) + et4000->mmu.base[bank]] = val;
-                        svga->changedvram[((addr & 0x1fff) + et4000->mmu.base[bank]) >> 12] = changeframecount;
+                	if (((addr & 0x1fff) + et4000->mmu.base[bank]) < svga->vram_limit) {
+	                        svga->vram[(addr & 0x1fff) + et4000->mmu.base[bank]] = val;
+	                        svga->changedvram[((addr & 0x1fff) + et4000->mmu.base[bank]) >> 12] = changeframecount;
+                	}
                 }
                 break;
                 case 0x6000:
@@ -492,6 +494,7 @@ uint8_t et4000w32p_mmu_read(uint32_t addr, void *p)
                         /*???*/
                         return temp;
                 }
+                if (((addr & 0x1fff) + et4000->mmu.base[bank]) >= svga->vram_limit) return 0xff;
                 return svga->vram[(addr&0x1fff) + et4000->mmu.base[bank]];
                 
                 case 0x6000:
