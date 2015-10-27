@@ -1,4 +1,4 @@
-#define DIRECTINPUT_VERSION 0x0700
+#define DIRECTINPUT_VERSION 0x0800
 #include <dinput.h>
 #include "plat-joystick.h"
 #include "win.h"
@@ -14,8 +14,8 @@ extern "C" void poll_joystick();
 
 joystick_t joystick_state[2];
 
-static LPDIRECTINPUT lpdi;
-static LPDIRECTINPUTDEVICE2 lpdi_joystick[2] = {NULL, NULL};
+static LPDIRECTINPUT8 lpdi;
+static LPDIRECTINPUTDEVICE8 lpdi_joystick[2] = {NULL, NULL};
 
 int joysticks_present = 0;
 static GUID joystick_guids[2];
@@ -25,7 +25,9 @@ static BOOL CALLBACK joystick_enum_callback(LPCDIDEVICEINSTANCE lpddi, LPVOID da
         if (joysticks_present >= 2)
                 return DIENUM_STOP;
         
+#ifndef RELEASE_BUILD
         pclog("joystick_enum_callback : found joystick %i : %s\n", joysticks_present, lpddi->tszProductName);
+#endif
         
         joystick_guids[joysticks_present++] = lpddi->guidInstance;
 
@@ -43,22 +45,24 @@ void joystick_init()
         
         joysticks_present = 0;
         
-        if (FAILED(DirectInputCreate(hinstance, DIRECTINPUT_VERSION, &lpdi, NULL)))
+        if (FAILED(DirectInput8Create(hinstance, DIRECTINPUT_VERSION, IID_IDirectInput8A, (void **) &lpdi, NULL)))
                 fatal("joystick_init : DirectInputCreate failed\n"); 
 
         if (FAILED(lpdi->EnumDevices(DIDEVTYPE_JOYSTICK, joystick_enum_callback, NULL, DIEDFL_ATTACHEDONLY)))
                 fatal("joystick_init : EnumDevices failed\n");
 
+#ifndef RELEASE_BUILD
         pclog("joystick_init: joysticks_present=%i\n", joysticks_present);
+#endif
         
         for (c = 0; c < joysticks_present; c++)
         {                
-                LPDIRECTINPUTDEVICE lpdi_joystick_temp = NULL;
+                LPDIRECTINPUTDEVICE8 lpdi_joystick_temp = NULL;
                 DIPROPRANGE joy_axis_range;
             
                 if (FAILED(lpdi->CreateDevice(joystick_guids[c], &lpdi_joystick_temp, NULL)))
                         fatal("joystick_init : CreateDevice failed\n");
-                if (FAILED(lpdi_joystick_temp->QueryInterface(IID_IDirectInputDevice2, (void **)&lpdi_joystick[c])))
+                if (FAILED(lpdi_joystick_temp->QueryInterface(IID_IDirectInputDevice8, (void **)&lpdi_joystick[c])))
                         fatal("joystick_init : CreateDevice failed\n");
                 lpdi_joystick_temp->Release();
                 if (FAILED(lpdi_joystick[c]->SetCooperativeLevel(ghwnd, DISCL_BACKGROUND | DISCL_NONEXCLUSIVE)))

@@ -369,7 +369,9 @@ void clgd_recalc_mapping(clgd_t *clgd)
 {
         svga_t *svga = &clgd->svga;
         
+#ifndef RELEASE_BUILD
         pclog("Write mapping %02X %i\n", svga->gdcreg[6], svga->seqregs[0x17] & 0x04);
+#endif
         switch (svga->gdcreg[6] & 0x0C)
         {
                 case 0x0: /*128k at A0000*/
@@ -434,7 +436,9 @@ void clgd_hwcursor_draw(svga_t *svga, int displine)
 	int y_add = enable_overscan ? 16 : 0;
 	int x_add = enable_overscan ? 8 : 0;
         
+#ifndef RELEASE_BUILD
         pclog("HWcursor %i %i  %i %i  %x %02X %02X\n", svga->hwcursor_latch.x, svga->hwcursor_latch.y,  offset, displine, svga->hwcursor_latch.addr, vram[svga->hwcursor_latch.addr], vram[svga->hwcursor_latch.addr + 0x80]);
+#endif
         for (x = 0; x < cursize; x += 8)
         {
                 dat[0] = svga->vram[svga->hwcursor_latch.addr];
@@ -463,7 +467,9 @@ void clgd_start_blit(uint32_t cpu_dat, int count, void *p)
         clgd_t *clgd = (clgd_t *)p;
         svga_t *svga = &clgd->svga;
 
+#ifndef RELEASE_BUILD
         pclog("clgd_start_blit %i\n", count);
+#endif
         if (count == -1)
         {
                 clgd->blt.dst_addr_backup = clgd->blt.dst_addr;
@@ -471,7 +477,9 @@ void clgd_start_blit(uint32_t cpu_dat, int count, void *p)
                 clgd->blt.width_backup    = clgd->blt.width;
                 clgd->blt.height_internal = clgd->blt.height;
                 clgd->blt.x_count         = clgd->blt.mask & 7;
+#ifndef RELEASE_BUILD
                 pclog("clgd_start_blit : size %i, %i\n", clgd->blt.width, clgd->blt.height);
+#endif
                 
                 if (clgd->blt.mode & 0x04)
                 {
@@ -546,7 +554,9 @@ void clgd_start_blit(uint32_t cpu_dat, int count, void *p)
                 dst = svga->vram[clgd->blt.dst_addr & svga->vrammask];
                 svga->changedvram[(clgd->blt.dst_addr & svga->vrammask) >> 12] = changeframecount;
                
+#ifndef RELEASE_BUILD
                 pclog("Blit %i,%i %06X %06X  %06X %02X %02X  %02X %02X ", clgd->blt.width, clgd->blt.height_internal, clgd->blt.src_addr, clgd->blt.dst_addr, clgd->blt.src_addr & svga->vrammask, svga->vram[clgd->blt.src_addr & svga->vrammask], 0x80 >> (clgd->blt.dst_addr & 7), src, dst);
+#endif
                 switch (clgd->blt.rop)
                 {
                         case 0x00: dst = 0;             break;
@@ -567,7 +577,9 @@ void clgd_start_blit(uint32_t cpu_dat, int count, void *p)
                         // case 0xda: dst = ~(src &  dst); break;                       
                         case 0xda: dst =  ~src & ~dst;  break;                       
                 }
+#ifndef RELEASE_BUILD
                 pclog("%02X  %02X\n", dst, mask);
+#endif
                 
                 if ((clgd->blt.width_backup - clgd->blt.width) >= (clgd->blt.mask & 7) &&
                     !((clgd->blt.mode & 0x08) && !mask))
@@ -628,7 +640,9 @@ void clgd_mmio_write(uint32_t addr, uint8_t val, void *p)
 
 	svga->vram[clgd->vram_size - 256 + (addr & 0xff)] = val;
 
+#ifndef RELEASE_BUILD
         pclog("MMIO write %08X %02X\n", addr, val);
+#endif
         switch (addr & 0xff)
         {
                 case 0x00:
@@ -818,7 +832,9 @@ uint8_t clgd_mmio_read(uint32_t addr, void *p)
         clgd_t *clgd = (clgd_t *)p;
 	svga_t *svga = &clgd->svga;
 
+#ifndef RELEASE_BUILD
         pclog("MMIO read %08X\n", addr);
+#endif
         switch (addr & 0xff)
         {
                 case 0x40: /*BLT status*/
@@ -832,13 +848,17 @@ uint8_t clgd_mmio_read(uint32_t addr, void *p)
 #ifdef LEGACY_BLT_READWRITE
 void clgd_blt_write_b(uint32_t addr, uint8_t val, void *p)
 {
+#ifndef RELEASE_BUILD
         pclog("clgd_blt_write_w %08X %08X\n", addr, val);
+#endif
         cirrus_bitblt_start(clgd, svga);
 }
 
 void clgd_blt_write_w(uint32_t addr, uint16_t val, void *p)
 {
+#ifndef RELEASE_BUILD
         pclog("clgd_blt_write_w %08X %08X\n", addr, val);
+#endif
         cirrus_bitblt_start(clgd, svga);
 }
 
@@ -846,7 +866,9 @@ void clgd_blt_write_l(uint32_t addr, uint32_t val, void *p)
 {
         clgd_t *clgd = (clgd_t *)p;
         
+#ifndef RELEASE_BUILD
         pclog("clgd_blt_write_l %08X %08X  %04X %04X\n", addr, val,  ((val >> 8) & 0x00ff) | ((val << 8) & 0xff00), ((val >> 24) & 0x00ff) | ((val >> 8) & 0xff00));
+#endif
         if ((clgd->blt.mode & 0x84) == 0x84)
         {
                 clgd_start_blit( val        & 0xff, 8, p);

@@ -3,9 +3,19 @@
 #include <d3d9.h>
 #undef BITMAP
 #include "resources.h"
+#ifdef _MSC_VER
+extern "C" {
+#include "video.h"
+}
+#include "win-d3d-fs.h"
+extern "C" {
+#include "win.h"
+}
+#else
 #include "video.h"
 #include "win-d3d-fs.h"
 #include "win.h"
+#endif
 
 extern "C" void fatal(const char *format, ...);
 extern "C" void pclog(const char *format, ...);
@@ -162,7 +172,7 @@ static void d3d_fs_init_objects()
         
         for (y = 0; y < 2048; y++)
         {
-                uint32_t *p = (uint32_t *)(dr.pBits + (y * dr.Pitch));
+                uint32_t *p = (uint32_t *)((unsigned char*)dr.pBits + (y * dr.Pitch));
                 memset(p, 0, 2048 * 4);
         }
 
@@ -299,7 +309,7 @@ static void d3d_fs_size(RECT window_rect, double *l, double *t, double *r, doubl
 static void d3d_fs_blit_memtoscreen(int x, int y, int y1, int y2, int w, int h)
 {
         HRESULT hr = D3D_OK;
-        VOID* pVoid;
+        VOID* pVoid = 0;
         D3DLOCKED_RECT dr;
         RECT window_rect;
         uint32_t *p, *src;
@@ -347,7 +357,7 @@ static void d3d_fs_blit_memtoscreen(int x, int y, int y1, int y2, int w, int h)
                    fatal("LockRect failed\n");
         
                 for (yy = y1; yy < y2; yy++)
-                        memcpy(dr.pBits + ((yy - y1) * dr.Pitch), &(((uint32_t *)buffer32->line[yy + y])[x]), w * 4);
+                        memcpy((unsigned char*)dr.pBits + ((yy - y1) * dr.Pitch), &(((uint32_t *)buffer32->line[yy + y])[x]), w * 4);
 
                 d3dTexture->UnlockRect(0);
         }
@@ -389,7 +399,7 @@ static void d3d_fs_blit_memtoscreen(int x, int y, int y1, int y2, int w, int h)
 static void d3d_fs_blit_memtoscreen_8(int x, int y, int w, int h)
 {
         HRESULT hr = D3D_OK;
-        VOID* pVoid;
+        VOID* pVoid = 0;
         D3DLOCKED_RECT dr;
         RECT window_rect;
         uint32_t *p, *src;
@@ -438,7 +448,7 @@ static void d3d_fs_blit_memtoscreen_8(int x, int y, int w, int h)
         
                 for (yy = 0; yy < h; yy++)
                 {
-                        uint32_t *p = (uint32_t *)(dr.pBits + (yy * dr.Pitch));
+                        uint32_t *p = (uint32_t *)((unsigned char*)dr.pBits + (yy * dr.Pitch));
                         if ((y + yy) >= 0 && (y + yy) < buffer->h)
                         {
                                 for (xx = 0; xx < w; xx++)

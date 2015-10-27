@@ -178,7 +178,11 @@ uint8_t keyboard_pcjr_read(uint16_t port, void *priv)
                 break;
                 
                 default:
+#ifndef RELEASE_BUILD
                 pclog("\nBad XT keyboard read %04X\n", port);
+#else
+		;
+#endif
                 //dumpregs();
                 //exit(-1);
         }

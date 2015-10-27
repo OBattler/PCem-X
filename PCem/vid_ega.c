@@ -69,10 +69,12 @@ void ega_out(uint16_t addr, uint8_t val, void *p)
 					if ((ega->attrregs[0x10] & 0x40) && gfxcard != GFX_EGA)  ega->egapal[c] |= ((ega->attrregs[0x14] & 0xc) << 4);
                                 }
                         }
+#ifndef RELEASE_BUILD
                         if (ega->attraddr == 0x11)
 			{
 				pclog("Border color now %i\n", ega->attrregs[0x11]);
 			}
+#endif
                         if ((ega->attraddr == 0x10) && (ega->attraddr == 0x11))
 			{
                                 if (o != val)  ega_recalctimings(ega);
@@ -311,8 +313,8 @@ void ega_recalctimings(ega_t *ega)
         _dispontime  *= crtcconst;
         _dispofftime *= crtcconst;
 
-	ega->dispontime  = (int)(_dispontime  * (1 << TIMER_SHIFT));
-	ega->dispofftime = (int)(_dispofftime * (1 << TIMER_SHIFT));
+	ega->dispontime  = (int)(_dispontime  * (1 << TIMER_SHIFT) * 3.0d);
+	ega->dispofftime = (int)(_dispofftime * (1 << TIMER_SHIFT) * 3.0d);
         pclog("dispontime %i (%f)  dispofftime %i (%f)\n", ega->dispontime, (float)ega->dispontime / (1 << TIMER_SHIFT),
                                                            ega->dispofftime, (float)ega->dispofftime / (1 << TIMER_SHIFT)); */
 
@@ -327,8 +329,8 @@ void ega_recalctimings(ega_t *ega)
         _dispontime *= crtcconst;
         _dispofftime *= crtcconst;
 
-	ega->dispontime = (int)(_dispontime * (1 << TIMER_SHIFT));
-	ega->dispofftime = (int)(_dispofftime * (1 << TIMER_SHIFT));
+	ega->dispontime = (int)(_dispontime * (1 << TIMER_SHIFT) * 3.0d);
+	ega->dispofftime = (int)(_dispofftime * (1 << TIMER_SHIFT) * 3.0d);
 
 //        printf("EGA horiz total %i display end %i clock rate %i vidclock %i %i\n",crtc[0],crtc[1],egaswitchread,vidclock,((ega3c2>>2)&3) | ((tridentnewctrl2<<2)&4));
 //        printf("EGA vert total %i display end %i max row %i vsync %i\n",ega_vtotal,ega_dispend,(crtc[9]&31)+1,ega_vsyncstart);
@@ -1063,7 +1065,9 @@ void *ega_standalone_init()
         if (ega->bios_rom.rom[0x3ffe] == 0xaa && ega->bios_rom.rom[0x3fff] == 0x55)
         {
                 int c;
+#ifndef RELEASE_BUILD
                 pclog("Read EGA ROM in reverse\n");
+#endif
 
                 for (c = 0; c < 0x2000; c++)
                 {
@@ -1075,8 +1079,8 @@ void *ega_standalone_init()
 
         ega->crtc[0] = 63;
         // ega->crtc[6] = 255;
-        ega->dispontime = 1000 * (1 << TIMER_SHIFT);
-        ega->dispofftime = 1000 * (1 << TIMER_SHIFT);
+        ega->dispontime = 1000 * (1 << TIMER_SHIFT) * 3.0d;
+        ega->dispofftime = 1000 * (1 << TIMER_SHIFT) * 3.0d;
 	ega->dispontime <<= 1;
 	ega->dispofftime <<= 1;
 
@@ -1107,7 +1111,9 @@ void *cpqega_standalone_init()
         if (ega->bios_rom.rom[0x3ffe] == 0xaa && ega->bios_rom.rom[0x3fff] == 0x55)
         {
                 int c;
+#ifndef RELEASE_BUILD
                 pclog("Read EGA ROM in reverse\n");
+#endif
 
                 for (c = 0; c < 0x2000; c++)
                 {
@@ -1119,8 +1125,8 @@ void *cpqega_standalone_init()
 
         ega->crtc[0] = 63;
         // ega->crtc[6] = 255;
-        ega->dispontime = 1000 * (1 << TIMER_SHIFT);
-        ega->dispofftime = 1000 * (1 << TIMER_SHIFT);
+        ega->dispontime = 1000 * (1 << TIMER_SHIFT) * 3.0d;
+        ega->dispofftime = 1000 * (1 << TIMER_SHIFT) * 3.0d;
 
         ega_init(ega);        
 	// ega->attrregs[0x10] |= 0xF7;
@@ -1149,7 +1155,9 @@ void *sega_standalone_init()
         if (ega->bios_rom.rom[0x3ffe] == 0xaa && ega->bios_rom.rom[0x3fff] == 0x55)
         {
                 int c;
+#ifndef RELEASE_BUILD
                 pclog("Read EGA ROM in reverse\n");
+#endif
 
                 for (c = 0; c < 0x2000; c++)
                 {
@@ -1161,8 +1169,8 @@ void *sega_standalone_init()
 
         ega->crtc[0] = 63;
         // ega->crtc[6] = 255;
-        ega->dispontime = 1000 * (1 << TIMER_SHIFT);
-        ega->dispofftime = 1000 * (1 << TIMER_SHIFT);
+        ega->dispontime = 1000 * (1 << TIMER_SHIFT) * 3.0d;
+        ega->dispofftime = 1000 * (1 << TIMER_SHIFT) * 3.0d;
 
         ega_init(ega);        
 	// ega->attrregs[0x10] |= 0xF7;
@@ -1196,7 +1204,9 @@ void *jega_standalone_init()
         if (ega->bios_rom.rom[0x7ffe] == 0xaa && ega->bios_rom.rom[0x7fff] == 0x55)
         {
                 int c;
+#ifndef RELEASE_BUILD
                 pclog("Read EGA ROM in reverse\n");
+#endif
 
                 for (c = 0; c < 0x2000; c++)
                 {
@@ -1208,8 +1218,8 @@ void *jega_standalone_init()
 
         ega->crtc[0] = 63;
         // ega->crtc[6] = 255;
-        ega->dispontime = 1000 * (1 << TIMER_SHIFT);
-        ega->dispofftime = 1000 * (1 << TIMER_SHIFT);
+        ega->dispontime = 1000 * (1 << TIMER_SHIFT) * 3.0d;
+        ega->dispofftime = 1000 * (1 << TIMER_SHIFT) * 3.0d;
 
         ega_init(ega);        
 	// ega->attrregs[0x10] |= 0xF7;

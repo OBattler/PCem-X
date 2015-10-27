@@ -1,4 +1,4 @@
-#define DIRECTINPUT_VERSION 0x0700
+#define DIRECTINPUT_VERSION 0x0800
 #include <dinput.h>
 #include "plat-mouse.h"
 #include "win.h"
@@ -13,8 +13,8 @@ extern "C" void mouse_close();
 extern "C" void mouse_poll_host();
 extern "C" void mouse_get_mickeys(int *x, int *y);
 
-static LPDIRECTINPUT lpdi;
-static LPDIRECTINPUTDEVICE lpdi_mouse = NULL;
+static LPDIRECTINPUT8 lpdi;
+static LPDIRECTINPUTDEVICE8 lpdi_mouse = NULL;
 static DIMOUSESTATE mousestate;
 static int mouse_x = 0, mouse_y = 0;
 int mouse_buttons = 0;
@@ -23,7 +23,7 @@ void mouse_init()
 {
         atexit(mouse_close);
         
-        if (FAILED(DirectInputCreate(hinstance, DIRECTINPUT_VERSION, &lpdi, NULL)))
+        if (FAILED(DirectInput8Create(hinstance, DIRECTINPUT_VERSION, IID_IDirectInput8A, (void **) &lpdi, NULL)))
                 fatal("mouse_init : DirectInputCreate failed\n"); 
         if (FAILED(lpdi->CreateDevice(GUID_SysMouse, &lpdi_mouse, NULL)))
            fatal("mouse_init : CreateDevice failed\n");

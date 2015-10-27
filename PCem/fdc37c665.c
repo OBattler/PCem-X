@@ -17,7 +17,7 @@ static int fdc37c665_curreg = 0;
 static uint8_t fdc37c665_regs[16];
 static uint8_t tries;
 
-#define smouse ((romset == ROM_SIS496) || (romset == ROM_430FX) || (romset == ROM_440FX))
+#define smouse ((romset == ROM_SIS496) || (romset == ROM_430FX))
 
 void fdc37c665_write(uint16_t port, uint8_t val, void *priv)
 {

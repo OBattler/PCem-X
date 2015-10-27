@@ -263,7 +263,9 @@ int samediskclass(int d, int c, int s, int n)
 
 	int rate = 2;
 
+#ifndef RELEASE_BUILD
 	pclog("samediskclass(%02X, %02X, %02X, %02X)\n", d, c, s, n);
+#endif
 
 	// Special (easier) processing for PEF images
 	// Now testing it for all images
@@ -492,7 +494,9 @@ void set_sector_id_2m(int d, int t, int h, int s, int sid, int nb)
 void read_raw_sectors(FILE *f, int d, uint8_t st, uint8_t nt, uint8_t sh, uint8_t nh, uint8_t ss2, uint8_t ns, int nb, uint8_t si)
 {
 	unsigned int h,t,t2,s,b;
+#ifndef RELEASE_BUILD
 	pclog("Read raw sectors: floppy is%s special\n", (ISSPECIAL) ? "" : " not");
+#endif
 	for (t=st;t<(st+nt);t++)
 	{
 		for (h=sh;h<(sh+nh);h++)
@@ -637,7 +641,9 @@ void read_xdf_track0(FILE *f, int d, int sfat, int se, int sg)
 {
 	unsigned int s;
 
+#ifndef RELEASE_BUILD
 	pclog("read_xdf_track0(%lu, %lu, %lu)\n", sfat, se, sg);
+#endif
 
 	for (s=0;s<(se+sg);s++)
 	{
@@ -697,10 +703,14 @@ void read_xdf(FILE *f, int d, int xdft)
 			t2 = t;
 			if (ISSPECIAL)  t2 >>= 1;
 
+#ifndef RELEASE_BUILD
 			pclog("Reading track %u...\n", t);
+#endif
 			for(s2=0;s2<(xdf_spt[xdft]*2);s2++)
 			{
+#ifndef RELEASE_BUILD
 				pclog("xdf_map[%lu][%lu] = {%lu, %lu, %lu}\n", xdft, s2, xdf_map[xdft][s2][0], xdf_map[xdft][s2][1], xdf_map[xdft][s2][2]);
+#endif
 				set_sector_id(d, t2, xdf_map[xdft][s2][0], xdf_map[xdft][s2][1], xdf_map[xdft][s2][2] + 128, xdf_map[xdft][s2][2]);
 			}
 			/* Doing it twice so sector ID's are known when reading. */
@@ -777,7 +787,9 @@ void read_2m(FILE *f, int d, int xdft)
 		{
 			t2 = t;
 			if (ISSPECIAL)  t2 >>= 1;
+#ifndef RELEASE_BUILD
 			pclog("Reading track %u...\n", t);
+#endif
 			for(s2=1;s2<(xdf_spt[xdft]*2);s2++)
 			{
 				set_sector_id_2m(d, t2, xdf_map[xdft][s2][0], xdf_map[xdft][s2][1] - 1, xdf_map[xdft][s2][1], xdf_map[xdft][s2][2]);
@@ -798,7 +810,9 @@ int guess_geometry(FILE *f, int d)
 	if ((fdd[d].SIDES < 1) || (fdd[d].SIDES > 2) || (fdd[d].BPS < 128) || (fdd[d].BPS > 2048))
 	{
 		// Early boot sector lacking the required data
+#ifndef RELEASE_BUILD
 		printf("Early boot sector lacking the required data, trying to guess\n");
+#endif
 		fseek(f, 0, SEEK_END);
 		// 256 bytes per sector goes here for the sake of those Corona Data Systems MS-DOS 1.x 320 kB images
 		fdd[d].BPS = 512;
@@ -869,8 +883,10 @@ int guess_geometry(FILE *f, int d)
 				else
 				{
 					result = 0;
+#ifndef RELEASE_BUILD
 					printf("Guessing failed\n");
 					pclog("Not 30, 35, 40, 41, or 42 tracks\n");
+#endif
 				}
 			}			
 		}
@@ -959,12 +975,16 @@ int guess_geometry(FILE *f, int d)
 				else
 				{
 					result = 0;
+#ifndef RELEASE_BUILD
 					printf("Guessing failed\n");
 					pclog("Not 77, 80, 81, 82, 83, 84, or 85 tracks\n");
+#endif
 				}
 			}			
 		}
+#ifndef RELEASE_BUILD
        		printf("After guessing: Drive %c: has %i sectors, %i tracks, %i bytes per sector, %i shift, %i total sectors, %i sides, and class %i, and is %i bytes long\n",'A'+d,fdd[d].SECTORS,fdd[d].TRACKS,fdd[d].BPS,fdd[d].BPSCODE,fdd[d].TOTAL, fdd[d].SIDES, fdd[d].CLASS, ftell(f));
+#endif
 		fdd[d].XDF = 0;
 	}
 
@@ -1272,7 +1292,9 @@ int raw_set_info(FILE *f, int d)
 	if ((fdd[d].SIDES < 1) || (fdd[d].SIDES > 2) || (fdd[d].BPS < 128) || (fdd[d].BPS > 2048))
 	{
 		gg = guess_geometry(f, d);
+#ifndef RELEASE_BUILD
 		pclog("Guessing result: %u\n", gg);
+#endif
 		fdd[d].XDF = 0;
 	}
 	else
@@ -1539,7 +1561,9 @@ void floppy_load_image(int d, char *fn)
 
 	if (strlen(fn) == 0)
 	{
+#ifndef RELEASE_BUILD
 		pclog("%c: No file specified, aborting load...\n", 0x41 + d);
+#endif
 		ejectdisc(d);
 		fdd[d].WP = 1;
 		return;
@@ -1550,7 +1574,9 @@ void floppy_load_image(int d, char *fn)
 
 	if (!fdd[d].floppy_drive_enabled)
 	{
+#ifndef RELEASE_BUILD
 		pclog("Drive %c: is disabled, stopping file load\n", 0x41 + d);
+#endif
 		goto drive_disabled;
 	}
 
@@ -1565,10 +1591,14 @@ void floppy_load_image(int d, char *fn)
 	f = fopen(fn,"rb");
 	if (f == NULL)
 	{
+#ifndef RELEASE_BUILD
 		pclog("File is null\n");
+#endif
 		goto drive_disabled;
 fli_on_error:
+#ifndef RELEASE_BUILD
 		pclog("An error during loading raw image, ejecting image\n");
+#endif
 drive_disabled:
 		ejectdisc(d);
 		fdd[d].WP = 1;
@@ -1588,7 +1618,9 @@ drive_disabled:
 			fseek(f, fdd[d].RAWOFFS, SEEK_SET);
 			if (fdd[d].SECTORS == 0)
 			{
+#ifndef RELEASE_BUILD
 				pclog("No sectors, aborting\n");
+#endif
 				goto drive_disabled;
 			}
 			read_raw_or_fdi(f, d);
@@ -1611,7 +1643,9 @@ drive_disabled:
 			{
 				if (fdd[d].SECTORS == 0)
 				{
+#ifndef RELEASE_BUILD
 					pclog("No sectors, aborting\n");
+#endif
 					goto drive_disabled;
 				}
 				read_raw_or_fdi(f, d);
@@ -1631,14 +1665,18 @@ drive_disabled:
 			}
 			if (fdd[d].SECTORS == 0)
 			{
+#ifndef RELEASE_BUILD
 				pclog("No sectors, aborting\n");
+#endif
 				goto drive_disabled;
 			}
 			read_raw_or_fdi(f, d);
 			if (!fdd[d].XDF)  fdd[d].WP = 0;
 			break;
 	}
+#ifndef RELEASE_BUILD
         printf("Drive %c: %i sect./track, %i tracks (step %i), %i B/sect., %i shift, %i total sectors, %i sides, class %i, and image type %i\n",'A'+d,fdd[d].SECTORS,fdd[d].TRACKS,((ISSPECIAL) ? 2 : 1),fdd[d].BPS,fdd[d].BPSCODE,fdd[d].TOTAL, fdd[d].SIDES, fdd[d].CLASS, fdd[d].IMGTYPE);
+#endif
 	/* For time being, to test reading, after that, saving will be implemented. */
 	// WP[d] = 1;
 

@@ -101,8 +101,8 @@ void mda_recalctimings(mda_t *mda)
         _dispofftime = disptime - _dispontime;
         _dispontime *= MDACONST;
         _dispofftime *= MDACONST;
-	mda->dispontime = (int)(_dispontime * (1 << TIMER_SHIFT));
-	mda->dispofftime = (int)(_dispofftime * (1 << TIMER_SHIFT));
+	mda->dispontime = (int)(_dispontime * (1 << TIMER_SHIFT) * 3.0d);
+	mda->dispofftime = (int)(_dispofftime * (1 << TIMER_SHIFT) * 3.0d);
 }
 
 void mda_poll(void *p)

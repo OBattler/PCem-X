@@ -129,8 +129,8 @@ void m24_recalctimings(m24_t *m24)
         _dispontime  *= CGACONST / 2;
         _dispofftime *= CGACONST / 2;
 //        printf("Timings - on %f off %f frame %f second %f\n",dispontime,dispofftime,(dispontime+dispofftime)*262.0,(dispontime+dispofftime)*262.0*59.92);
-	m24->dispontime  = (int)(_dispontime  * (1 << TIMER_SHIFT));
-	m24->dispofftime = (int)(_dispofftime * (1 << TIMER_SHIFT));
+	m24->dispontime  = (int)(_dispontime  * (1 << TIMER_SHIFT) * 3.0d);
+	m24->dispofftime = (int)(_dispofftime * (1 << TIMER_SHIFT) * 3.0d);
 }
 
 void m24_poll(void *p)
@@ -156,7 +156,9 @@ void m24_poll(void *p)
                         m24->sc = (m24->sc << 1) & 7;
                 if (m24->dispon)
                 {
+#ifndef RELEASE_BUILD
                         pclog("dispon %i\n", m24->linepos);
+#endif
                         if (m24->displine < m24->firstline)
                         {
                                 m24->firstline = m24->displine;

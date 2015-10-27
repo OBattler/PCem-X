@@ -2,7 +2,7 @@
   IDE emulation*/
 //#define RPCEMU_IDE
 
-#define IDE_TIME (5 * 100 * (1 << TIMER_SHIFT))
+#define IDE_TIME (5 * 100 * (1 << TIMER_SHIFT) * 3)
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
@@ -710,7 +710,9 @@ void resetide(void)
 	   Designed to allow up to 4 hard disks (up to 3 if CD-ROM is enabled), up to 1 CD-ROM, load all possible hard disks,
 	   ensure there is no slave without master, and ensure at least one slot gets assigned to CD-ROM. */
 
+#ifndef RELEASE_BUILD
 	pclog("resetide(): maxide is %i\n", maxide);
+#endif
 
 	limit = maxide - 1;
 	limit2 = ((cdrom_enabled) ? (limit - 1) : limit);
@@ -739,7 +741,7 @@ void resetide(void)
 
 	/* If we have two hard drives, load second hard drive as secondary master, so CD-ROM becomes secondary slave,
 	   and the Award SiS 496/497 BIOS we use marks secondary IDE as present. */
-	if ((romset == ROM_SIS496) && (last_drive == 1) && (hds_count == 2) && (maxide == 4))  last_drive = 2;
+	if (((romset == ROM_SIS496) || (romset == ROM_430FX)) && (last_drive == 1) && (hds_count == 2) && (maxide == 4))  last_drive = 2;
         loadhd(&ide_drives[last_drive], 1, ide_fn[1]);
 	if (ide_drives[last_drive].type == IDE_HDD)
 	{
@@ -783,7 +785,7 @@ load_cdrom:
 	{
 		/* If we're loading CD-ROM to drive ID 2, but drive ID 1 is type none,
 		   and the chipset is an Award SiS 496/497, load the CD-ROM to drive ID 1 instead. */
-		if ((romset == ROM_SIS496) && (last_drive == 2) && (ide_drives[1].type == IDE_NONE))  last_drive = 1;
+		if (((romset == ROM_SIS496) || (romset == ROM_430FX)) && (last_drive == 2) && (ide_drives[1].type == IDE_NONE))  last_drive = 1;
 
 		ide_drives[last_drive].type = IDE_CDROM;
 
@@ -2078,6 +2080,7 @@ static void atapicommand(int ide_board)
         switch (idebufferb[0])
         {
 	        case TEST_UNIT_READY: /*0x00*/
+			ide->discchanged=1;
                	        ide->packetstatus=2;
                        	idecallback[ide_board]=50*IDE_TIME;
 	                break;
@@ -2804,7 +2807,9 @@ void ide_sec_disable()
 void ide_init()
 {
         ide_pri_enable();
+#ifndef RELEASE_BUILD
 	pclog("maxide is %i\n", maxide);
+#endif
         if (maxide == 4)
 	{
 		ide_sec_enable();

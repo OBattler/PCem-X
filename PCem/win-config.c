@@ -26,6 +26,7 @@ extern int is486;
 static int romstolist[ROM_MAX], listtomodel[ROM_MAX], romstomodel[ROM_MAX], modeltolist[ROM_MAX];
 static int settings_sound_to_list[20], settings_list_to_sound[20];
 static int settings_network_to_list[20], settings_list_to_network[20];
+int modelchanged = 0;
 
 static BOOL CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -41,6 +42,7 @@ static BOOL CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPAR
 	int temp_network_interface_current;
 	int temp_fdtype_a_current;
 	int temp_fdtype_b_current;
+	int old_turbo = turbo;
 //        pclog("Dialog msg %i %08X\n",message,message);
         switch (message)
         {
@@ -52,7 +54,9 @@ static BOOL CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPAR
                 c = d = 0;
                 while (models[c].id != -1)
                 {
+#ifndef RELEASE_BUILD
                         pclog("INITDIALOG : %i %i %i\n",c,models[c].id,romspresent[models[c].id]);
+#endif
                         if (romspresent[models[c].id])
                         {
                                 SendMessage(h, CB_ADDSTRING, 0, (LPARAM)(LPCSTR)models[c].name);
@@ -190,6 +194,9 @@ static BOOL CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPAR
 
                 h=GetDlgItem(hdlg, IDC_CHECKXCHG);
                 SendMessage(h, BM_SETCHECK, disable_xchg_dynarec, 0);
+
+                h=GetDlgItem(hdlg, IDC_CHECKTURBO);
+                SendMessage(h, BM_SETCHECK, turbo, 0);
 
                 h=GetDlgItem(hdlg, IDC_CHECKFORCE43);
                 SendMessage(h, BM_SETCHECK, force_43, 0);
@@ -339,6 +346,9 @@ static BOOL CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPAR
                         h = GetDlgItem(hdlg, IDC_CHECKXCHG);
                         temp_xchg_dynarec = SendMessage(h, BM_GETCHECK, 0, 0);
 
+                        h = GetDlgItem(hdlg, IDC_CHECKTURBO);
+                        turbo = SendMessage(h, BM_GETCHECK, 0, 0);
+
                         h = GetDlgItem(hdlg, IDC_COMBONET);
                         temp_network_card_current = settings_list_to_network[SendMessage(h, CB_GETCURSEL, 0, 0)];
 
@@ -352,6 +362,17 @@ static BOOL CALLBACK config_dlgproc(HWND hdlg, UINT message, WPARAM wParam, LPAR
                         {
                                 if (MessageBox(NULL,"This will reset PCem-X!\nAre you sure you want to continue?","PCem",MB_OKCANCEL)==IDOK)
                                 {
+					if (temp_model != model)
+					{
+						/* IMPORTANT: So Intel Flash gets closed before romset reset! */
+					        device_close_all();
+						modelchanged = 1;
+					}
+					else
+					{
+						modelchanged = 0;
+					}
+
                                         model = temp_model;
                                         romset = model_getromset();
                                         gfxcard = gfx;

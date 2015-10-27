@@ -257,10 +257,12 @@ opcodestart:
                         opcode = fetchdat & 0xFF;
                         fetchdat >>= 8;
 
+#ifndef RELEASE_BUILD
                         if (output == 3)
                         {
                                 pclog("%04X(%06X):%04X : %08X %08X %08X %08X %04X %04X %04X(%08X) %04X %04X %04X(%08X) %08X %08X %08X SP=%04X:%08X %02X %04X %i %08X  %08X %i %i %02X %02X %02X   %02X %02X %f  %02X%02X %02X%02X %02X%02X  %02X\n",CS,cs,pc,EAX,EBX,ECX,EDX,CS,DS,ES,es,FS,GS,SS,ss,EDI,ESI,EBP,SS,ESP,opcode,flags,ins,0, ldt.base, CPL, stack32, pic.pend, pic.mask, pic.mask2, pic2.pend, pic2.mask, pit.c[0], ram[0xB270+0x3F5], ram[0xB270+0x3F4], ram[0xB270+0x3F7], ram[0xB270+0x3F6], ram[0xB270+0x3F9], ram[0xB270+0x3F8], ram[0x4430+0x0D49]);
                         }
+#endif
                         pc++;
                         x86_opcodes[(opcode | op32) & 0x3ff](fetchdat);
                 }
@@ -289,13 +291,17 @@ opcodestart:
                                 abrt = 0;
                                 CS = oldcs;
                                 pc = oldpc;
+#ifndef RELEASE_BUILD
                                 pclog("Double fault %i\n", ins);
+#endif
                                 pmodeint(8, 0);
                                 if (abrt)
                                 {
                                         abrt = 0;
                                         softresetx86();
+#ifndef RELEASE_BUILD
                                         pclog("Triple fault - reset\n");
+#endif
                                 }
                         }
                 }

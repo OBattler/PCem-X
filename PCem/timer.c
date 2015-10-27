@@ -10,7 +10,8 @@
 
 #define TIMERS_MAX 32
 
-int TIMER_USEC;
+// int TIMER_USEC;
+double TIMER_USEC;
 
 static struct
 {
@@ -43,7 +44,7 @@ void timer_process()
                 enable[c] = *timers[c].enable;
                 if (*timers[c].enable)
                 {
-                        *timers[c].count = *timers[c].count - (diff << TIMER_SHIFT);
+                        *timers[c].count = *timers[c].count - ((diff << TIMER_SHIFT) * 3);
                         if (*timers[c].count <= 0)
                                 process = 1;
                 }
@@ -79,13 +80,14 @@ void timer_process()
 void timer_update_outstanding()
 {
 	int c;
+	double ts = (1 << TIMER_SHIFT);
 	timer_latch = 0x7fffffff;
 	for (c = 0; c < timers_present; c++)
 	{
 		if (*timers[c].enable && *timers[c].count < timer_latch)
 			timer_latch = *timers[c].count;
 	}
-	timer_count = timer_latch = (timer_latch + ((1 << TIMER_SHIFT) - 1)) >> TIMER_SHIFT;
+	timer_count = timer_latch = (timer_latch + ((ts * 3.0d) - 1)) / (ts * 3.0d);
 }
 
 void timer_reset()

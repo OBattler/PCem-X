@@ -365,7 +365,9 @@ uint8_t picinterrupt()
 
 void dumppic()
 {
+#ifndef RELEASE_BUILD
         pclog("PIC1 : MASK %02X PEND %02X INS %02X VECTOR %02X\n",pic.mask,pic.pend,pic.ins,pic.vector);
         pclog("PIC2 : MASK %02X PEND %02X INS %02X VECTOR %02X\n",pic2.mask,pic2.pend,pic2.ins,pic2.vector);
+#endif
 }
 

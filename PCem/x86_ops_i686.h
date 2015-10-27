@@ -213,6 +213,8 @@ static int opSYSENTER(uint32_t fetchdat)
 
 	CLOCK_CYCLES(20);
 
+	CPU_BLOCK_END();
+
 	/* pclog("SYSENTER completed:\n");
 	pclog("CS (%04X): base=%08X, limit=%08X, access=%02X, seg=%04X, limit_low=%08X, limit_high=%08X, checked=%i\n", CS, _cs.base, _cs.limit, _cs.access, _cs.seg, _cs.limit_low, _cs.limit_high, _cs.checked);
 	pclog("SS (%04X): base=%08X, limit=%08X, access=%02X, seg=%04X, limit_low=%08X, limit_high=%08X, checked=%i\n", SS, _ss.base, _ss.limit, _ss.access, _ss.seg, _ss.limit_low, _ss.limit_high, _ss.checked);
@@ -291,6 +293,8 @@ static int opSYSEXIT(uint32_t fetchdat)
 	pc = EDX;
 
 	CLOCK_CYCLES(20);
+
+	CPU_BLOCK_END();
 
 	/* pclog("SYSEXIT completed:\n");
 	pclog("CS (%04X): base=%08X, limit=%08X, access=%02X, seg=%04X, limit_low=%08X, limit_high=%08X, checked=%i\n", CS, _cs.base, _cs.limit, _cs.access, _cs.seg, _cs.limit_low, _cs.limit_high, _cs.checked);
@@ -756,6 +760,8 @@ static int opSYSCALL(uint32_t fetchdat)
 
 	CLOCK_CYCLES(20);
 
+	CPU_BLOCK_END();
+
 	/* pclog("SYSCALL completed:\n");
 	pclog("CS (%04X): base=%08X, limit=%08X, access=%02X, seg=%04X, limit_low=%08X, limit_high=%08X, checked=%i\n", CS, _cs.base, _cs.limit, _cs.access, _cs.seg, _cs.limit_low, _cs.limit_high, _cs.checked);
 	pclog("SS (%04X): base=%08X, limit=%08X, access=%02X, seg=%04X, limit_low=%08X, limit_high=%08X, checked=%i\n", SS, _ss.base, _ss.limit, _ss.access, _ss.seg, _ss.limit_low, _ss.limit_high, _ss.checked);
@@ -835,6 +841,8 @@ static int opSYSRET(uint32_t fetchdat)
 
 	CLOCK_CYCLES(20);
 
+	CPU_BLOCK_END();
+
 	/* pclog("SYSRET completed:\n");
 	pclog("CS (%04X): base=%08X, limit=%08X, access=%02X, seg=%04X, limit_low=%08X, limit_high=%08X, checked=%i\n", CS, _cs.base, _cs.limit, _cs.access, _cs.seg, _cs.limit_low, _cs.limit_high, _cs.checked);
 	pclog("SS (%04X): base=%08X, limit=%08X, access=%02X, seg=%04X, limit_low=%08X, limit_high=%08X, checked=%i\n", SS, _ss.base, _ss.limit, _ss.access, _ss.seg, _ss.limit_low, _ss.limit_high, _ss.checked);
@@ -881,5 +889,6 @@ static int opLOADALL386(uint32_t fetchdat)
 	cs = readmemw(0, la_addr + 0xB4) | (readmemb(0, la_addr + 0xB8) << 16);
 	es = readmemw(0, la_addr + 0xC0) | (readmemb(0, la_addr + 0xC4) << 16);
         CLOCK_CYCLES(122);
+				CPU_BLOCK_END();
         return 0;
 }

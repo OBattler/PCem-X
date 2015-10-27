@@ -32,7 +32,9 @@ static uint8_t flash_read(uint32_t addr, void *p)
 {
         flash_t *flash = (flash_t *)p;
 	int is_bxb = ((romset == ROM_ACERV35N) || (romset == ROM_ACERV12LC));
-        // pclog("flash_read : addr=%08x command=%02x %04x:%08x\n", addr, flash->command, CS, pc);
+#ifndef RELEASE_BUILD
+        pclog("flash_read : addr=%08x command=%02x %04x:%08x\n", addr, flash->command, CS, pc);
+#endif
         switch (flash->command)
         {
                 case CMD_IID:
@@ -51,17 +53,23 @@ static void flash_write(uint32_t addr, uint8_t val, void *p)
 	int is_ami = ((romset == ROM_REVENGE) || (romset == ROM_PLATO) || (romset == ROM_ENDEAVOR));
 	int has_dmi = ((romset == ROM_430HX) || (romset == ROM_430VX) || (romset == ROM_430TX) || (romset == ROM_440FX));
 	int is_bxb = ((romset == ROM_ACERV35N) || (romset == ROM_ACERV12LC));
-        // pclog("flash_write : addr=%08x val=%02x command=%02x %04x:%08x\n", addr, val, flash->command, CS, pc);        
+#ifndef RELEASE_BUILD
+        pclog("flash_write : addr=%08x val=%02x command=%02x %04x:%08x\n", addr, val, flash->command, CS, pc);        
+#endif
         switch (flash->command)
         {
                 case CMD_ERASE_SETUP:
                 if (val == CMD_ERASE_CONFIRM)
                 {
-                        // pclog("flash_write: erase %05x\n", addr & 0x1ffff);
+#ifndef RELEASE_BUILD
+                        pclog("flash_write: erase %05x\n", addr & 0x1ffff);
+#endif
 			if (is_ami)
 			{
 	                        if ((addr & 0x1f000) == 0x0d000)
-        	                        memset(&rom[0x0d000], 0xff, 0x1000);
+	                                memset(&rom[0x0d000], 0xff, 0x1000);
+	                        if ((addr & 0x1f000) == 0x0c000)
+	                                memset(&rom[0x0c000], 0xff, 0x1000);
 			}
 			else
 			{
@@ -97,10 +105,12 @@ static void flash_write(uint32_t addr, uint8_t val, void *p)
                 break;
                 
                 case CMD_PROGRAM_SETUP:
-                // pclog("flash_write: program %05x %02x\n", addr & 0x1ffff, val);
+#ifndef RELEASE_BUILD
+                pclog("flash_write: program %05x %02x\n", addr & 0x1ffff, val);
+#endif
 		if (is_ami)
 		{
-			if ((addr & 0x1f000) == 0xd000)
+			if ((addr & 0x1e000) == 0xc000)
 			{
 	                        rom[addr & 0x1ffff] = val;
 			}
@@ -170,23 +180,36 @@ static void flash_write(uint32_t addr, uint8_t val, void *p)
                         break;
                         
                         case CMD_READ_ARRAY:
-                        mem_mapping_enable(&bios_mapping[0]);
-                        mem_mapping_enable(&bios_mapping[1]);
-                        mem_mapping_enable(&bios_mapping[2]);
-                        mem_mapping_enable(&bios_mapping[3]);
+			if ((is_ami || is_bxb) || (romset == ROM_430HX) || (romset == ROM_430TX))
+			{
+                        	mem_mapping_enable(&bios_mapping[0]);
+                	        mem_mapping_enable(&bios_mapping[1]);
+        	                mem_mapping_enable(&bios_mapping[2]);
+	                        mem_mapping_enable(&bios_mapping[3]);
+			}
+			else
+			{
+                        	mem_mapping_disable(&bios_mapping[0]);
+                	        mem_mapping_disable(&bios_mapping[1]);
+        	                mem_mapping_disable(&bios_mapping[2]);
+	                        mem_mapping_disable(&bios_mapping[3]);
+			}
                         mem_mapping_enable(&bios_mapping[4]);
                         mem_mapping_enable(&bios_mapping[5]);
                         mem_mapping_enable(&bios_mapping[6]);
                         mem_mapping_enable(&bios_mapping[7]);
 
-                        mem_mapping_enable(&bios_high_mapping[0]);
-                        mem_mapping_enable(&bios_high_mapping[1]);
-                        mem_mapping_enable(&bios_high_mapping[2]);
-                        mem_mapping_enable(&bios_high_mapping[3]);
-                        mem_mapping_enable(&bios_high_mapping[4]);
-                        mem_mapping_enable(&bios_high_mapping[5]);
-                        mem_mapping_enable(&bios_high_mapping[6]);
-                        mem_mapping_enable(&bios_high_mapping[7]);
+			if (!is_ami)
+			{
+	                       	mem_mapping_enable(&bios_high_mapping[0]);
+        	       	        mem_mapping_enable(&bios_high_mapping[1]);
+       	        	        mem_mapping_enable(&bios_high_mapping[2]);
+                        	mem_mapping_enable(&bios_high_mapping[3]);
+	                        mem_mapping_enable(&bios_high_mapping[4]);
+        	                mem_mapping_enable(&bios_high_mapping[5]);
+                	        mem_mapping_enable(&bios_high_mapping[6]);
+                        	mem_mapping_enable(&bios_high_mapping[7]);
+			}
 
                         mem_mapping_disable(&flash->read_mapping);
                         mem_mapping_disable(&ext_read_mapping);
@@ -275,6 +298,8 @@ void flash_1mbit_readfiles()
 	}
 }
 
+int closed = 1;
+
 void *intel_flash_init()
 {
         FILE *f;
@@ -311,6 +336,27 @@ void *intel_flash_init()
         mem_mapping_disable(&flash->read_mapping);
         mem_mapping_disable(&ext_read_mapping);
 
+	if (!is_ami)
+	{
+		/* Non-AMI BIOS'es talk to the flash in high RAM. */
+		if (romset != ROM_440FX)
+		{
+			mem_mapping_disable(&flash->write_mapping);
+		}
+		else
+		{
+			mem_mapping_set_addr(&flash->write_mapping, 0xf0000, 0x10000);
+		}
+		mem_mapping_enable(&ext_write_mapping);
+	}
+	else
+	{
+		/* AMI BIOS'es talk to the flash in low RAM. */
+		mem_mapping_enable(&flash->write_mapping);
+		mem_mapping_set_addr(&flash->write_mapping, 0xe0000, 0x20000);
+		mem_mapping_disable(&ext_write_mapping);
+	}
+
         flash->command = CMD_READ_ARRAY;
         flash->status = 0;
         
@@ -337,6 +383,8 @@ void *intel_flash_init()
 	                fclose(f);
 	        }
 	}
+
+	closed = 0;
         
         return flash;
 }
@@ -349,6 +397,8 @@ void intel_flash_close(void *p)
 	int has_dmi = ((romset == ROM_430HX) || (romset == ROM_430VX) || (romset == ROM_430TX) || (romset == ROM_440FX));
 	int is_bxb = ((romset == ROM_ACERV35N) || (romset == ROM_ACERV12LC));
 
+	if (closed)  return;
+
 	configure_path();
 	fn = (char *) malloc(255);
 	strcpy(fn, path);
@@ -356,6 +406,11 @@ void intel_flash_close(void *p)
         f = romfopen(fn, "wb");
         fwrite(&rom[is_ami ? 0xd000 : (is_bxb ? 0x2000 : 0x1d000)], 0x1000, 1, f);
         fclose(f);
+#if 0
+        f = romfopen("romkek.$$$", "wb");
+        fwrite(&rom[0], 0x20000, 1, f);
+        fclose(f);
+#endif
 	if (has_dmi || is_bxb)
 	{
 		strcpy(fn, path);
@@ -367,6 +422,8 @@ void intel_flash_close(void *p)
 	                fclose(f);
 	        }
 	}
+
+	closed = 1;
 
         free(flash);
 }

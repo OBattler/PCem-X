@@ -3,7 +3,13 @@
 #include <ddraw.h>
 #undef BITMAP
 #include "win-ddraw.h"
+#ifdef _MSC_VER
+extern "C" {
 #include "video.h"
+}
+#else
+#include "video.h"
+#endif
 
 extern "C" void fatal(const char *format, ...);
 extern "C" void pclog(const char *format, ...);
@@ -164,8 +170,10 @@ static void ddraw_blit_memtoscreen(int x, int y, int y1, int y2, int w, int h)
                 device_force_redraw();
         }
         if (!ddsd.lpSurface) return;
-        for (yy = y1; yy < y2; yy++)
-            memcpy(ddsd.lpSurface + (yy * ddsd.lPitch), &(((uint32_t *)buffer32->line[y + yy])[x]), w * 4);
+		for (yy = y1; yy < y2; yy++)
+		{
+			if ((y + yy) >= 0)  memcpy((unsigned char*)ddsd.lpSurface + (yy * ddsd.lPitch), &(((uint32_t *)buffer32->line[y + yy])[x]), w * 4);
+		}
         lpdds_back->Unlock(NULL);
 
         po.x = po.y = 0;
@@ -242,7 +250,7 @@ static void ddraw_blit_memtoscreen_8(int x, int y, int w, int h)
         {
                 if ((y + yy) >= 0 && (y + yy) < buffer->h)
                 {
-                        p = (uint32_t *)(ddsd.lpSurface + (yy * ddsd.lPitch));
+                        p = (uint32_t *)((unsigned char*)ddsd.lpSurface + (yy * ddsd.lPitch));
                         for (xx = 0; xx < w; xx++)
 			{
                             p[xx] = pal_lookup[buffer->line[y + yy][x + xx]];
@@ -251,7 +259,7 @@ static void ddraw_blit_memtoscreen_8(int x, int y, int w, int h)
 			}
                 }
         }
-        p = (uint32_t *)(ddsd.lpSurface + (4 * ddsd.lPitch));
+        p = (uint32_t *)((unsigned char*)ddsd.lpSurface + (4 * ddsd.lPitch));
         lpdds_back->Unlock(NULL);
 
         po.x = po.y = 0;

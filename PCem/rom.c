@@ -56,7 +56,9 @@ int rom_init(rom_t *rom, char *fn, uint32_t address, int size, int mask, int fil
         
         if (!f)
         {
+#ifndef RELEASE_BUILD
                 pclog("ROM image not found : %s\n", fn);
+#endif
                 return -1;
         }
         
@@ -88,13 +90,21 @@ int rom_init_interleaved(rom_t *rom, char *fn_low, char *fn_high, uint32_t addre
         
         if (!f_low || !f_high)
         {
+#ifndef RELEASE_BUILD
                 if (!f_low)
                         pclog("ROM image not found : %s\n", fn_low);
                 else
+#else
+		if (f_low)
+#endif
                         fclose(f_low);
+#ifndef RELEASE_BUILD
                 if (!f_high)
                         pclog("ROM image not found : %s\n", fn_high);
                 else
+#else
+		if (f_high)
+#endif
                         fclose(f_high);
                 return -1;
         }

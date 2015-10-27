@@ -47,11 +47,15 @@ void keyboard_olim24_poll()
         {
                 keyboard_olim24.wantirq = 0;
                 picint(2);
+#ifndef RELEASE_BUILD
                 pclog("keyboard_olim24 : take IRQ\n");
+#endif
         }
         if (!(keyboard_olim24.status & STAT_OFULL) && key_queue_start != key_queue_end)
         {
+#ifndef RELEASE_BUILD
                 pclog("Reading %02X from the key queue at %i\n", keyboard_olim24.out, key_queue_start);
+#endif
                 keyboard_olim24.out = key_queue[key_queue_start];
                 key_queue_start = (key_queue_start + 1) & 0xf;
                 keyboard_olim24.status |=  STAT_OFULL;
@@ -64,13 +68,17 @@ void keyboard_olim24_adddata(uint8_t val)
 {
         key_queue[key_queue_end] = val;
         key_queue_end = (key_queue_end + 1) & 0xf;
+#ifndef RELEASE_BUILD
         pclog("keyboard_olim24 : %02X added to key queue %02X\n", val, keyboard_olim24.status);
+#endif
         return;
 }
 
 void keyboard_olim24_write(uint16_t port, uint8_t val, void *priv)
 {
+#ifndef RELEASE_BUILD
         pclog("keyboard_olim24 : write %04X %02X\n", port, val);
+#endif
 /*        if (ram[8] == 0xc3) 
         {
                 output = 3;
@@ -104,7 +112,11 @@ void keyboard_olim24_write(uint16_t port, uint8_t val, void *priv)
                                         break;
                                         
                                         default:
+#ifndef RELEASE_BUILD
                                         pclog("Bad keyboard command complete %02X\n", keyboard_olim24.command);
+#else
+					;
+#endif
 //                                        dumpregs();
 //                                        exit(-1);
                                 }
@@ -133,7 +145,11 @@ void keyboard_olim24_write(uint16_t port, uint8_t val, void *priv)
                                 break;
                                 
                                 default:
+#ifndef RELEASE_BUILD
                                 pclog("Bad keyboard command %02X\n", val);
+#else
+				;
+#endif
 //                                dumpregs();
 //                                exit(-1);
                         }
@@ -185,7 +201,11 @@ uint8_t keyboard_olim24_read(uint16_t port, void *priv)
                 break;
                 
                 default:
+#ifndef RELEASE_BUILD
                 pclog("\nBad olim24 keyboard read %04X\n", port);
+#else
+		;
+#endif
 //                dumpregs();
 //                exit(-1);
         }
@@ -218,7 +238,9 @@ void mouse_olim24_poll(int x, int y, int b)
         mouse_x += x;
         mouse_y += y;
 
+#ifndef RELEASE_BUILD
         pclog("mouse_poll - %i, %i  %i, %i\n", x, y, mouse_x, mouse_y);
+#endif
         
         if (((key_queue_end - key_queue_start) & 0xf) > 14) return;
         if ((b & 1) && !(mouse_b & 1))

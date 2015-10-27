@@ -23,6 +23,7 @@
  */
 
 #include "slirp.h"
+#include "../ibm.h"
 
 struct tftp_session {
     int in_use;
@@ -103,7 +104,12 @@ static int tftp_read_data(struct tftp_session *spt, u_int16_t block_nr,
   int fd;
   int bytes_read = 0;
 
-  fd = open(spt->filename, O_RDONLY | O_BINARY);
+  char file_path[sizeof(pcempath) + 5 + sizeof(spt->filename)];
+  strcpy(file_path, pcempath);
+  strcat(file_path, "tftp/");
+  strcat(file_path, spt->filename);
+
+  fd = open(file_path, O_RDONLY | O_BINARY);
 
   if (fd < 0) {
     return -1;
@@ -274,19 +280,11 @@ static void tftp_handle_rrq(struct tftp_t *tp, int pktlen)
       return;
   }
 
+  pclog("tftp request: %s\n", spt->filename);
+
   /* do sanity checks on the filename */
 
-  if ((spt->filename[0] != '/')
-      || (spt->filename[strlen(spt->filename) - 1] == '/')
-      ||  strstr(spt->filename, "/../")) {
-      tftp_send_error(spt, 2, "Access violation", tp);
-      return;
-  }
-
-  /* only allow exported prefixes */
-
-  if (!tftp_prefix
-      || (strncmp(spt->filename, tftp_prefix, strlen(tftp_prefix)) != 0)) {
+  if (strstr(spt->filename, "../") || strstr(spt->filename, "..\\")) {
       tftp_send_error(spt, 2, "Access violation", tp);
       return;
   }

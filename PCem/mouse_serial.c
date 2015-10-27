@@ -31,7 +31,9 @@ void mouse_serial_poll(int x, int y, int b)
         
         if (!(serial1.mctrl&0x10))
         {
+#ifndef RELEASE_BUILD
                 pclog("Serial data %02X %02X %02X\n", mousedat[0], mousedat[1], mousedat[2]);
+#endif
                 serial_write_fifo(&serial1, mousedat[0]);
                 serial_write_fifo(&serial1, mousedat[1]);
                 serial_write_fifo(&serial1, mousedat[2]);
@@ -41,7 +43,7 @@ void mouse_serial_poll(int x, int y, int b)
 void mouse_serial_rcr(void *p)
 {
         mousepos=-1;
-        mousedelay=5000 * (1 << TIMER_SHIFT);
+        mousedelay=5000 * (1 << TIMER_SHIFT) * 3;
 }
         
 void mousecallback(void *p)

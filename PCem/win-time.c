@@ -2,6 +2,7 @@
 #include "ibm.h"
 #include "nvr.h"
 
+#if 0
 void time_get(char *nvrram)
 {
 	SYSTEMTIME systemtime;
@@ -41,3 +42,4 @@ void time_get(char *nvrram)
             baknvr[9] != nvrram[9])
 		nvrram[0xA]|=0x80;
 }
+#endif

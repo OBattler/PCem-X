@@ -184,6 +184,7 @@ uint32_t dr[8];
 
 //#define IOPLV86 ((!(msw&1)) || (CPL<=IOPL))
 extern int cycles;
+extern double cyclesx86;
 extern int cycles_lost;
 extern int is486;
 extern uint8_t opcode;
@@ -221,10 +222,10 @@ typedef struct PIT
 } PIT;
 
 PIT pit;
-void setpitclock(float clock);
+void setpitclock(double clock);
 int pitcount;
 
-float pit_timer0_freq();
+double pit_timer0_freq();
 
 
 
@@ -309,6 +310,8 @@ enum
 #ifdef BROKEN_CHIPSETS
         ROM_MISC286,
 #endif
+        ROM_IBMPS1_2011,
+        ROM_DESKPRO_386,
         ROM_IBMAT386,
         ROM_ACER386,
         ROM_MEGAPC,
@@ -322,8 +325,6 @@ enum
         ROM_430VX,
         ROM_ENDEAVOR,
         ROM_REVENGE,
-        ROM_IBMPS1_2011,
-        ROM_DESKPRO_386,
 	/* From here on go romsets/models added by PCem-X. */
 	ROM_SIS471,
         ROM_430FX,
@@ -394,6 +395,7 @@ enum
 	GFX_CL_GD5436,
 	GFX_CL_GD5440,
 	GFX_CL_GD5446,
+	GFX_VPC_TRIO64,		/* Virtual PC Trio64 */
 	GFX_PHOENIX_VISION964, /*S3 964/Vision964 (Phoenix/miro cyrstal)*/
 	GFX_RIVA128,
         
@@ -519,7 +521,14 @@ extern int idecallback[2];
 extern int cdrom_enabled;
 
 /*Networking*/
-#define NE2000      1
+enum
+{
+        NET_NONE = 0,
+        NET_NE2000,
+        NET_RTL8029AS,
+        
+        NET_MAX
+};
 
 void pclog(const char *format, ...);
 void fatal(const char *format, ...);
@@ -528,7 +537,7 @@ extern int nmi;
 extern int times;
 
 
-extern float isa_timing, bus_timing;
+extern double isa_timing, bus_timing;
 
 extern int frame;
 
@@ -619,3 +628,7 @@ int divl(uint32_t val);
 int idivl(int32_t val);
 
 void refreshread();
+
+extern int modelchanged;
+
+extern int turbo;

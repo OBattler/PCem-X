@@ -766,7 +766,9 @@ void cirrus_bitblt_start(clgd_t *clgd, svga_t *svga)
 			{
 				if (clgd->blt.pixel_width > 2)
 				{
+#ifndef RELEASE_BUILD
 					printf("src transparent without color expand must be 8bpp or 16bpp\n");
+#endif
 					goto bitblt_ignore;
 				}
 				if (clgd->blt.mode & CIRRUS_BLTMODE_BACKWARDS)

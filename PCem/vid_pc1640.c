@@ -58,7 +58,9 @@ void pc1640_out(uint16_t addr, uint8_t val, void *p)
                                 break;
                         }
                 }                
+#ifndef RELEASE_BUILD
                 pclog("3DB write %02X\n", val);
+#endif
                 return;
         }
         if (pc1640->cga_enabled) cga_out(addr, val, &pc1640->cga);

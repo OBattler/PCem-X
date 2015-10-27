@@ -38,12 +38,16 @@ void keyboard_xt_poll()
                 keyboard_xt.wantirq = 0;
                 keyboard_xt.pa = keyboard_xt.key_waiting;
                 picint(2);
+#ifndef RELEASE_BUILD
                 pclog("keyboard_xt : take IRQ\n");
+#endif
         }
         if (key_queue_start != key_queue_end && !keyboard_xt.pa)
         {
                 keyboard_xt.key_waiting = key_queue[key_queue_start];
+#ifndef RELEASE_BUILD
                 pclog("Reading %02X from the key queue at %i\n", keyboard_xt.key_waiting, key_queue_start);
+#endif
                 key_queue_start = (key_queue_start + 1) & 0xf;
                 keyboard_xt.wantirq = 1;        
         }                
@@ -52,14 +56,18 @@ void keyboard_xt_poll()
 void keyboard_xt_adddata(uint8_t val)
 {
         key_queue[key_queue_end] = val;
+#ifndef RELEASE_BUILD
         pclog("keyboard_xt : %02X added to key queue at %i\n", val, key_queue_end);
+#endif
         key_queue_end = (key_queue_end + 1) & 0xf;
         return;
 }
 
 void keyboard_xt_write(uint16_t port, uint8_t val, void *priv)
 {
+#ifndef RELEASE_BUILD
         pclog("keyboard_xt : write %04X %02X %02X\n", port, val, keyboard_xt.pb);
+#endif
 /*        if (ram[8] == 0xc3) 
         {
                 output = 3;
@@ -67,10 +75,14 @@ void keyboard_xt_write(uint16_t port, uint8_t val, void *priv)
         switch (port)
         {
                 case 0x61:
+#ifndef RELEASE_BUILD
                 pclog("keyboard_xt : pb write %02X %02X  %i %02X %i\n", val, keyboard_xt.pb, !(keyboard_xt.pb & 0x40), keyboard_xt.pb & 0x40, (val & 0x40));
+#endif
                 if (!(keyboard_xt.pb & 0x40) && (val & 0x40)) /*Reset keyboard*/
                 {
+#ifndef RELEASE_BUILD
                         pclog("keyboard_xt : reset keyboard\n");
+#endif
                         keyboard_xt_adddata(0xaa);
                 }
                 keyboard_xt.pb = val;
@@ -94,13 +106,15 @@ void keyboard_xt_write(uint16_t port, uint8_t val, void *priv)
 uint8_t keyboard_xt_read(uint16_t port, void *priv)
 {
         uint8_t temp;
+#ifndef RELEASE_BUILD
         pclog("keyboard_xt : read %04X ", port);
+#endif
         switch (port)
         {
                 case 0x60:
-                if (keyboard_xt.pb & 0x80)
+                if ((romset == ROM_IBMPC) && (keyboard_xt.pb & 0x80))
                 {
-                        if (VGA) 
+                        if (VGA || gfxcard == GFX_EGA) 
                            temp = 0x4D;
                         else if (MDA) 
                            temp = 0x7D;
@@ -128,26 +142,42 @@ uint8_t keyboard_xt_read(uint16_t port, void *priv)
                 break;
                 
                 case 0x62:
-                if (keyboard_xt.pb & 0x08)
+                if (romset == ROM_IBMPC)
                 {
-                        if (VGA) 
-                           temp = 4;
-                        else if (MDA)
-                           temp = 7;
+			if (keyboard_xt.pb & 0x04)
+				temp = 0x02;
                         else
-                           temp = 6;
+				temp = 0x01;
                 }
                 else
-                   temp = 0xD;
+		{
+			if (keyboard_xt.pb & 0x08)
+			{
+				if (VGA || gfxcard==GFX_EGA)
+					temp = 4;
+				else if (MDA)
+					temp = 7;
+				else
+					temp = 6;
+			}
+			else
+				temp = 0xD;
+		}
                 temp |= (ppispeakon ? 0x20 : 0);
                 break;
                 
                 default:
+#ifndef RELEASE_BUILD
                 pclog("\nBad XT keyboard read %04X\n", port);
+#else
+		;
+#endif
                 //dumpregs();
                 //exit(-1);
         }
+#ifndef RELEASE_BUILD
         pclog("%02X\n", temp);
+#endif
         return temp;
 }
 

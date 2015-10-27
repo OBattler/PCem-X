@@ -169,7 +169,7 @@ int clocks[3][34][4]=
 {
 	// 4772728
         {
-                {4772727,13920,59660,5965},  /*4.77MHz*/
+                {4772727,13920,65625,5965},  /*4.77MHz*/
                 {8000000,23333,110000,0}, /*8MHz*/
                 {10000000,29166,137500,0}, /*10MHz*/
                 {12000000,35000,165000,0}, /*12MHz*/
@@ -243,9 +243,7 @@ void pc_reset()
         pit_reset();
         serial_reset();
 
-	pclog("PIT\n");
-        setpitclock(models[model].cpu[cpu_manufacturer].cpus[cpu].rspeed);
-	pclog("After PIT\n");
+        setpitclock((double) (models[model].cpu[cpu_manufacturer].cpus[cpu].rspeed));
 
 //        sb_reset();
 
@@ -261,10 +259,14 @@ void initpc()
 
 //        allegro_init();
         get_executable_name(pcempath,511);
+#ifndef RELEASE_BUILD
         pclog("executable_name = %s\n", pcempath);
+#endif
         p=get_filename(pcempath);
         *p=0;
+#ifndef RELEASE_BUILD
         pclog("path = %s\n", pcempath);
+#endif
 
 	fdd_init();
         keyboard_init();
@@ -273,16 +275,16 @@ void initpc()
         midi_init();
 
         loadconfig(NULL);
+#ifndef RELEASE_BUILD
         pclog("Config loaded\n");
 
 	pclog("Loading pre-EGA font ROMs...\n");
+#endif
 	loadfont("mda.rom", 0, cga_fontdat, cga_fontdatm);
 	loadfont("roms/pc1512/40078.ic127", 0, pc1512_fontdat, pc1512_fontdatm);
 	loadfont("roms/pc200/40109.bin", 0, pc200_fontdat, pc200_fontdatm);
 
         codegen_init();
-
-	pclog("After breakpoint!\n");
 
         cpuspeed2=(AT)?2:1;
 //        cpuspeed2=cpuspeed;
@@ -388,7 +390,10 @@ int pcfirsttime = 1;
 
 void resetpchard()
 {
-        device_close_all();
+	if (!modelchanged)
+	        device_close_all();
+	else
+		modelchanged = 0;
         device_init();
 
 	midi_close();
@@ -483,6 +488,59 @@ uint8_t is_nonat_286()
 		return 0;
 }
 
+double actual_clock(double clock)
+{
+	int iclock = (int) clock;
+	double dclock;
+
+	switch (iclock)
+	{
+		case 33333333:
+		case 83333333:
+		case 133333333:
+		case 233333333:
+		case 333333333:
+		case 433333333:
+		case 533333333:
+			dclock = ((double) iclock) + (1.0d / 3.0d);
+			break;
+		case 66666666:
+		case 166666666:
+		case 266666666:
+		case 366666666:
+		case 466666666:
+			dclock = ((double) iclock) + (2.0d / 3.0d);
+			break;
+		case 3579545:
+			dclock = 3579545.4545454545454545454545455;
+			break;
+		case 4772727:
+			dclock = 3579545.4545454545454545454545455 * (4.0D / 3.0d);
+			break;
+		case 7159090:
+			dclock = 3579545.4545454545454545454545455 * 2.0d;
+			break;
+		case 9545453:
+		case 9545454:
+			dclock = 3579545.4545454545454545454545455 * (8.0d / 3.0d);
+			break;
+		default:
+			dclock = clock;
+			break;
+	}
+
+	if (!turbo)  dclock /= 2.0d;
+
+	return dclock;
+}
+
+void runx86()
+{
+	double dspeed = 0.0;
+	dspeed = actual_clock((double) models[model].cpu[cpu_manufacturer].cpus[cpu].rspeed);
+	// execx86(dspeed / 100.0d);
+}
+
 void runpc()
 {
         char s[200];
@@ -490,18 +548,20 @@ void runpc()
 
         startblit();
         clockrate = models[model].cpu[cpu_manufacturer].cpus[cpu].rspeed;
+	if (!turbo)  clockrate /= 2.0d;
 
         if (is386)   
         {
                 if (cpu_use_dynarec)
-                        exec386_dynarec(models[model].cpu[cpu_manufacturer].cpus[cpu].rspeed / 100);
+                        exec386_dynarec(models[model].cpu[cpu_manufacturer].cpus[cpu].rspeed / (turbo ? 100 : 200));
                 else
-                        exec386(models[model].cpu[cpu_manufacturer].cpus[cpu].rspeed / 100);
+                        exec386(models[model].cpu[cpu_manufacturer].cpus[cpu].rspeed / (turbo ? 100 : 200));
         }
         else if (AT || is_nonat_286())
-                exec386(models[model].cpu[cpu_manufacturer].cpus[cpu].rspeed / 100);
+                exec386(models[model].cpu[cpu_manufacturer].cpus[cpu].rspeed / (turbo ? 100 : 200));
         else
-                execx86(models[model].cpu[cpu_manufacturer].cpus[cpu].rspeed / 100);
+		// runx86();
+                execx86(models[model].cpu[cpu_manufacturer].cpus[cpu].rspeed / (turbo ? 100 : 200));
 
                 keyboard_poll_host();
                 keyboard_process();
@@ -514,7 +574,9 @@ void runpc()
                 framecount++;
                 if (framecountx>=100)
                 {
+#ifndef RELEASE_BUILD
                         pclog("onesec\n");
+#endif
                         framecountx=0;
                         mips=(float)insc/1000000.0f;
                         insc=0;
@@ -586,7 +648,7 @@ void fullspeed()
         if (!atfullspeed)
         {
                 printf("Set fullspeed - %i %i %i\n",is386,AT,cpuspeed2);
-                setpitclock(models[model].cpu[cpu_manufacturer].cpus[cpu].rspeed);
+                setpitclock((double) (models[model].cpu[cpu_manufacturer].cpus[cpu].rspeed));
 //                if (is386) setpitclock(clocks[2][cpuspeed2][0]);
 //                else       setpitclock(clocks[AT?1:0][cpuspeed2][0]);
         }
@@ -599,7 +661,7 @@ void speedchanged()
         if (atfullspeed)
         {
                 cpuspeed2=cpuspeed;
-                setpitclock(models[model].cpu[cpu_manufacturer].cpus[cpu].rspeed);
+                setpitclock((double) (models[model].cpu[cpu_manufacturer].cpus[cpu].rspeed));
 //                if (is386) setpitclock(clocks[2][cpuspeed2][0]);
 //                else       setpitclock(clocks[AT?1:0][cpuspeed2][0]);
         }
@@ -674,6 +736,8 @@ void loadconfig(char *fn)
         sound_card_current = config_get_int(NULL, "sndcard", SB2);
 #ifndef __unix
         network_card_current = config_get_int(NULL, "netcard", 0);
+	/* Sanity check. */
+	if (network_card_current > NET_MAX)  network_card_current = NET_MAX;
 #endif
 
         p = (char *)config_get_string(NULL, "disc_a", "");
@@ -729,6 +793,7 @@ void loadconfig(char *fn)
         else   strcpy(ide_fn[3], "");
 
         disable_xchg_dynarec = config_get_int(NULL, "disable_xchg_dynarec", 0);
+        turbo = config_get_int(NULL, "turbo", 1);
 
         cga_color_burst = config_get_int(NULL, "cga_color_burst", 1);
 	old_color_burst = cga_color_burst;
@@ -794,6 +859,7 @@ void saveconfig()
         config_set_string(NULL, "hdf_fn", ide_fn[3]);
 
         config_set_int(NULL, "disable_xchg_dynarec", disable_xchg_dynarec);
+        config_set_int(NULL, "turbo", turbo);
 
         config_set_int(NULL, "cga_color_burst", cga_color_burst);
         config_set_int(NULL, "cga_brown", cga_brown);

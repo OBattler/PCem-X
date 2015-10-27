@@ -1095,7 +1095,9 @@ int rep386(int fv)
                 default:
                         pc=ipc;
                         cycles-=20;
+#ifndef RELEASE_BUILD
                 pclog("Bad REP %02X %i\n", temp, rep32 >> 8);
+#endif
                 x86illegal();
         }
         if (rep32&0x200) ECX=c;
@@ -1128,10 +1130,16 @@ int checkio(int port)
 int xout=0;
 
 
+#ifndef RELEASE_BUILD
 #define divexcp() { \
                 pclog("Divide exception at %04X(%06X):%04X\n",CS,cs,pc); \
                 x86_int(0); \
 }
+#else
+#define divexcp() { \
+                x86_int(0); \
+}
+#endif
 
 int divl(uint32_t val)
 {
@@ -1450,7 +1458,9 @@ inrecomp=0;
                                 abrt = 0;
                                 CS = oldcs;
                                 pc = oldpc;
+#ifndef RELEASE_BUILD
                                 pclog("Double fault %i\n", ins);
+#endif
                                 pmodeint(8, 0);
                                 if (abrt)
                                 {

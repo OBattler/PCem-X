@@ -9,7 +9,7 @@
 #include "ide.h"
 #include "io.h"
 #include "lpt.h"
-#include "mouse_serial.h"
+// #include "mouse_serial.h"
 #include "serial.h"
 #include "w83877f.h"
 
@@ -342,7 +342,7 @@ process_value:
 				if (!(w83877f_regs[4] & 0x20))
 				{
 					serial1_set(make_port(0x24), (w83877f_regs[0x28] & 0xF0) >> 8);
-					mouse_serial_init();
+					// mouse_serial_init();
 				}
 			}
 			if (valxor & 0x80)
@@ -420,7 +420,7 @@ process_value:
 				if (!(w83877f_regs[4] & 0x20))
 				{
 					serial1_set(make_port(0x24), (w83877f_regs[0x28] & 0xF0) >> 8);
-					mouse_serial_init();
+					// mouse_serial_init();
 				}
 			}
 			break;
@@ -442,7 +442,7 @@ process_value:
 				if (!(w83877f_regs[4] & 0x20))
 				{
 					serial1_set(make_port(0x24), (w83877f_regs[0x28] & 0xF0) >> 8);
-					mouse_serial_init();
+					// mouse_serial_init();
 				}
 			}
 			break;

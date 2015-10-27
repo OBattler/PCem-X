@@ -46,7 +46,9 @@ void config_dump()
 {
         section_t *current_section;
         
+#ifndef RELEASE_BUILD
         pclog("Config data :\n");
+#endif
         
         current_section = (section_t *)config_head.next;
         
@@ -54,13 +56,17 @@ void config_dump()
         {
                 entry_t *current_entry;
                 
+#ifndef RELEASE_BUILD
                 pclog("[%s]\n", current_section->name);
+#endif
                 
                 current_entry = (entry_t *)current_section->entry_head.next;
                 
                 while (current_entry)
                 {
+#ifndef RELEASE_BUILD
                         pclog("%s = %s\n", current_entry->name, current_entry->data);
+#endif
 
                         current_entry = (entry_t *)current_entry->list.next;
                 }

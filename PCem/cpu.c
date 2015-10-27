@@ -77,6 +77,8 @@ int is386;
 
 int is80286;
 
+int turbo = 1;
+
 uint64_t tsc = 0;
 
 uint64_t pmc[2] = {0, 0};
@@ -146,7 +148,7 @@ static struct
 CPU cpus_8088[] =
 {
         /*8088 standard*/
-        {"8088/4.77",    CPU_8088,  0,  4772727, 1.33333333, 0, 0, 0, 0, 0},
+        {"8088/4.77",    CPU_8088,  0,  4772727, 1.00, 0, 0, 0, 0, 0},
         {"8088/8",       CPU_8088,  1,  8000000, 1.00, 0, 0, 0, 0, 0},
         {"8088/10",      CPU_8088,  2, 10000000, 1.00, 0, 0, 0, 0, 0},
         {"8088/12",      CPU_8088,  3, 12000000, 1.00, 0, 0, 0, 0, 0},
@@ -157,7 +159,7 @@ CPU cpus_8088[] =
 CPU cpus_pcjr[] =
 {
         /*8088 PCjr*/
-        {"8088/4.77",    CPU_8088,  0,  4772727, 1.33333333, 0, 0, 0, 0, 0},
+        {"8088/4.77",    CPU_8088,  0,  4772727, 1.00, 0, 0, 0, 0, 0},
         {"",             -1,        0, 0, 0}
 };
 
@@ -476,7 +478,7 @@ void cpu_set()
         cpuspeed = cpu_s->speed;
         is8086   = (cpu_s->cpu_type > CPU_8088);
 	is386	 = (cpu_s->cpu_type >= CPU_386SX);
-        is80286  = (cpu_s->cpu_type == CPU_286);
+        is80286  = (cpu_s->cpu_type >= CPU_286);
         is486    = (cpu_s->cpu_type >= CPU_i486SX) || (cpu_s->cpu_type == CPU_486SLC || cpu_s->cpu_type == CPU_486DLC);
         hasfpu   = (cpu_s->cpu_type >= CPU_i486DX);
         cpu_iscyrix = (cpu_s->cpu_type == CPU_486SLC || cpu_s->cpu_type == CPU_486DLC || cpu_s->cpu_type == CPU_Cx486S || cpu_s->cpu_type == CPU_Cx486DX || cpu_s->cpu_type == CPU_Cx5x86);
@@ -484,6 +486,12 @@ void cpu_set()
         if (cpu_s->multi) 
            cpu_busspeed = cpu_s->rspeed / cpu_s->multi;
         cpu_multi = cpu_s->multi;
+	if (!turbo)
+	{
+		cpuspeed /= 2.0d;
+		cpu_multi /= 2.0d;
+		cpu_busspeed /= 2.0d;
+	}
         cpu_hasrdtsc = 0;
         cpu_hasMMX = 0;
         cpu_hasMSR = 0;
@@ -493,21 +501,30 @@ void cpu_set()
         {
                 pci_nonburst_time = 3*cpu_s->rspeed / cpu_s->pci_speed;
                 pci_burst_time = cpu_s->rspeed / cpu_s->pci_speed;
+		if (!turbo)
+		{
+			pci_nonburst_time /= 2.0d;
+			pci_burst_time /= 2.0d;
+		}
         }
         else
         {
                 pci_nonburst_time = 3;
                 pci_burst_time = 1;
         }
+#ifndef RELEASE_BUILD
         pclog("PCI burst=%i nonburst=%i\n", pci_burst_time, pci_nonburst_time);
+#endif
 
         if (cpu_iscyrix)
            io_sethandler(0x0022, 0x0002, cyrix_read, NULL, NULL, cyrix_write, NULL, NULL, NULL);
         else
            io_removehandler(0x0022, 0x0002, cyrix_read, NULL, NULL, cyrix_write, NULL, NULL, NULL);
         
+#ifndef RELEASE_BUILD
         pclog("hasfpu - %i\n",hasfpu);
         pclog("is486 - %i  %i\n",is486,cpu_s->cpu_type);
+#endif
 
         x86_setopcodes(ops_386, ops_386_0f, dynarec_ops_386, dynarec_ops_386_0f);
 
@@ -791,6 +808,7 @@ void cpu_set()
 
                 case CPU_PENTIUMPRO:
                 x86_setopcodes(ops_386, ops_pentiumpro_0f, dynarec_ops_386, dynarec_ops_pentiumpro_0f);
+#if 0
                 timing_rr  = 1; /*register dest - register src*/
                 timing_rm  = 2; /*register dest - memory src*/
                 timing_mr  = 3; /*memory dest   - register src*/
@@ -800,6 +818,16 @@ void cpu_set()
                 timing_mml = 3;
                 timing_bt  = 0; /*branch taken*/
                 timing_bnt = 2; /*branch not taken*/
+#endif
+                timing_rr  = 1; /*register dest - register src*/
+                timing_rm  = 1; /*register dest - memory src*/
+                timing_mr  = 1; /*memory dest   - register src*/
+                timing_mm  = 1;
+                timing_rml = 1; /*register dest - memory src long*/
+                timing_mrl = 1; /*memory dest   - register src long*/
+                timing_mml = 1;
+                timing_bt  = 0; /*branch taken*/
+                timing_bnt = 1; /*branch not taken*/
                 cpu_hasrdtsc = 1;
                 msr.fcr = (1 << 8) | (1 << 9) | (1 << 12) |  (1 << 16) | (1 << 19) | (1 << 21);
                 cpu_hasMMX = 0;
@@ -812,6 +840,7 @@ void cpu_set()
                 case CPU_PENTIUM2:
                 case CPU_PENTIUM2D:
                 x86_setopcodes(ops_386, ops_pentium2_0f, dynarec_ops_386, dynarec_ops_pentium2_0f);
+#if 0
                 timing_rr  = 1; /*register dest - register src*/
                 timing_rm  = 2; /*register dest - memory src*/
                 timing_mr  = 3; /*memory dest   - register src*/
@@ -819,6 +848,16 @@ void cpu_set()
                 timing_rml = 2; /*register dest - memory src long*/
                 timing_mrl = 3; /*memory dest   - register src long*/
                 timing_mml = 3;
+                timing_bt  = 0; /*branch taken*/
+                timing_bnt = 1; /*branch not taken*/
+#endif
+                timing_rr  = 1; /*register dest - register src*/
+                timing_rm  = 1; /*register dest - memory src*/
+                timing_mr  = 1; /*memory dest   - register src*/
+                timing_mm  = 1;
+                timing_rml = 1; /*register dest - memory src long*/
+                timing_mrl = 1; /*memory dest   - register src long*/
+                timing_mml = 1;
                 timing_bt  = 0; /*branch taken*/
                 timing_bnt = 1; /*branch not taken*/
                 cpu_hasrdtsc = 1;
@@ -935,12 +974,14 @@ void cpu_CPUID()
                         EBX = ECX = 0;
                         EDX = CPUID_FPU | CPUID_TSC | CPUID_MSR | CPUID_CMPXCHG8B;
                 }
+#if 0
 		else if (EAX == 2)
 		{
 			EAX = 0x03020101;
 			EBX = ECX = 0;
 			EDX = 0x0C040843;
 		}
+#endif
                 else
                         EAX = 0;
                 break;
@@ -1104,7 +1145,9 @@ void cpu_RDMSR()
 {
 	if (((_cs.access >> 5) & 3) != 0)
 	{
+#ifndef RELEASE_BUILD
 		pclog("RDMSR with non-zero CPL\n", ECX);
+#endif
 		x86gpf(NULL, 0);
 		return;
 	}
@@ -1161,7 +1204,9 @@ void cpu_RDMSR()
                         EDX = sfmask >> 32;
                         break;
 			default:
+#ifndef RELEASE_BUILD
 			pclog("Invalid MSR: %08X\n", ECX);
+#endif
 			x86gpf(NULL, 0);
 			break;
                 }
@@ -1180,7 +1225,9 @@ void cpu_RDMSR()
                         EDX = tsc >> 32;
                         break;
 			default:
+#ifndef RELEASE_BUILD
 			pclog("Invalid MSR: %08X\n", ECX);
+#endif
 			x86gpf(NULL, 0);
 			break;
                 }
@@ -1290,7 +1337,9 @@ void cpu_RDMSR()
 			break;
 			default:
 i686_invalid_rdmsr:
+#ifndef RELEASE_BUILD
 			pclog("Invalid MSR: %08X\n", ECX);
+#endif
 			x86gpf(NULL, 0);
 			break;
                 }
@@ -1302,7 +1351,9 @@ void cpu_WRMSR()
 {
 	if (((_cs.access >> 5) & 3) != 0)
 	{
+#ifndef RELEASE_BUILD
 		pclog("WRMSR with non-zero CPL\n", ECX);
+#endif
 		x86gpf(NULL, 0);
 		return;
 	}
@@ -1450,7 +1501,9 @@ void cpu_WRMSR()
 			break;
 			default:
 i686_invalid_wrmsr:
+#ifndef RELEASE_BUILD
 			pclog("Invalid MSR: %08X\n", ECX);
+#endif
 			x86gpf(NULL, 0);
 			break;
                 }

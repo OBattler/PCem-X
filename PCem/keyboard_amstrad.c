@@ -41,12 +41,16 @@ void keyboard_amstrad_poll()
                 keyboard_amstrad.wantirq = 0;
                 keyboard_amstrad.pa = keyboard_amstrad.key_waiting;
                 picint(2);
+#ifndef RELEASE_BUILD
                 pclog("keyboard_amstrad : take IRQ\n");
+#endif
         }
         if (key_queue_start != key_queue_end && !keyboard_amstrad.pa)
         {
                 keyboard_amstrad.key_waiting = key_queue[key_queue_start];
+#ifndef RELEASE_BUILD
                 pclog("Reading %02X from the key queue at %i\n", keyboard_amstrad.key_waiting, key_queue_start);
+#endif
                 key_queue_start = (key_queue_start + 1) & 0xf;
                 keyboard_amstrad.wantirq = 1;        
         }                
@@ -55,22 +59,30 @@ void keyboard_amstrad_poll()
 void keyboard_amstrad_adddata(uint8_t val)
 {
         key_queue[key_queue_end] = val;
+#ifndef RELEASE_BUILD
         pclog("keyboard_amstrad : %02X added to key queue at %i\n", val, key_queue_end);
+#endif
         key_queue_end = (key_queue_end + 1) & 0xf;
         return;
 }
 
 void keyboard_amstrad_write(uint16_t port, uint8_t val, void *priv)
 {
+#ifndef RELEASE_BUILD
         pclog("keyboard_amstrad : write %04X %02X %02X\n", port, val, keyboard_amstrad.pb);
+#endif
 
         switch (port)
         {
                 case 0x61:
+#ifndef RELEASE_BUILD
                 pclog("keyboard_amstrad : pb write %02X %02X  %i %02X %i\n", val, keyboard_amstrad.pb, !(keyboard_amstrad.pb & 0x40), keyboard_amstrad.pb & 0x40, (val & 0x40));
+#endif
                 if (!(keyboard_amstrad.pb & 0x40) && (val & 0x40)) /*Reset keyboard*/
                 {
+#ifndef RELEASE_BUILD
                         pclog("keyboard_amstrad : reset keyboard\n");
+#endif
                         keyboard_amstrad_adddata(0xaa);
                 }
                 keyboard_amstrad.pb = val;
@@ -98,7 +110,11 @@ void keyboard_amstrad_write(uint16_t port, uint8_t val, void *priv)
                 break;
 
                 default:
+#ifndef RELEASE_BUILD
                 pclog("\nBad XT keyboard write %04X %02X\n", port, val);
+#else
+		;
+#endif
 //                dumpregs();
 //                exit(-1);
         }
@@ -146,7 +162,11 @@ uint8_t keyboard_amstrad_read(uint16_t port, void *priv)
                 break;
                 
                 default:
+#ifndef RELEASE_BUILD
                 pclog("\nBad XT keyboard read %04X\n", port);
+#else
+		;
+#endif
 //                dumpregs();
 //                exit(-1);
         }
@@ -164,8 +184,10 @@ void keyboard_amstrad_reset()
 void keyboard_amstrad_init()
 {
         //return;
+#ifndef RELEASE_BUILD
         pclog("keyboard_amstrad_init\n");
-        io_sethandler(0x0060, 0x0006, keyboard_amstrad_read, NULL, NULL, keyboard_amstrad_write, NULL, NULL,  NULL);
+#endif
+	io_sethandler(0x0060, 0x0006, keyboard_amstrad_read, NULL, NULL, keyboard_amstrad_write, NULL, NULL,  NULL);
         keyboard_amstrad_reset();
         keyboard_send = keyboard_amstrad_adddata;
         keyboard_poll = keyboard_amstrad_poll;

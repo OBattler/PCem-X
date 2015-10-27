@@ -83,6 +83,7 @@ static VIDEO_CARD video_cards[] =
         {"Trident TVGA8900D",                      &tvga8900d_device,           GFX_TVGA},
         {"Tseng ET4000AX",                         &et4000_device,              GFX_ET4000},
         {"Trident TGUI9440",                       &tgui9440_device,            GFX_TGUI9440},
+        {"Virtual PC S3 Trio64",                   &s3_vpc_trio64_device,       GFX_VPC_TRIO64},
         {"VGA",                                    &vga_device,                 GFX_VGA},
         {"",                                       NULL,                        0}
 };
@@ -233,6 +234,11 @@ void video_updatetiming()
         }
         if (cpu_16bitbus)
            video_timing_l = video_timing_w * 2;
+	if (!is8086)
+	{
+		video_timing_w = video_timing_b * 2;
+		video_timing_l = video_timing_w * 2;
+	}
 }
 
 int video_timing_b, video_timing_w, video_timing_l;
@@ -244,7 +250,9 @@ void (*video_blit_memtoscreen_8)(int x, int y, int w, int h);
 
 void video_init()
 {
+#ifndef RELEASE_BUILD
         pclog("Video_init %i %i\n",romset,gfxcard);
+#endif
 
 	overscan_x = overscan_y = 0;
 

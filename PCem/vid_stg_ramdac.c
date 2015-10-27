@@ -30,7 +30,9 @@ void stg_ramdac_out(uint16_t addr, uint8_t val, stg_ramdac_t *ramdac, svga_t *sv
                         ramdac->index = (ramdac->index & 0xff) | (val << 8); 
                         break;
                         case 7:
+#ifndef RELEASE_BUILD
                         pclog("Write RAMDAC reg %02X %02X\n", ramdac->index, val);
+#endif
                         if (ramdac->index < 0x100) 
                                 ramdac->regs[ramdac->index] = val;
                         ramdac->index++;

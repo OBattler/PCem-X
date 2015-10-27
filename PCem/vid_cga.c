@@ -106,7 +106,9 @@ void cga_recalctimings(cga_t *cga)
 {
         double disptime;
 	double _dispontime, _dispofftime;
+#ifndef RELEASE_BUILD
         pclog("Recalc - %i %i %i\n", cga->crtc[0], cga->crtc[1], cga->cgamode & 1);
+#endif
         if (cga->cgamode & 1)
         {
                 disptime = cga->crtc[0] + 1;
@@ -122,9 +124,11 @@ void cga_recalctimings(cga_t *cga)
         _dispontime *= CGACONST;
         _dispofftime *= CGACONST;
 //        printf("Timings - on %f off %f frame %f second %f\n",dispontime,dispofftime,(dispontime+dispofftime)*262.0,(dispontime+dispofftime)*262.0*59.92);
-	cga->dispontime = (int)(_dispontime * (1 << TIMER_SHIFT));
-	cga->dispofftime = (int)(_dispofftime * (1 << TIMER_SHIFT));
+	cga->dispontime = (int)(_dispontime * (1 << TIMER_SHIFT) * 3.0d);
+	cga->dispofftime = (int)(_dispofftime * (1 << TIMER_SHIFT) * 3.0d);
+#ifndef RELEASE_BUILD
 	pclog("Recalc end\n");
+#endif
 }
 
 void cga_poll(void *p)
@@ -423,7 +427,8 @@ void cga_poll(void *p)
                         {
                                 cga->cgadispon = 0;
                                 cga->displine = 0;
-                                cga->vsynctime = (cga->crtc[3] >> 4) + 1;
+                                // cga->vsynctime = (cga->crtc[3] >> 4) + 1;
+				cga->vsynctime = 16;
                                 if (cga->crtc[7])
                                 {
                                         if (cga->cgamode & 1) x = (cga->crtc[1] << 3) + 16;
@@ -486,7 +491,9 @@ endblit();
                 if (cga->cgadispon && (cga->cgamode & 1))
                 {
                         for (x = 0; x < (cga->crtc[1] << 1); x++)
-                            cga->charbuffer[x] = cga->vram[(((cga->ma << 1) + x) & 0x3fff)];
+			{
+                            if (cga->vram != NULL)  cga->charbuffer[x] = cga->vram[(((cga->ma << 1) + x) & 0x3fff)];
+			}
                 }
         }
 	// pclog("Poll end\n");
@@ -502,25 +509,37 @@ void *cga_standalone_init()
         int c;
         int cga_tint = -2;
         cga_t *cga = malloc(sizeof(cga_t));
+#ifndef RELEASE_BUILD
 	pclog("Allocating type memory...\n");
+#endif
         memset(cga, 0, sizeof(cga_t));
 	old_cgacol = 0;
 
 	overscan_x = overscan_y = 16;
 
+#ifndef RELEASE_BUILD
 	pclog("Allocating VRAM...\n");
+#endif
         cga->vram = malloc(0x4000);
                 
+#ifndef RELEASE_BUILD
 	pclog("Configuring composite CGA\n");
+#endif
 	cga_comp_init(cga);
 
+#ifndef RELEASE_BUILD
 	pclog("Adding memory mapping...\n");
+#endif
         mem_mapping_add(&cga->mapping, 0xb8000, 0x08000, cga_read, NULL, NULL, cga_write, NULL, NULL,  NULL, 0, cga);
 
+#ifndef RELEASE_BUILD
 	pclog("Adding timer...\n");
+#endif
         timer_add(cga_poll, &cga->vidtime, TIMER_ALWAYS_ENABLED, cga);
 
+#ifndef RELEASE_BUILD
 	pclog("Setting handler...\n");
+#endif
         io_sethandler(0x03d0, 0x0010, cga_in, NULL, NULL, cga_out, NULL, NULL, cga);
         return cga;
 }

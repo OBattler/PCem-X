@@ -13,7 +13,8 @@ int pci_burst_time, pci_nonburst_time;
 
 void pci_cf8_write(uint16_t port, uint32_t val, void *p)
 {
-        pci_index = val & 0xff;
+        // pci_index = val & 0xff;
+        pci_index = val & 0xfc;
         pci_func = (val >> 8) & 7;
         pci_card = (val >> 11) & 31;
         pci_bus = (val >> 16) & 0xff;
@@ -22,7 +23,7 @@ void pci_cf8_write(uint16_t port, uint32_t val, void *p)
 
 uint32_t pci_cf8_read(uint16_t port, void *p)
 {
-        return pci_index | (pci_func << 8) | (pci_card << 11) | (pci_bus << 16) | (pci_enable << 31);
+        return (pci_index & 0xfc) | (pci_func << 8) | (pci_card << 11) | (pci_bus << 16) | (pci_enable << 31);
 }
 
 void pci_write(uint16_t port, uint8_t val, void *priv)

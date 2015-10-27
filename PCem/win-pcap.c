@@ -46,7 +46,9 @@ void initpcap()
 		// init the library
 		pcapinst = LoadLibrary("WPCAP.DLL");
 		if(pcapinst==NULL) {
+#ifndef RELEASE_BUILD
 			pclog("WinPcap has to be installed for the NIC to work.\n");
+#endif
 			load_success = 0;
 			return;
 		}
@@ -78,7 +80,9 @@ void initpcap()
 
 		if(PacketFindALlDevsEx==0 || PacketNextEx==0 || PacketOpen==0 ||
 			PacketFreealldevs==0 || PacketClose==0 || PacketSendPacket==0) {
+#ifndef RELEASE_BUILD
 			pclog("Wrong WinPcap version or something\n");
+#endif
 			load_success = 0;
 			return;
 		}
@@ -89,7 +93,9 @@ void initpcap()
 		if (pcap_findalldevs(&alldevs, errbuf) == -1)
 #endif
  		{
+#ifndef RELEASE_BUILD
 			pclog("Cannot enumerate network interfaces: %s\n", errbuf);
+#endif
 			load_success = 0;
 			return;
 		}
@@ -97,6 +103,7 @@ void initpcap()
 			for(currentdev=alldevs; currentdev!=NULL; currentdev=currentdev->next) {
 			i++;
 			if (ethif==255) {
+#ifndef RELEASE_BUILD
 					pclog ("%d. %s", i, currentdev->name);
 					if (currentdev->description) {
 							pclog (" (%s)\n", currentdev->description);
@@ -104,24 +111,33 @@ void initpcap()
 					else {
 							pclog (" (No description available)\n");
 						}
+#endif
 				}
 		}
 
 		if(i==0) {
+#ifndef RELEASE_BUILD
 			pclog("Unable to find network interface\n");
+#endif
 			load_success = 0;
 			pcap_freealldevs(alldevs);
 			return;
 		}
 
+#ifndef RELEASE_BUILD
 	pclog ("\n");
-
+#endif
+	
 	if (ethif==255) exit (0);
 	else inum = ethif;
+#ifndef RELEASE_BUILD
 	pclog ("Using network interface %u.\n", ethif);
-
+#endif
+	
 	if (inum < 1 || inum > i) {
+#ifndef RELEASE_BUILD
 			pclog ("\nInterface number out of range.\n");
+#endif
 			/* Free the device list */
 			load_success = 0;
 			pcap_freealldevs (alldevs);
@@ -156,13 +172,17 @@ void initpcap()
 
 #endif
         {
+#ifndef RELEASE_BUILD
             pclog("\nUnable to open the interface: %s.", errbuf);
+#endif
         	pcap_freealldevs(alldevs);
 			load_success = 0;
 			return;
 		}
+#ifndef RELEASE_BUILD
         pclog ("\nEthernet bridge on %s...\n", currentdev->description);
-
+#endif
+		
 		pcap_freealldevs(alldevs);
 #ifndef WIN32
 		pcap_setnonblock(adhandle,1,errbuf);

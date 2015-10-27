@@ -21,7 +21,7 @@ void nvr_recalc()
         int c;
         int newrtctime;
         c=1<<((nvrram[0xA]&0xF)-1);
-        newrtctime=(int)(RTCCONST * c * (1 << TIMER_SHIFT));
+        newrtctime=(int)(RTCCONST * c * (1 << TIMER_SHIFT) * 3);
         if (rtctime>newrtctime) rtctime=newrtctime;
 }
 
@@ -34,7 +34,7 @@ void nvr_rtc(void *p)
                 return;
         }
         c=1<<((nvrram[0xA]&0xF)-1);
-        rtctime += (int)(RTCCONST * c * (1 << TIMER_SHIFT));
+        rtctime += (int)(RTCCONST * c * (1 << TIMER_SHIFT) * 3);
 //        pclog("RTCtime now %f\n",rtctime);
         nvrram[0xC] |= 0x40;
         if (nvrram[0xB]&0x40)
@@ -124,7 +124,7 @@ void nvr_do()
 	if (nvrram[0xA]&0xF)
 	{
 		c=1<<((nvrram[0xA]&0xF)-1);
-		rtctime += (int)(RTCCONST * c * (1 << TIMER_SHIFT));
+		rtctime += (int)(RTCCONST * c * (1 << TIMER_SHIFT) * 3);
 	}
 	else
 		rtctime = 0x7fffffff;
@@ -274,7 +274,7 @@ void writenvr(uint16_t addr, uint8_t val, void *priv)
                         if (val&0xF)
                         {
                                 c=1<<((val&0xF)-1);
-                                rtctime += (int)(RTCCONST * c * (1 << TIMER_SHIFT));
+                                rtctime += (int)(RTCCONST * c * (1 << TIMER_SHIFT) * 3);
                         }
                         else
                            rtctime = 0x7fffffff;
@@ -379,7 +379,7 @@ void loadnvr()
         // nvrram[0xA]=6;
         // nvrram[0xB]=0;
         c=1<<((6&0xF)-1);
-        rtctime += (int)(RTCCONST * c * (1 << TIMER_SHIFT));
+        rtctime += (int)(RTCCONST * c * (1 << TIMER_SHIFT) * 3);
 }
 
 void savenvr()

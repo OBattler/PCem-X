@@ -66,7 +66,9 @@ static uint8_t riva128_pmc_read(uint32_t addr, void *p)
   svga_t *svga = &riva128->svga;
   uint8_t ret = 0;
 
+#ifndef RELEASE_BUILD
   pclog("RIVA 128 PMC read %08X %04X:%08X\n", addr, CS, pc);
+#endif
 
   switch(addr)
   {
@@ -85,7 +87,9 @@ static uint8_t riva128_pbus_read(uint32_t addr, void *p)
   svga_t *svga = &riva128->svga;
   uint8_t ret = 0;
 
+#ifndef RELEASE_BUILD
   pclog("RIVA 128 PBUS read %08X %04X:%08X\n", addr, CS, pc);
+#endif
 
   switch(addr)
   {
@@ -101,7 +105,9 @@ static uint8_t riva128_pfb_read(uint32_t addr, void *p)
   svga_t *svga = &riva128->svga;
   uint8_t ret = 0;
 
+#ifndef RELEASE_BUILD
   pclog("RIVA 128 PFB read %08X %04X:%08X\n", addr, CS, pc);
+#endif
 
   switch(addr)
   {
@@ -119,7 +125,9 @@ static void riva128_pfb_write(uint32_t addr, uint32_t val, void *p)
 {
   riva128_t *riva128 = (riva128_t *)p;
   svga_t *svga = &riva128->svga;
+#ifndef RELEASE_BUILD
   pclog("RIVA 128 PFB write %08X %08X %04X:%08X\n", addr, val, CS, pc);
+#endif
 
   switch(addr)
   {
@@ -142,7 +150,9 @@ static uint8_t riva128_pramdac_read(uint32_t addr, void *p)
   svga_t *svga = &riva128->svga;
   uint8_t ret = 0;
 
+#ifndef RELEASE_BUILD
   pclog("RIVA 128 PRAMDAC read %08X %04X:%08X\n", addr, CS, pc);
+#endif
 
   switch(addr)
   {
@@ -159,7 +169,9 @@ static void riva128_pramdac_write(uint32_t addr, uint32_t val, void *p)
 {
   riva128_t *riva128 = (riva128_t *)p;
   svga_t *svga = &riva128->svga;
+#ifndef RELEASE_BUILD
   pclog("RIVA 128 PRAMDAC write %08X %08X %04X:%08X\n", addr, val, CS, pc);
+#endif
 
   switch(addr)
   {
@@ -177,7 +189,9 @@ static uint8_t riva128_mmio_read(uint32_t addr, void *p)
 
   addr &= 0xffffff;
 
+#ifndef RELEASE_BUILD
   pclog("RIVA 128 MMIO read %08X %04X:%08X\n", addr, CS, pc);
+#endif
 
   switch(addr)
   {
@@ -199,24 +213,32 @@ static uint8_t riva128_mmio_read(uint32_t addr, void *p)
 
 static uint16_t riva128_mmio_read_w(uint32_t addr, void *p)
 {
+#ifndef RELEASE_BUILD
   pclog("RIVA 128 MMIO read %08X %04X:%08X\n", addr, CS, pc);
+#endif
   return 0;
 }
 
 static uint32_t riva128_mmio_read_l(uint32_t addr, void *p)
 {
+#ifndef RELEASE_BUILD
   pclog("RIVA 128 MMIO read %08X %04X:%08X\n", addr, CS, pc);
+#endif
   return 0;
 }
 
 static void riva128_mmio_write(uint32_t addr, uint8_t val, void *p)
 {
+#ifndef RELEASE_BUILD
   pclog("RIVA 128 MMIO write %08X %02X %04X:%08X\n", addr, val, CS, pc);
+#endif
 }
 
 static void riva128_mmio_write_w(uint32_t addr, uint16_t val, void *p)
 {
+#ifndef RELEASE_BUILD
   pclog("RIVA 128 MMIO write %08X %04X %04X:%08X\n", addr, val, CS, pc);
+#endif
 }
 
 static void riva128_mmio_write_l(uint32_t addr, uint32_t val, void *p)
@@ -226,7 +248,9 @@ static void riva128_mmio_write_l(uint32_t addr, uint32_t val, void *p)
 
   addr &= 0xffffff;
 
+#ifndef RELEASE_BUILD
   pclog("RIVA 128 MMIO write %08X %08X %04X:%08X\n", addr, val, CS, pc);
+#endif
 
   switch(addr)
   {
@@ -247,7 +271,9 @@ static uint8_t riva128_rma_in(uint16_t addr, void *p)
 
   addr &= 0xff;
 
+#ifndef RELEASE_BUILD
   pclog("RIVA 128 RMA read %04X %04X:%08X\n", addr, CS, pc);
+#endif
 
   switch(addr)
   {
@@ -268,7 +294,9 @@ static void riva128_rma_out(uint16_t addr, uint8_t val, void *p)
 
   addr &= 0xff;
 
+#ifndef RELEASE_BUILD
   pclog("RIVA 128 RMA write %04X %02X %04X:%08X\n", addr, val, CS, pc);
+#endif
 
   switch(addr)
   {
@@ -324,7 +352,9 @@ static uint8_t riva128_in(uint16_t addr, void *p)
   switch (addr)
   {
   case 0x3D0 ... 0x3D3:
+#ifndef RELEASE_BUILD
   pclog("RIVA 128 RMA BAR Register read %02X %04X:%08X\n", addr, CS, pc);
+#endif
   if(!(riva128->rma.mode & 1)) break;
   ret = riva128_rma_in(riva128->rma_addr + ((riva128->rma.mode & 0xe) << 1) + (addr & 3), riva128);
   break;
@@ -333,8 +363,10 @@ static uint8_t riva128_in(uint16_t addr, void *p)
   break;
   case 0x3D5:
   ret = svga->crtc[svga->crtcreg];
+#ifndef RELEASE_BUILD
   if(svga->crtcreg > 0x18)
     pclog("RIVA 128 Extended CRTC read %02X %04X:%08X\n", svga->crtcreg, CS, pc);
+#endif
   break;
   default:
   ret = svga_in(addr, svga);
@@ -357,7 +389,9 @@ static void riva128_out(uint16_t addr, uint8_t val, void *p)
   switch(addr)
   {
   case 0x3D0 ... 0x3D3:
+#ifndef RELEASE_BUILD
   pclog("RIVA 128 RMA BAR Register write %02X %02x %04X:%08X\n", addr, val, CS, pc);
+#endif
   riva128->rma.access_reg[addr & 3] = val;
   if(!(riva128->rma.mode & 1)) return;
   riva128_rma_out(riva128->rma_addr + ((riva128->rma.mode & 0xe) << 1) + (addr & 3), riva128->rma.access_reg[addr & 3], riva128);
@@ -402,8 +436,10 @@ static void riva128_out(uint16_t addr, uint8_t val, void *p)
   riva128->rma.mode = val & 0xf;
   break;
   }
+#ifndef RELEASE_BUILD
   if(svga->crtcreg > 0x18)
     pclog("RIVA 128 Extended CRTC write %02X %02x %04X:%08X\n", svga->crtcreg, val, CS, pc);
+#endif
   if (old != val)
   {
     if (svga->crtcreg < 0xE || svga->crtcreg > 0x10)
@@ -426,7 +462,9 @@ static uint8_t riva128_pci_read(int func, int addr, void *p)
   riva128_t *riva128 = (riva128_t *)p;
   svga_t *svga = &riva128->svga;
   uint8_t ret = 0;
+#ifndef RELEASE_BUILD
   pclog("RIVA 128 PCI read %02X %04X:%08X\n", addr, CS, pc);
+#endif
   switch (addr)
   {
     case 0x00: ret = 0xd2; break; /*'nVidia'*/
@@ -477,7 +515,9 @@ static uint8_t riva128_pci_read(int func, int addr, void *p)
 
 static void riva128_pci_write(int func, int addr, uint8_t val, void *p)
 {
+#ifndef RELEASE_BUILD
   pclog("RIVA 128 PCI write %02X %02X %04X:%08X\n", addr, val, CS, pc);
+#endif
   riva128_t *riva128 = (riva128_t *)p;
   svga_t *svga = &riva128->svga;
   switch (addr)

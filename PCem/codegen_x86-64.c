@@ -103,19 +103,25 @@ void dump_block()
 {
         codeblock_t *block = pages[0x119000 >> 12].block;
 
+#ifndef RELEASE_BUILD
         pclog("dump_block:\n");
+#endif
         while (block)
         {
                 uint32_t start_pc = (block->pc & 0xffc) | (block->phys & ~0xfff);
                 uint32_t end_pc = (block->endpc & 0xffc) | (block->phys & ~0xfff);
+#ifndef RELEASE_BUILD
                 pclog(" %p : %08x-%08x  %08x-%08x %p %p\n", (void *)block, start_pc, end_pc,  block->pc, block->endpc, (void *)block->prev, (void *)block->next);
+#endif
                 if (!block->pc)
                         fatal("Dead PC=0\n");
                 
                 block = block->next;
         }
+#ifndef RELEASE_BUILD
         pclog("dump_block done\n");
-}
+#endif
+		}
 
 static void delete_block(codeblock_t *block)
 {
@@ -563,10 +569,12 @@ int opcode_0f_modrm[256] =
         
 void codegen_debug()
 {
+#ifndef RELEASE_BUILD
         if (output)
         {
                 pclog("At %04x(%08x):%04x  %04x(%08x):%04x  es=%08x EAX=%08x BX=%04x ECX=%08x BP=%04x EDX=%08x EDI=%08x\n", CS, cs, pc, SS, ss, ESP,  es,EAX, BX,ECX,BP,  EDX,EDI);
         }
+#endif
 }
 
 static x86seg *codegen_generate_ea_16_long(x86seg *op_ea_seg, uint32_t fetchdat, int op_ssegs, uint32_t *op_pc)

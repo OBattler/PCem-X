@@ -67,7 +67,7 @@ extern uint32_t *video_15to32, *video_16to32;
 
 extern int xsize,ysize;
 
-extern float cpuclock;
+extern double cpuclock;
 
 extern int emu_fps, frames;
 

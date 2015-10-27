@@ -3,7 +3,13 @@
 #include <ddraw.h>
 #undef BITMAP
 #include "win-ddraw-fs.h"
+#ifdef _MSC_VER
+extern "C" {
 #include "video.h"
+}
+#else
+#include "video.h"
+#endif
 
 extern "C" void fatal(const char *format, ...);
 extern "C" void pclog(const char *format, ...);
@@ -103,7 +109,9 @@ void ddraw_fs_init(HWND h)
         if (FAILED(lpdd4->CreateSurface(&ddsd, &lpdds_back, NULL)))
            fatal("CreateSurface back failed\n");
            
+#ifndef RELEASE_BUILD
         pclog("DDRAW_INIT complete\n");
+#endif
         ddraw_hwnd = h;
         video_blit_memtoscreen   = ddraw_fs_blit_memtoscreen;
         video_blit_memtoscreen_8 = ddraw_fs_blit_memtoscreen_8;
@@ -208,8 +216,10 @@ static void ddraw_fs_blit_memtoscreen(int x, int y, int y1, int y2, int w, int h
                 device_force_redraw();
         }
         if (!ddsd.lpSurface) return;
-        for (yy = y1; yy < y2; yy++)
-            memcpy(ddsd.lpSurface + (yy * ddsd.lPitch), &(((uint32_t *)buffer32->line[y + yy])[x]), w * 4);
+		for (yy = y1; yy < y2; yy++)
+		{
+			if ((y + yy) >= 0)  memcpy((unsigned char*)ddsd.lpSurface + (yy * ddsd.lPitch), &(((uint32_t *)buffer32->line[y + yy])[x]), w * 4);
+		}
         lpdds_back->Unlock(NULL);
         
         window_rect.left = 0;
@@ -281,7 +291,7 @@ static void ddraw_fs_blit_memtoscreen_8(int x, int y, int w, int h)
         {
                 if ((y + yy) >= 0 && (y + yy) < buffer->h)
                 {
-                        uint32_t *p = (uint32_t *)(ddsd.lpSurface + (yy * ddsd.lPitch));
+                        uint32_t *p = (uint32_t *)((unsigned char*)ddsd.lpSurface + (yy * ddsd.lPitch));
                         for (xx = 0; xx < w; xx++)
 			{
                             p[xx] = pal_lookup[buffer->line[y + yy][x + xx]];

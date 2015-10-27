@@ -114,7 +114,9 @@ void cpqvdu_write(uint32_t addr, uint8_t val, void *p)
 	if (cpqvdu->cpqvdumode & 1) {}
 	else if (!(cpqvdu->cpqvdumode & 2)) {}
 	else
+	{
 	        cycles -= 4;
+	}
 }
 
 uint8_t cpqvdu_read(uint32_t addr, void *p)
@@ -157,8 +159,8 @@ void cpqvdu_recalctimings(cpqvdu_t *cpqvdu)
         _dispontime *= MDACONST;
         _dispofftime *= MDACONST;
 //        printf("Timings - on %f off %f frame %f second %f\n",dispontime,dispofftime,(dispontime+dispofftime)*262.0,(dispontime+dispofftime)*262.0*59.92);
-	cpqvdu->dispontime = (int)(_dispontime * (1 << TIMER_SHIFT));
-	cpqvdu->dispofftime = (int)(_dispofftime * (1 << TIMER_SHIFT));
+	cpqvdu->dispontime = (int)(_dispontime * (1 << TIMER_SHIFT) * 3.0d);
+	cpqvdu->dispofftime = (int)(_dispofftime * (1 << TIMER_SHIFT) * 3.0d);
 }
 
 static int ntsc_col[8][8]=
@@ -642,8 +644,8 @@ void *cpqvdu_standalone_init()
         mdacols[0x88][0][1] = mdacols[0x88][1][1] = 16 + 8;
 
         cpqvdu->crtc[0] = 63;
-        cpqvdu->dispontime = 1000 * (1 << TIMER_SHIFT);
-        cpqvdu->dispofftime = 1000 * (1 << TIMER_SHIFT);
+        cpqvdu->dispontime = 1000 * (1 << TIMER_SHIFT) * 3.0d;
+        cpqvdu->dispofftime = 1000 * (1 << TIMER_SHIFT) * 3.0d;
 
         return cpqvdu;
 }

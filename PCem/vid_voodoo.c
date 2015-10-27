@@ -2599,7 +2599,9 @@ static void voodoo_reg_writel(uint32_t addr, uint32_t val, void *p)
 
                 voodoo->params.swapbufferCMD = val;
 
+#ifndef RELEASE_BUILD
                 pclog("Swap buffer %08x %d %p\n", val, voodoo->swap_count, &voodoo->swap_count);
+#endif
 //                voodoo->front_offset = params->front_offset;
                 wait_for_render_thread_idle(voodoo);
                 if (!(val & 1))
@@ -3686,9 +3688,13 @@ static void voodoo_writew(uint32_t addr, uint16_t val, void *p)
         addr &= 0xffffff;
 
         if (addr == voodoo->last_write_addr+4)
+	{
                 cycles -= pci_burst_time;
+	}
         else
+	{
                 cycles -= pci_nonburst_time;
+	}
         voodoo->last_write_addr = addr;
 
         if ((addr & 0xc00000) == 0x400000) /*Framebuffer*/
@@ -3716,7 +3722,7 @@ static void voodoo_pixelclock_update(voodoo_t *voodoo)
         voodoo->pixel_clock = t;
 
         clock_const = cpuclock / t;
-        voodoo->line_time = (int)((double)line_length * clock_const * (double)(1 << TIMER_SHIFT));
+        voodoo->line_time = (int)((double)line_length * clock_const * (double)(1 << TIMER_SHIFT) * 3.0d);
 }
 
 static void voodoo_writel(uint32_t addr, uint32_t val, void *p)
@@ -3726,9 +3732,13 @@ static void voodoo_writel(uint32_t addr, uint32_t val, void *p)
         addr &= 0xffffff;
 
         if (addr == voodoo->last_write_addr+4)
+	{
                 cycles -= pci_burst_time;
+	}
         else
+	{
                 cycles -= pci_nonburst_time;
+	}
         voodoo->last_write_addr = addr;
 
         if (addr & 0x800000) /*Texture*/

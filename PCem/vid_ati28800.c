@@ -129,17 +129,23 @@ uint8_t ati28800_in(uint16_t addr, void *p)
                 temp = svga_in(addr, svga);
                 break;
         }
+#ifndef RELEASE_BUILD
         if (addr != 0x3da) pclog("%02X  %04X:%04X\n", temp, CS,pc);
+#endif
         return temp;
 }
 
 void ati28800_recalctimings(svga_t *svga)
 {
         ati28800_t *ati28800 = (ati28800_t *)svga->p;
+#ifndef RELEASE_BUILD
         pclog("ati28800_recalctimings\n");
+#endif
         if (!svga->scrblank && (ati28800->regs[0xb0] & 0x20)) /*Extended 256 colour modes*/
         {
+#ifndef RELEASE_BUILD
                 pclog("8bpp_highres\n");
+#endif
                 svga->render = svga_render_8bpp_highres;
                 svga->rowoffset <<= 1;
                 svga->ma <<= 1;

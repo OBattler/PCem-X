@@ -36,13 +36,18 @@
 #include "slirp/queue.h"
 #include <pcap.h>
 
+#include "config.h"
+
 #include "ibm.h"
 #include "device.h"
 
 #include "io.h"
+#include "mem.h"
 #include "nethandler.h"
+#include "rom.h"
 
 #include "ne2000.h"
+#include "pci.h"
 #include "pic.h"
 #include "timer.h"
 
@@ -79,6 +84,8 @@ int net_slirp_inited=0;
 int net_is_slirp=1;	//by default we go with slirp
 int net_is_pcap=0;	//and pretend pcap is dead.
 int fizz=0;
+uint16_t ne2000_baseaddr = 0x300;
+uint16_t ne2000_irq = 10;
 void slirp_tic();
 
 #define BX_RESET_HARDWARE 0
@@ -91,6 +98,8 @@ void slirp_tic();
 #define  BX_NE2K_MEMSIZ    (32*1024)
 #define  BX_NE2K_MEMSTART  (16*1024)
 #define  BX_NE2K_MEMEND    (BX_NE2K_MEMSTART + BX_NE2K_MEMSIZ)
+
+uint8_t rtl8029as_eeprom[128];
 
 typedef struct ne2000_t
 {
@@ -195,6 +204,9 @@ typedef struct ne2000_t
   uint8_t  tallycnt_1;  // 0eh read  ; tally counter 1 (CRC errors)
   uint8_t  tallycnt_2;  // 0fh read  ; tally counter 2 (missed pkt errors)
 
+  uint8_t   i8029id0;
+  uint8_t   i8029id1;
+
   //
   // Page 1
   //
@@ -225,6 +237,14 @@ typedef struct ne2000_t
     //
     // Page 3  - should never be modified.
     //
+    uint8_t cr;
+    uint8_t i9346cr;
+    uint8_t config0;
+    uint8_t config2;
+    uint8_t config3;
+    uint8_t hltclk;
+    uint8_t i8029asid0;
+    uint8_t i8029asid1;
 
     // Novell ASIC state
   uint8_t  macaddr[32];          // ASIC ROM'd MAC address, even bytes
@@ -602,6 +622,7 @@ uint8_t ne2000_read(uint16_t address, void *p)
 #ifdef NE2000_LOG
     pclog("reserved read - page 0, 0xa\n");
 #endif
+    if (network_card_current == NET_RTL8029AS)  return ne2000->i8029id0;
     return (0xff);
     break;
 
@@ -609,6 +630,7 @@ uint8_t ne2000_read(uint16_t address, void *p)
 #ifdef NE2000_LOG
     pclog("reserved read - page 0, 0xb\n");
 #endif
+    if (network_card_current == NET_RTL8029AS)  return ne2000->i8029id1;
     return (0xff);
     break;
 
@@ -754,6 +776,32 @@ uint8_t ne2000_read(uint16_t address, void *p)
     break;
   }
       break;
+
+    case 0x03:
+	if (!PCI)  return 0xFF;
+
+	pclog("page 3 read from port %04x\n", address);
+
+	switch(address)
+	{
+		case 0:
+			return ne2000->cr;
+		case 1:
+			return ne2000->i9346cr;
+		case 3:
+			return ne2000->config0;
+		case 5:
+			return ne2000->config2;
+		case 6:
+			return ne2000->config3;
+		case 9:
+			return 0xFF;
+		case 0xE:
+			return ne2000->i8029asid0;
+		case 0xF:
+			return ne2000->i8029asid1;
+	}
+	break;
 
     default:
       fatal("ne2000: unknown value of pgsel in read - %d\n", ne2000->CR.pgsel);
@@ -1191,6 +1239,28 @@ if(net_is_pcap && net_pcap!=NULL) {
   }
       break;
 
+	case 3:
+		if (!PCI)  return;
+
+		switch (address)
+		{
+			case 0:
+				ne2000->cr = value;
+				break;
+			case 1:
+				ne2000->i9346cr = value;
+				break;
+			case 5:
+				if ((ne2000->i9346cr & 0xC0) == 0xC0)  ne2000->config2 = value;
+				break;
+			case 6:
+				if ((ne2000->i9346cr & 0xC0) == 0xC0)  ne2000->config3 = value;
+				break;
+			case 9:
+				ne2000->hltclk = value;
+				break;
+		}
+		break;
     default:
       fatal("ne2000: unknown value of pgsel in write - %d\n", ne2000->CR.pgsel);
     }
@@ -1450,28 +1520,207 @@ if(net_is_pcap  && net_pcap!=NULL)
 }
 
 
+uint8_t ne2000_pci_regs[256];
+
+uint8_t ne2000_null_read(uint16_t address, void *p)
+{
+	return 0xFF;
+}
+
+void ne2000_null_write(uint16_t address, uint8_t value, void *p)
+{
+}
+
+void ne2000_io_remove(ne2000_t *ne2000)
+{
+    pclog("NE2000: IO remove handler: %04X\n", ne2000_baseaddr);
+    io_removehandler(ne2000_baseaddr, 0x0010, ne2000_read, NULL, NULL, ne2000_write, NULL, NULL, ne2000);
+    io_removehandler(ne2000_baseaddr+0x10, 0x000f, ne2000_asic_read_b, ne2000_asic_read_w, NULL, ne2000_asic_write_b, ne2000_asic_write_w, NULL, ne2000);
+    io_removehandler(ne2000_baseaddr+0x1f, 0x0001, ne2000_reset_read, NULL, NULL, ne2000_reset_write, NULL, NULL, ne2000);
+    if (network_card_current == NET_RTL8029AS)
+    {
+	io_removehandler(ne2000_baseaddr+0x20, 0x00e0, ne2000_null_read, NULL, NULL, ne2000_null_write, NULL, NULL, ne2000);
+    }
+}
+
+void ne2000_io_set(ne2000_t *ne2000)
+{
+    pclog("NE2000: IO set handler: %04X\n", ne2000_baseaddr);
+    io_sethandler(ne2000_baseaddr, 0x0010, ne2000_read, NULL, NULL, ne2000_write, NULL, NULL, ne2000);
+    io_sethandler(ne2000_baseaddr+0x10, 0x000f, ne2000_asic_read_b, ne2000_asic_read_w, NULL, ne2000_asic_write_b, ne2000_asic_write_w, NULL, ne2000);
+    io_sethandler(ne2000_baseaddr+0x1f, 0x0001, ne2000_reset_read, NULL, NULL, ne2000_reset_write, NULL, NULL, ne2000);
+    if (network_card_current == NET_RTL8029AS)
+    {
+	io_sethandler(ne2000_baseaddr+0x20, 0x00e0, ne2000_null_read, NULL, NULL, ne2000_null_write, NULL, NULL, ne2000);
+    }
+}
+
+uint8_t ne2000_pci_read(int func, int addr, void *p)
+{
+	ne2000_t *ne2000 = (ne2000_t *) p;
+
+        pclog("NE2000 PCI read %08X\n", addr);
+        switch (addr)
+        {
+                case 0x00:/* case 0x2C:*/ return 0xec;
+                case 0x01:/* case 0x2D:*/ return 0x10;
+
+                case 0x02:/* case 0x2E:*/ return 0x29;
+                case 0x03:/* case 0x2F:*/ return 0x80;
+
+		case 0x2C: return 0xF4;
+		case 0x2D: return 0x1A;
+		case 0x2E: return 0x00;
+		case 0x2F: return 0x11;
+
+                case 0x04:
+                return ne2000_pci_regs[0x04] & 3; /*Respond to IO and memory accesses*/
+                case 0x05:
+		return ne2000_pci_regs[0x05];
+
+                case 0x07: return 2;
+
+                case 0x08: return 0; /*Revision ID*/
+                case 0x09: return 0; /*Programming interface*/
+
+                case 0x0B: return ne2000_pci_regs[0x0B];
+
+                case 0x10: return 1; /*I/O space*/
+                case 0x11: return ne2000_pci_regs[0x11];
+                case 0x12: return ne2000_pci_regs[0x12];
+                case 0x13: return ne2000_pci_regs[0x13];
+
+                case 0x30: return ne2000_pci_regs[0x30] & 0x01; /*BIOS ROM address*/
+                case 0x31: return (ne2000_pci_regs[0x31] & 0xE0) | 0x18;
+                case 0x32: return ne2000_pci_regs[0x32];
+                case 0x33: return ne2000_pci_regs[0x33];
+
+                case 0x3C: return ne2000_pci_regs[0x3C];
+                case 0x3D: return ne2000_pci_regs[0x3D];
+#if 0
+		case 0x3E: case 0x3F: return 0xFF;
+
+		case 0xE0: return 0x55;
+		case 0xE1: return 0xAA;
+		case 0xE2: return 0x99;
+		case 0xE3: return 0xCC;
+#endif
+
+		default: return 0;
+        }
+        return 0;
+}
+
+void ne2000_pci_write(int func, int addr, uint8_t val, void *p)
+{
+	ne2000_t *ne2000 = (ne2000_t *) p;
+
+	uint32_t ba1, ba2, ba3, ba4;
+
+        pclog("ne2000_pci_write: addr=%02x val=%02x\n", addr, val);
+        switch (addr)
+        {
+                case 0x04:
+                ne2000_pci_regs[0x04] = val & 3;
+                if (val & PCI_COMMAND_IO)
+		{
+			if (ne2000_baseaddr >= 0x300)
+			{
+	                        ne2000_io_set(ne2000);
+				ne2000_reset(BX_RESET_SOFTWARE, ne2000);
+			}
+		}
+                else
+                        ne2000_io_remove(ne2000);
+                break;
+
+		case 0x11: case 0x12: case 0x13:
+		ba1 = (*(uint32_t *) (&ne2000_pci_regs[0x10])) & 0xff00;
+		/* if (addr == 0x10)
+			ne2000_pci_regs[addr] = val & 0xe0;
+		else */
+		ne2000_pci_regs[addr] = val;
+		ba2 = (*(uint32_t *) (&ne2000_pci_regs[0x10])) & 0xff00;
+		if (ba1 != ba2)
+		{
+			ne2000_io_remove(ne2000);
+			ba2 &= 0xff00;
+			ne2000_baseaddr = ba2;
+			ne2000->base_address = ne2000_baseaddr;
+			if (ne2000_baseaddr >= 0x300)
+			{
+				if (ne2000_pci_regs[0x04] & PCI_COMMAND_IO)  ne2000_io_set(ne2000);
+				pclog("Base address is now %04X\n", ne2000_baseaddr);
+				ne2000_reset(BX_RESET_SOFTWARE, ne2000);
+			}
+		}
+		return;
+
+                case 0x30: case 0x31: case 0x32: case 0x33:
+                ne2000_pci_regs[addr] = val/* | ((addr == 0x30) ? 1 : 0)*/;
+                if (ne2000_pci_regs[0x30] & 0x01)
+                {
+                        uint32_t biosaddr = ((ne2000_pci_regs[0x31] & 0x00) << 8) | (ne2000_pci_regs[0x32] << 16) | (ne2000_pci_regs[0x33] << 24);
+//                        pclog("NE2000 bios_rom enabled at %08x\n", biosaddr);
+                        mem_mapping_set_addr(&netbios_mapping, biosaddr, 0x8000);
+                        if (enable_netbios && !disable_netbios)  mem_mapping_enable(&netbios_mapping);
+                        if (enable_netbios && !disable_netbios)  pclog("NE2000 boot rom is now enabled at %08X\n", biosaddr);
+                }
+                else
+                {
+//                        pclog("NE2000 bios_rom disabled\n");
+                        if (enable_netbios && !disable_netbios)  mem_mapping_disable(&netbios_mapping);
+                }
+                return;
+
+		case 0x3C:
+		ne2000_pci_regs[addr] = val;
+		if (val != 0xFF)
+		{
+			ne2000->base_irq = val;
+			ne2000_irq = val;
+			ne2000_reset(BX_RESET_SOFTWARE, ne2000);
+		}
+        }
+}
+
+int net_type = 0;
+
 void *ne2000_init()
 {
     struct in_addr myaddr; 
     int rc;
-    int net_type;
 
     ne2000_t *ne2000 = malloc(sizeof(ne2000_t));
     memset(ne2000, 0, sizeof(ne2000_t));
 
-    uint16_t addr = device_get_config_int("addr");
-    ne2000_setirq(ne2000, device_get_config_int("irq"));
+    if (network_card_current == NET_NE2000)
+    {
+	uint16_t addr = device_get_config_int("addr");
+	ne2000_baseaddr = addr;
+	ne2000_irq = device_get_config_int("irq");
+	ne2000_setirq(ne2000, ne2000_irq);
+    }
+    else
+    {
+	ne2000_baseaddr = 0xC000;
+	ne2000->base_address = 0xC000;
+	ne2000_irq = 10;
+	ne2000_setirq(ne2000, ne2000_irq);
+    }
 
     //net_type
     //0 pcap
     //1 slirp
     //
-    net_is_slirp = config_get_int(NULL, "net_type", 1);
+    net_type = device_get_config_int("net_type");
+    net_is_slirp = net_type;
 #ifdef NE2000_LOG
     pclog("ne2000 pcap device %s\n",config_get_string(NULL,"pcap_device","nothing"));
 #endif
     
     //Check that we have a string setup, otherwise turn pcap off
+#if 0
     if(!strcmp("nothing",config_get_string(NULL,"pcap_device","nothing")))
 	{
 		net_is_pcap = 0;
@@ -1481,17 +1730,99 @@ void *ne2000_init()
 		if( net_is_slirp == 0) 
 		net_is_pcap = 1;
     }
+#endif
+	net_is_pcap = (net_type ? 0 : 1);
+    if(!strcmp("nothing",config_get_string(NULL,"pcap_device","nothing")))
+	{
+		net_is_pcap = 0;
+	}
+	net_is_slirp = (net_is_pcap ? 0 : 1);
+#ifndef RELEASE_BUILD
+	pclog("Network is: %s\n", net_is_pcap ? "PCap" : "SLiRP");
+#endif
 
-    io_sethandler(addr, 0x0010, ne2000_read, NULL, NULL, ne2000_write, NULL, NULL, ne2000);
-    io_sethandler(addr+0x10, 0x000f, ne2000_asic_read_b, ne2000_asic_read_w, NULL, ne2000_asic_write_b, ne2000_asic_write_w, NULL, ne2000);
-    io_sethandler(addr+0x1f, 0x0001, ne2000_reset_read, NULL, NULL, ne2000_reset_write, NULL, NULL, ne2000);
+    if (network_card_current == NET_RTL8029AS)
+    {
+        disable_netbios = device_get_config_int("disable_netbios");
+
+        pci_add(ne2000_pci_read, ne2000_pci_write, ne2000);
+
+        memset(ne2000_pci_regs, 0, 256);
+
+        ne2000_pci_regs[0x04] = 3;
+        ne2000_pci_regs[0x05] = 0;
+
+        ne2000_pci_regs[0x07] = 2;
+
+        /* Network controller. */
+        ne2000_pci_regs[0x0B] = 2;
+
+	*(uint32_t *) &(ne2000_pci_regs[0x10]) = 0xC001;
+	ne2000_io_set(ne2000);
+
+	*(uint32_t *) &(ne2000_pci_regs[0x30]) = 0xD1801;
+
+        if (disable_netbios || !enable_netbios)  ne2000_pci_regs[0x33] = 0x00;
+
+	ne2000_pci_regs[0x3C] = 10;
+	ne2000_pci_regs[0x3D] = 1;
+
+	mem_mapping_set_addr(&netbios_mapping, 0xD0000, 0x8000);
+	mem_mapping_disable(&netbios_mapping);
+
+	memset(rtl8029as_eeprom, 0, 128);
+	rtl8029as_eeprom[0x76] = rtl8029as_eeprom[0x7A] = rtl8029as_eeprom[0x7E] = 0x29;
+	rtl8029as_eeprom[0x77] = rtl8029as_eeprom[0x7B] = rtl8029as_eeprom[0x7F] = 0x80;
+	rtl8029as_eeprom[0x78] = rtl8029as_eeprom[0x7C] = 0x10;
+	rtl8029as_eeprom[0x79] = rtl8029as_eeprom[0x7D] = 0xEC;
+
+	ne2000->i8029id0 = 0x50;
+	ne2000->i8029id1 = 0x43;
+
+	ne2000->cr = 0x21;
+	ne2000->i9346cr = 0;
+	ne2000->config0 = 0;
+	ne2000->config2 = 3;
+	ne2000->config3 = 0;
+	ne2000->hltclk = 0x52;
+	ne2000->i8029asid0 = 0x29;
+	ne2000->i8029asid1 = 0x80;
+    }
+    if (network_card_current == NET_NE2000)
+    {
+	disable_netbios = 1;
+	ne2000_io_set(ne2000);
+    }
+
+    if (disable_netbios)
+    {
+	mem_mapping_disable(&netbios_mapping);
+	memset(netbios, 0, 32768);
+	*(uint32_t *) &(ne2000_pci_regs[0x30]) = 0;
+    }
+    else
+    {
+        mem_load_netbios();
+        if (!enable_netbios)
+        {
+		pclog("Frolic in brine, goblins be thine\n");
+		mem_mapping_disable(&netbios_mapping);
+		memset(netbios, 0, 32768);
+		*(uint32_t *) &(ne2000_pci_regs[0x30]) = 0;
+	}
+        else
+	{
+		*(uint32_t *) &(ne2000_pci_regs[0x30]) = 0xD1801;
+	}
+    }
+
     memcpy(ne2000->physaddr, maclocal, 6);
 
     ne2000_reset(BX_RESET_HARDWARE, ne2000);
     vlan_handler(ne2000_poller, ne2000);
 
 #ifdef NE2000_LOG
-    pclog("ne2000 init 0x%X %d\tslirp is %d net_is_pcap is %d\n",addr,device_get_config_int("irq"),net_is_slirp,net_is_pcap);
+    pclog("ne2000 init 0x%X %d\tslirp is %d net_is_pcap is %d\n",ne2000_baseaddr,device_get_config_int("irq"),net_is_slirp,net_is_pcap);
 #endif
 
     //need a switch statment for more network types.
@@ -1750,13 +2081,24 @@ static device_config_t ne2000_config[] =
         {
                 .name = "addr",
                 .description = "Address",
-                .type = CONFIG_BINARY,
                 .type = CONFIG_SELECTION,
                 .selection =
                 {
                         {
                                 .description = "0x280",
                                 .value = 0x280
+                        },
+                        {
+                                .description = "0x2A0",
+                                .value = 0x2A0
+                        },
+                        {
+                                .description = "0x2C0",
+                                .value = 0x2C0
+                        },
+                        {
+                                .description = "0x2E0",
+                                .value = 0x2E0
                         },
                         {
                                 .description = "0x300",
@@ -1777,6 +2119,18 @@ static device_config_t ne2000_config[] =
                         {
                                 .description = "0x380",
                                 .value = 0x380
+                        },
+                        {
+                                .description = "0x3A0",
+                                .value = 0x3A0
+                        },
+                        {
+                                .description = "0x3C0",
+                                .value = 0x3C0
+                        },
+                        {
+                                .description = "0x3E0",
+                                .value = 0x3E0
                         },
                         {
                                 .description = ""
@@ -1811,10 +2165,93 @@ static device_config_t ne2000_config[] =
                                 .value = 11
                         },
                         {
+                                .description = "IRQ 12",
+                                .value = 12
+                        },
+                        {
+                                .description = "IRQ 13",
+                                .value = 13
+                        },
+                        {
+                                .description = "IRQ 14",
+                                .value = 14
+                        },
+                        {
+                                .description = "IRQ 15",
+                                .value = 15
+                        },
+                        {
                                 .description = ""
                         }
                 },
                 .default_int = 10
+        },
+        {
+                .name = "net_type",
+                .description = "Type",
+                .type = CONFIG_SELECTION,
+                .selection =
+                {
+                        {
+                                .description = "WinPCap",
+                                .value = 0
+                        },
+                        {
+                                .description = "SLiRP",
+                                .value = 1
+                        },
+                        {
+                                .description = ""
+                        }
+                },
+                .default_int = 1
+        },
+        {
+                .type = -1
+        }
+};
+
+static device_config_t rtl8029as_config[] =
+{
+        {
+                .name = "disable_netbios",
+                .description = "Network BIOS",
+                .type = CONFIG_SELECTION,
+                .selection =
+                {
+                        {
+                                .description = "Enabled",
+                                .value = 0
+                        },
+                        {
+                                .description = "Disabled",
+                                .value = 1
+                        },
+                        {
+                                .description = ""
+                        }
+                },
+                .default_int = 0
+        },
+        {
+                .name = "net_type",
+                .description = "Type",
+                .type = CONFIG_SELECTION,
+                .selection =
+                {
+                        {
+                                .description = "WinPCap",
+                                .value = 0
+                        },
+                        {
+                                .description = "SLiRP",
+                                .value = 1
+                        },
+                        {
+                                .description = ""
+                        }
+                },
+                .default_int = 1
         },
         {
                 .type = -1
@@ -1832,6 +2269,19 @@ device_t ne2000_device =
         NULL,
         NULL,
         ne2000_config
+};
+
+device_t rtl8029as_device =
+{
+        "Realtek RTL8029AS (NE2000 PCI)",
+        0,
+        ne2000_init,
+        ne2000_close,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        rtl8029as_config
 };
 
 

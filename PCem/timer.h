@@ -1,14 +1,15 @@
 extern int timer_start;
 
 #define timer_start_period(cycles)                      \
-        timer_start = cycles;
+	        timer_start = cycles;
 
 #define timer_end_period(cycles) 			\
 	do 						\
 	{						\
-                int diff = timer_start - cycles;        \
+       	        int diff = timer_start - cycles;	\
 		timer_count -= diff;			\
-                timer_start = cycles;                   \
+		timer_start = cycles;			\
+							\
 		if (timer_count <= 0)			\
 		{					\
 			timer_process();		\
@@ -19,9 +20,9 @@ extern int timer_start;
 #define timer_clock()                                   \
 	do 						\
 	{						\
-                int diff = timer_start - cycles;        \
+       	        int diff = timer_start - cycles;	\
 		timer_count -= diff;			\
-                timer_start = cycles;                   \
+		timer_start = cycles;			\
 		timer_process();		        \
         	timer_update_outstanding();	        \
 	} while (0)
@@ -39,4 +40,4 @@ extern int timer_one;
 
 #define TIMER_SHIFT 6
 
-extern int TIMER_USEC;
+extern double TIMER_USEC;

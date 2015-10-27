@@ -10,7 +10,9 @@ static uint8_t amstrad_dead;
 
 uint8_t amstrad_read(uint16_t port, void *priv)
 {
+#ifndef RELEASE_BUILD
         pclog("amstrad_read : %04X\n",port);
+#endif
         switch (port)
         {
                 case 0x379:

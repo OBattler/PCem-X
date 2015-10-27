@@ -392,7 +392,9 @@ void get_registry_key_map()
 		scancode_map[j] = convert_scan_code(j);
 
 	bufSize = 32768;
+#ifndef RELEASE_BUILD
 	pclog("Preparing scan code map list...\n");
+#endif
  	/* Get the scan code remappings from:
  	   HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Keyboard Layout */
 	if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, keyName, 0, 1, &hKey) == ERROR_SUCCESS)
@@ -401,11 +403,15 @@ void get_registry_key_map()
                 {
 			UINT32 *bufEx2 = (UINT32 *) buf;
 			int scMapCount = bufEx2[2];
+#ifndef RELEASE_BUILD
 			pclog("%lu scan code mappings found!\n", scMapCount);
+#endif
 			if ((bufSize != 0) && (scMapCount != 0))
                         {
 				UINT16 *bufEx = (UINT16 *) (buf + 12);
+#ifndef RELEASE_BUILD
 				pclog("More than zero scan code mappings found, processing...\n");
+#endif
 				for (j = 0; j < scMapCount*2; j += 2)
  				{
  					/* Each scan code is 32-bit: 16 bits of remapped scan code,
@@ -416,15 +422,21 @@ void get_registry_key_map()
   					scancode_mapped = convert_scan_code(scancode_mapped);
 
 					/* Fixes scan code map logging. */
+#ifndef RELEASE_BUILD
   					pclog("Scan code mapping %u detected: %X -> %X\n", scancode_unmapped, scancode_mapped, scancode_map[scancode_unmapped]);
+#endif
   					scancode_map[scancode_unmapped] = scancode_mapped;
   				}
+#ifndef RELEASE_BUILD
 				pclog("Done processing!\n");
+#endif
 			}
 		}
 		RegCloseKey(hKey);
 	}
+#ifndef RELEASE_BUILD
 	pclog("Done preparing!\n");
+#endif
 }
 
 int WINAPI WinMain (HINSTANCE hThisInstance,
@@ -474,7 +486,7 @@ int WINAPI WinMain (HINSTANCE hThisInstance,
         hwnd = CreateWindowEx (
                 0,                   /* Extended possibilites for variation */
                 szClassName,         /* Classname */
-                "PCem-X v9",         /* Title Text */
+                "PCem-X v10",        /* Title Text */
                 WS_OVERLAPPEDWINDOW&~WS_SIZEBOX, /* default window */
                 CW_USEDEFAULT,       /* Windows decides the position */
                 CW_USEDEFAULT,       /* where the window ends up on the screen */
@@ -498,10 +510,14 @@ int WINAPI WinMain (HINSTANCE hThisInstance,
 	device.dwFlags = RIDEV_NOHOTKEYS;
 	device.hwndTarget = hwnd;
 
+#ifndef RELEASE_BUILD
 	if (RegisterRawInputDevices(&device, 1, sizeof(device)))
 		pclog("Raw input registered!\n");
 	else
 		pclog("Raw input registration failed!\n");
+#else
+	RegisterRawInputDevices(&device, 1, sizeof(device));
+#endif
 
 	get_registry_key_map();
 
@@ -528,7 +544,10 @@ int WINAPI WinMain (HINSTANCE hThisInstance,
         {
                 romset=c;
                 romspresent[c]=loadbios();
+		mem_reset_bios_mappings();
+#ifndef RELEASE_BUILD
                 pclog("romset %i - %i\n", c, romspresent[c]);
+#endif
         }
 
         for (c = 0; c < ROM_MAX; c++)
@@ -544,6 +563,10 @@ int WINAPI WinMain (HINSTANCE hThisInstance,
 
         romset=d;
         c=loadbios();
+	mem_reset_bios_mappings();
+#ifndef RELEASE_BUILD
+	pclog("Extended ROM is %s, network BIOS is %s (%s by config)\n", enable_extrom ? "enabled" : "disabled", enable_netbios ? "enabled" : "disabled", !disable_netbios ? "enabled" : "disabled");
+#endif
 
         if (!c)
         {
@@ -700,16 +723,24 @@ int getfile(HWND hwnd, char *f, char *fn)
 
         // Display the Open dialog box.
 
+#ifndef RELEASE_BUILD
         pclog("GetOpenFileName - lpstrFile = %s\n", ofn.lpstrFile);
+#endif
         r = GetOpenFileName(&ofn);
         if (r)
         {
+#ifndef RELEASE_BUILD
                 pclog("GetOpenFileName return true\n");
+#endif
                 return 0;
         }
+#ifndef RELEASE_BUILD
         pclog("GetOpenFileName return false\n");
+#endif
         err = CommDlgExtendedError();
+#ifndef RELEASE_BUILD
         pclog("CommDlgExtendedError return %04X\n", err);
+#endif
         return 1;
 }
 
@@ -740,16 +771,24 @@ int getsfile(HWND hwnd, char *f, char *fn)
 
         // Display the Open dialog box.
 
+#ifndef RELEASE_BUILD
         pclog("GetSaveFileName - lpstrFile = %s\n", ofn.lpstrFile);
+#endif
         r = GetSaveFileName(&ofn);
         if (r)
         {
+#ifndef RELEASE_BUILD
                 pclog("GetSaveFileName return true\n");
+#endif
                 return 0;
         }
+#ifndef RELEASE_BUILD
         pclog("GetSaveFileName return false\n");
+#endif
         err = CommDlgExtendedError();
+#ifndef RELEASE_BUILD
         pclog("CommDlgExtendedError return %04X\n", err);
+#endif
         return 1;
 }
 
@@ -779,7 +818,9 @@ LRESULT CALLBACK WindowProcedure (HWND hwnd, UINT message, WPARAM wParam, LPARAM
 {
         HMENU hmenu;
         RECT rect;
+	uint32_t ri_size = 0;
 //        pclog("Message %i %08X\n",message,message);
+
         switch (message)
         {
                 case WM_CREATE:
@@ -1019,8 +1060,18 @@ LRESULT CALLBACK WindowProcedure (HWND hwnd, UINT message, WPARAM wParam, LPARAM
 
                         raw = malloc(size);
 
+			if (raw == NULL)
+			{
+				return 0;
+			}
+
         		/* Here we read the raw input data for the keyboard */
-        		GetRawInputData((HRAWINPUT)(lParam), RID_INPUT, raw, &size, sizeof(RAWINPUTHEADER));
+        		ri_size = GetRawInputData((HRAWINPUT)(lParam), RID_INPUT, raw, &size, sizeof(RAWINPUTHEADER));
+
+			if(ri_size != size)
+			{
+				return 0;
+			}
 
         		/* If the input is keyboard, we process it */
         		if (raw->header.dwType == RIM_TYPEKEYBOARD)
@@ -1193,6 +1244,7 @@ LRESULT CALLBACK WindowProcedure (HWND hwnd, UINT message, WPARAM wParam, LPARAM
 //                        pclog("Def %08X %i\n",message,message);
                 return DefWindowProc (hwnd, message, wParam, lParam);
         }
+
         return 0;
 }
 

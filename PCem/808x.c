@@ -474,7 +474,9 @@ void makeznptable()
                    znptable8[c]=0;
                 else
                    znptable8[c]=P_FLAG;
+#ifndef RELEASE_BUILD
                    if (c == 0xb1) pclog("znp8 b1 = %i %02X\n", d, znptable8[c]);
+#endif
                 if (!c) znptable8[c]|=Z_FLAG;
                 if (c&0x80) znptable8[c]|=N_FLAG;
         }
@@ -493,8 +495,10 @@ void makeznptable()
                    znptable16[c]=0;
                 else
                    znptable16[c]=P_FLAG;
+#ifndef RELEASE_BUILD
                 if (c == 0xb1) pclog("znp16 b1 = %i %02X\n", d, znptable16[c]);
                 if (c == 0x65b1) pclog("znp16 65b1 = %i %02X\n", d, znptable16[c]);
+#endif
                 if (!c) znptable16[c]|=Z_FLAG;
                 if (c&0x8000) znptable16[c]|=N_FLAG;
       }
@@ -510,6 +514,7 @@ int indump = 0;
 
 void dumpregs()
 {
+#ifndef RELEASE_BUILD
         int c,d=0,e=0,ff;
 #ifndef RELEASE_BUILD
         FILE *f;
@@ -626,13 +631,16 @@ chdir(pcempath);
         printf("Entries in readlookup : %i    writelookup : %i\n",d,e);
         x87_dumpregs();
         indump = 0;
+#endif
 }
 
 int resets = 0;
 int x86_was_reset = 0;
 void resetx86()
 {
+#ifndef RELEASE_BUILD
         pclog("x86 reset\n");
+#endif
         resets++;
         ins = 0;
         use32=0;
@@ -687,7 +695,9 @@ void softresetx86()
         idt.base = 0;
         x86seg_reset();
         x86_was_reset = 1;
+#ifndef RELEASE_BUILD
 	pclog("softresetx86() issued\n");
+#endif
 }
 
 static void setznp8(uint8_t val)
@@ -811,9 +821,10 @@ static void setsbc16(uint16_t a, uint16_t b)
         if (((a&0xF)-(b&0xF))&0x10)      flags|=A_FLAG;
 }
 
-int current_diff = 0;
+// int current_diff = 0;
 void clockhardware()
 {
+#if 0
         int diff = cycdiff - cycles - current_diff;
         
         current_diff += diff;
@@ -821,6 +832,7 @@ void clockhardware()
         if (pit.running[1]) pit.c[1] -= diff;
         if (pit.running[2]) pit.c[2] -= diff;
         if ((pit.c[0] < 1) || (pit.c[1] < 1) || (pit.c[2] < 1)) pit_poll();
+#endif
   
         timer_end_period(cycles);      
 }
@@ -1104,7 +1116,7 @@ void execx86(int cycs)
 //                if (pc<0x8000) printf("%04X : %04X %04X %04X %04X %04X %04X %04X %04X %04X %04X %04X %04X %02X %04X %i\n",pc,AX,BX,CX,DX,cs>>4,ds>>4,es>>4,ss>>4,DI,SI,BP,SP,opcode,flags,disctime);
                 cycdiff=cycles;
                 timer_start_period(cycles);
-                current_diff = 0;
+                // current_diff = 0;
                 cycles-=nextcyc;
 //                if (instime) pclog("Cycles %i %i\n",cycles,cycdiff);
                 nextcyc=0;
@@ -2890,6 +2902,13 @@ void execx86(int cycs)
                         setznp16(AX);
                         cycles-=60;
                         break;
+                        case 0xD6: /*SALC - undocumented*/
+			if (flags & 1)
+				AL = 0xFF;
+			else
+				AL = 0;
+                        cycles-=4;
+                        break;
                         case 0xD7: /*XLAT*/
                         addr=BX+AL;
                         AL=readmemb(ds+addr);
@@ -2930,26 +2949,31 @@ void execx86(int cycs)
                         case 0xE4: /*IN AL*/
                         temp=FETCH();
                         AL=inb(temp);
-                        cycles-=14;
+                        cycles-=11;
+			if (!is8086)  cycles -= 1;
                         break;
                         case 0xE5: /*IN AX*/
                         temp=FETCH();
                         AL=inb(temp);
                         AH=inb(temp+1);
-                        cycles-=14;
+                        cycles-=16;
+			if (!is8086)  cycles -= 1;
                         break;
                         case 0xE6: /*OUT AL*/
                         temp=FETCH();
                         outb(temp,AL);
-                        cycles-=14;
+                        cycles-=12;
 			if (!is8086)  cycles--;
+			if (!is8086)  cycles -= 1;
+			clockhardware();
                         break;
                         case 0xE7: /*OUT AX*/
                         temp=FETCH();
                         outb(temp,AL);
                         outb(temp+1,AH);
-                        cycles-=14;
+                        cycles-=18;
 			if (!is8086)  cycles--;
+			if (!is8086)  cycles -= 1;
                         break;
 
                         case 0xE8: /*CALL rel 16*/
@@ -2988,23 +3012,22 @@ void execx86(int cycs)
                         break;
                         case 0xEC: /*IN AL,DX*/
                         AL=inb(DX);
-                        cycles-=12;
+                        cycles-=9;
                         break;
                         case 0xED: /*IN AX,DX*/
                         AL=inb(DX);
                         AH=inb(DX+1);
-                        cycles-=12;
+                        cycles-=13;
                         break;
                         case 0xEE: /*OUT DX,AL*/
                         outb(DX,AL);
-                        cycles-=12;
-			if (!is8086)  cycles--;
+                        cycles-=10;
+			clockhardware();
                         break;
                         case 0xEF: /*OUT DX,AX*/
                         outb(DX,AL);
                         outb(DX+1,AH);
-                        cycles-=12;
-			if (!is8086)  cycles--;
+                        cycles-=15;
                         break;
 
                         case 0xF0: /*LOCK*/

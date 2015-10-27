@@ -153,8 +153,8 @@ static void pc1512_recalctimings(pc1512_t *pc1512)
         _dispontime  *= CGACONST;
         _dispofftime *= CGACONST;
 //        printf("Timings - on %f off %f frame %f second %f\n",dispontime,dispofftime,(dispontime+dispofftime)*262.0,(dispontime+dispofftime)*262.0*59.92);
-	pc1512->dispontime  = (int)(_dispontime * (1 << TIMER_SHIFT));
-	pc1512->dispofftime = (int)(_dispofftime * (1 << TIMER_SHIFT));
+	pc1512->dispontime  = (int)(_dispontime * (1 << TIMER_SHIFT) * 3.0d);
+	pc1512->dispofftime = (int)(_dispofftime * (1 << TIMER_SHIFT) * 3.0d);
 }
 
 static void pc1512_poll(void *p)

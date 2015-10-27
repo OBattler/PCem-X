@@ -115,8 +115,8 @@ void hercules_recalctimings(hercules_t *hercules)
         _dispofftime = disptime - _dispontime;
         _dispontime  *= MDACONST;
         _dispofftime *= MDACONST;
-	hercules->dispontime  = (int)(_dispontime  * (1 << TIMER_SHIFT));
-	hercules->dispofftime = (int)(_dispofftime * (1 << TIMER_SHIFT));
+	hercules->dispontime  = (int)(_dispontime  * (1 << TIMER_SHIFT) * 3.0d);
+	hercules->dispofftime = (int)(_dispofftime * (1 << TIMER_SHIFT) * 3.0d);
 }
 
 void hercules_poll(void *p)

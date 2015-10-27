@@ -268,11 +268,10 @@ void pcjr_init()
         pit_set_out_func(0, pit_irq0_timer_pcjr);
         serial1_init(0x2f8, 3);
         keyboard_pcjr_init();
-	memregs_init();
+	// memregs_init();
         device_add(&sn76489_device);
 	nmi_mask = 0x80;
 	fdc_polarity_reset();
-	piix_type = 0;
 }
 
 void tandy1k_init()
@@ -475,7 +474,7 @@ void at_batman_init()
 	mouse_ps2_init();
         pci_init(PCI_CONFIG_TYPE_2, 0xd, 0x10);
         i430lx_init();
-	sio_init(7);
+	sio_init(1);
 	fdc37c665_init();
         intel_batman_init();
         device_add(&intel_flash_device);
@@ -491,7 +490,7 @@ void at_i430lx_init()
 	// mouse_ps2_init();
         pci_init(PCI_CONFIG_TYPE_2, 0xd, 0x10);
         i430lx_init();
-	sio_init(7);
+	sio_init(1);
 	// fdc37c665_init();
         device_add(&intel_flash_device);
 }
@@ -517,7 +516,7 @@ void at_plato_init()
         pci_init(PCI_CONFIG_TYPE_2, 0xd, 0x10);
 	/* The LX and NX are essentially the same chip. */
         i430lx_init();
-	sio_init(7);
+	sio_init(1);
 	fdc37c665_init();
         intel_batman_init();
         device_add(&intel_flash_device);
@@ -534,7 +533,7 @@ void at_i430nx_init()
         pci_init(PCI_CONFIG_TYPE_2, 0xd, 0x10);
 	/* The LX and NX are essentially the same chip. */
         i430lx_init();
-	sio_init(7);
+	sio_init(1);
         device_add(&intel_flash_device);
 }
 
@@ -576,8 +575,8 @@ void at_i430hx_init()
 	maxide = 4;
         at_init();
 	maxide = 4;
-        mouse_serial_init();
-	// mouse_ps2_init();
+        // mouse_serial_init();
+	mouse_ps2_init();
         pci_init(PCI_CONFIG_TYPE_1, 0, 31);
         i430hx_init();
 	piix_type = 3;
@@ -624,8 +623,8 @@ void at_i430tx_init()
 	maxide = 4;
         at_init();
 	maxide = 4;
-        mouse_serial_init();
-	// mouse_ps2_init();
+        // mouse_serial_init();
+	mouse_ps2_init();
         pci_init(PCI_CONFIG_TYPE_1, 0, 31);
         i430tx_init();
 	piix_type = 3;
@@ -639,8 +638,8 @@ void at_i440fx_init()
 	maxide = 4;
         at_init();
 	maxide = 4;
-        mouse_serial_init();
-	// mouse_ps2_init();
+        // mouse_serial_init();
+	mouse_ps2_init();
         pci_init(PCI_CONFIG_TYPE_1, 0, 31);
         i440fx_init();
 	piix_type = 3;

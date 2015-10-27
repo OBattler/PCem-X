@@ -58,7 +58,9 @@ int et4000w32_vbus[4]={1,2,4,4};
 void et4000w32_mmu_write(uint32_t addr, uint8_t val)
 {
         int bank;
+#ifndef RELEASE_BUILD
         pclog("ET4K write %08X %02X %i %02X %02X %04X(%08X):%08X  %04X %04X %02X %08X\n",addr,val,acl.cpu_input_num,acl.status,acl.internal.ctrl_routing,CS,cs,pc,CS,DI,mmu.ctrl,mmu.base[2]);
+#endif
         switch (addr&0x6000)
         {
                 case 0x0000: /*MMU 0*/
@@ -87,8 +89,10 @@ void et4000w32_mmu_write(uint32_t addr, uint8_t val)
                                            et4000w32_blit(acl.cpu_input_num << 3, acl.cpu_input, 0, 1);
                                         else if ((acl.internal.ctrl_routing&7)==1)
                                            et4000w32_blit(acl.cpu_input_num, ~0, acl.cpu_input, 2);
+#ifndef RELEASE_BUILD
                                         else
                                            pclog("Bad ET4K routing %i\n",acl.internal.ctrl_routing&7);
+#endif
                                         acl.cpu_input_num=0;
                                 }
                         }
@@ -164,7 +168,9 @@ void et4000w32_mmu_write(uint32_t addr, uint8_t val)
 uint8_t et4000w32_mmu_read(uint32_t addr)
 {
         int bank;
+#ifndef RELEASE_BUILD
         pclog("ET4K read %08X %04X(%08X):%08X\n",addr,CS,cs,pc);
+#endif
         switch (addr&0x6000)
         {
                 case 0x0000: /*MMU 0*/
@@ -237,7 +243,9 @@ int et4000w32_wrap_y[8]={1,2,4,8,0xFFFFFFFF,0xFFFFFFFF,0xFFFFFFFF,0xFFFFFFFF};
 
 void et4000w32_blit_start()
 {
+#ifndef RELEASE_BUILD
         pclog("Blit - %08X %08X %08X (%i,%i) %i  %i %i  %02X %02X  %02X\n",acl.internal.pattern_addr,acl.internal.source_addr,acl.internal.dest_addr,acl.internal.dest_addr%640,acl.internal.dest_addr/640,acl.internal.xy_dir,acl.internal.count_x,acl.internal.count_y,acl.internal.rop_fg,acl.internal.rop_bg, acl.internal.ctrl_routing);
+#endif
         acl.pattern_addr=acl.internal.pattern_addr;
         acl.source_addr =acl.internal.source_addr;
         acl.dest_addr   =acl.internal.dest_addr;
@@ -270,18 +278,24 @@ void et4000w32_blit(int count, uint32_t mix, uint32_t sdat, int cpu_input)
 //        pclog("Blit exec - %i %i %i\n",count,acl.internal.pos_x,acl.internal.pos_y);
         while (count--)
         {
+#ifndef RELEASE_BUILD
                 pclog("%i,%i : ",acl.internal.pos_x,acl.internal.pos_y);
+#endif
                 if (acl.internal.xy_dir&1)
                 {
                         pattern=vram[(acl.pattern_addr-acl.pattern_x)&0x1FFFFF];
                         source =vram[(acl.source_addr -acl.source_x) &0x1FFFFF];
+#ifndef RELEASE_BUILD
                         pclog("%06X %06X ",(acl.pattern_addr-acl.pattern_x)&0x1FFFFF,(acl.source_addr -acl.source_x) &0x1FFFFF);
+#endif
                 }
                 else
                 {
                         pattern=vram[(acl.pattern_addr+acl.pattern_x)&0x1FFFFF];
                         source =vram[(acl.source_addr +acl.source_x) &0x1FFFFF];
+#ifndef RELEASE_BUILD
                         pclog("%06X %06X ",(acl.pattern_addr+acl.pattern_x)&0x1FFFFF,(acl.source_addr +acl.source_x) &0x1FFFFF);
+#endif
                 }
                 if (cpu_input==2)
                 {
@@ -290,7 +304,9 @@ void et4000w32_blit(int count, uint32_t mix, uint32_t sdat, int cpu_input)
                 }
                 dest=vram[acl.dest_addr   &0x1FFFFF];
                 out=0;
+#ifndef RELEASE_BUILD
                 pclog("%06X %i %08X   ",acl.dest_addr,mix&1,mix);
+#endif
                 rop = (mix & 1) ? acl.internal.rop_fg:acl.internal.rop_bg;
                 mix>>=1; mix|=0x80000000;
                 for (c=0;c<8;c++)
@@ -300,7 +316,9 @@ void et4000w32_blit(int count, uint32_t mix, uint32_t sdat, int cpu_input)
                         if (pattern & (1<<c)) d|=4;
                         if (rop & (1<<d)) out|=(1<<c);
                 }
+#ifndef RELEASE_BUILD
                 pclog("%06X = %02X\n",acl.dest_addr&0x1FFFFF,out);
+#endif
                 vram[acl.dest_addr&0x1FFFFF]=out;
                 changedvram[(acl.dest_addr&0x1FFFFF)>>12]=changeframecount;
 

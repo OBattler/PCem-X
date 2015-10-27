@@ -9,7 +9,7 @@
 #include "ide.h"
 #include "io.h"
 #include "lpt.h"
-#include "mouse_serial.h"
+// #include "mouse_serial.h"
 #include "serial.h"
 #include "w83977f.h"
 
@@ -257,7 +257,7 @@ process_value:
 						{
 							ld_port = make_port(2);
 							serial1_set(ld_port, w83977f_ld_regs[2][0x70]);
-							mouse_serial_init();
+							// mouse_serial_init();
 						}
 					}
 					break;
@@ -268,7 +268,7 @@ process_value:
 					{
 						ld_port = make_port(2);
 						serial1_set(ld_port, w83977f_ld_regs[2][0x70]);
-						mouse_serial_init();
+						// mouse_serial_init();
 					}
 					break;
 			}

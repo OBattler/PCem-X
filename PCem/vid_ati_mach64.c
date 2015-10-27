@@ -361,7 +361,9 @@ void mach64_updatemapping(mach64_t *mach64)
 
         if (!(mach64->pci_regs[PCI_REG_COMMAND] & PCI_COMMAND_MEM))
         {
+#ifndef RELEASE_BUILD
                 pclog("Update mapping - PCI disabled\n");
+#endif
                 mem_mapping_disable(&svga->mapping);
                 mem_mapping_disable(&mach64->linear_mapping);
                 mem_mapping_disable(&mach64->mmio_mapping);
@@ -2050,7 +2052,9 @@ void mach64_ext_outw(uint16_t port, uint16_t val, void *p)
 void mach64_ext_outl(uint16_t port, uint32_t val, void *p)
 {
         mach64_t *mach64 = (mach64_t *)p;
+#ifndef RELEASE_BUILD
         pclog("mach64_ext_outl : port %04X val %08X\n", port, val);
+#endif
         switch (port)
         {
                 default:
@@ -2363,6 +2367,10 @@ static device_config_t mach64gx_config[] =
                         {
                                 .description = "4 MB",
                                 .value = 4
+                        },
+                        {
+                                .description = "8 MB",
+                                .value = 8
                         },
                         {
                                 .description = ""

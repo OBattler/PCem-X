@@ -130,7 +130,9 @@ static int get_track_nr(uint32_t pos)
 static void ioctl_playaudio(uint32_t pos, uint32_t len, int ismsf)
 {
         if (!cdrom_drive) return;
+#ifndef RELEASE_BUILD
         pclog("Play audio - %08X %08X %i\n", pos, len, ismsf);
+#endif
         if (ismsf)
         {
                 int m = (pos >> 16) & 0xff;
@@ -143,14 +145,18 @@ static void ioctl_playaudio(uint32_t pos, uint32_t len, int ismsf)
                 s = (len >> 8) & 0xff;
                 f = len & 0xff;
                 len = MSFtoLBA(m, s, f);
+#ifndef RELEASE_BUILD
                 pclog("MSF - pos = %08X len = %08X\n", pos, len);
+#endif
         }
         else
            len += pos;
         ioctl_cd_pos   = pos;// + 150;
         ioctl_cd_end   = len;// + 150;
         ioctl_cd_state = CD_PLAYING;
+#ifndef RELEASE_BUILD
         pclog("Audio start %08X %08X %i %i %i\n", ioctl_cd_pos, ioctl_cd_end, ioctl_cd_state, cd_buflen, len);        
+#endif
 /*        CDROM_PLAY_AUDIO_MSF msf;
         long size;
         BOOL b;
@@ -212,7 +218,9 @@ static void ioctl_seek(uint32_t pos)
 {
         if (!cdrom_drive) return;
  //       ioctl_cd_state = CD_STOPPED;
+#ifndef RELEASE_BUILD
         pclog("Seek %08X\n", pos);
+#endif
         ioctl_cd_pos   = pos;
         ioctl_cd_state = CD_STOPPED;
 /*        pos+=150;
@@ -605,7 +613,9 @@ int ioctl_open(char d)
         if (!ioctl_inited)
         {
                 sprintf(ioctl_path,"\\\\.\\%c:",d);
+#ifndef RELEASE_BUILD
                 pclog("Path is %s\n",ioctl_path);
+#endif
                 tocvalid=0;
         }
 //        pclog("Opening %s\n",ioctl_path);

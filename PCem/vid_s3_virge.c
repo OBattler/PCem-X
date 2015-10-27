@@ -255,7 +255,7 @@ static void s3_virge_out(uint16_t addr, uint8_t val, void *p)
         svga_t *svga = &virge->svga;
         uint8_t old;
 
-        if (((addr & 0xfff0) == 0x3d0 || (addr & 0xfff0) == 0x3b0) && !(svga->miscout & 1)) 
+        if (((addr & 0xfff0) == 0x3d0 || (addr & 0xfff0) == 0x3b0) && !(svga->miscout & 1))
                 addr ^= 0x60;
        
 //        pclog("S3 out %04X %02X %04X:%08X  %04X %04X %i\n", addr, val, CS, pc, ES, BX, ins);
@@ -292,7 +292,7 @@ static void s3_virge_out(uint16_t addr, uint8_t val, void *p)
                         return;
                 if ((svga->crtcreg == 7) && (svga->crtc[0x11] & 0x80))
                         val = (svga->crtc[7] & ~0x10) | (val & 0x10);
-                if (svga->crtcreg >= 0x20 && svga->crtcreg != 0x38 && (svga->crtc[0x38] & 0xcc) != 0x48) 
+                if (svga->crtcreg >= 0x20 && svga->crtcreg != 0x38 && (svga->crtc[0x38] & 0xcc) != 0x48)
                         return;
                 if (svga->crtcreg >= 0x80)
                         return;
@@ -601,7 +601,9 @@ static void s3_virge_updatemapping(virge_t *virge)
                 return;
         }
 
+#ifndef RELEASE_BUILD
         pclog("Update mapping - bank %02X ", svga->gdcreg[6] & 0xc);        
+#endif
         switch (svga->gdcreg[6] & 0xc) /*Banked framebuffer*/
         {
                 case 0x0: /*128k at A0000*/
@@ -624,7 +626,9 @@ static void s3_virge_updatemapping(virge_t *virge)
         
         virge->linear_base = (svga->crtc[0x5a] << 16) | (svga->crtc[0x59] << 24);
         
+#ifndef RELEASE_BUILD
         pclog("Linear framebuffer %02X ", svga->crtc[0x58] & 0x10);
+#endif
         if (svga->crtc[0x58] & 0x10) /*Linear framebuffer*/
         {
                 switch (svga->crtc[0x58] & 3)
@@ -644,7 +648,9 @@ static void s3_virge_updatemapping(virge_t *virge)
                 }
                 virge->linear_base &= ~(virge->linear_size - 1);
 //                pclog("%08X %08X  %02X %02X %02X\n", linear_base, linear_size, crtc[0x58], crtc[0x59], crtc[0x5a]);
+#ifndef RELEASE_BUILD
                 pclog("Linear framebuffer at %08X size %08X\n", virge->linear_base, virge->linear_size);
+#endif
                 if (virge->linear_base == 0xa0000)
                 {
                         mem_mapping_set_addr(&svga->mapping, 0xa0000, 0x10000);
@@ -656,7 +662,9 @@ static void s3_virge_updatemapping(virge_t *virge)
         else
                 mem_mapping_disable(&virge->linear_mapping);
         
+#ifndef RELEASE_BUILD
         pclog("Memory mapped IO %02X\n", svga->crtc[0x53] & 0x18);
+#endif
         if (svga->crtc[0x53] & 0x10) /*Old MMIO*/
         {
                 if (svga->crtc[0x53] & 0x20)
@@ -2736,7 +2744,9 @@ static void s3_virge_triangle(virge_t *virge, s3d_t *s3d_tri)
 //                        pclog("dest_pixel_lit_texture_decal\n");
                         break;
                         default:
+#ifndef RELEASE_BUILD
                         pclog("bad triangle type %x\n", (s3d_tri->cmd_set >> 27) & 0xf);
+#endif
                         return;
                 }
                 break;
@@ -2746,7 +2756,9 @@ static void s3_virge_triangle(virge_t *virge, s3d_t *s3d_tri)
 //                pclog("dest_pixel_unlit_texture_triangle\n");
                 break;
                 default:
+#ifndef RELEASE_BUILD
                 pclog("bad triangle type %x\n", (s3d_tri->cmd_set >> 27) & 0xf);
+#endif
                 return;
         }        
         
@@ -2812,7 +2824,9 @@ static void s3_virge_triangle(virge_t *virge, s3d_t *s3d_tri)
 //                pclog("tex_ARGB1555 %i\n", (s3d_tri->cmd_set >> 5) & 7);
                 break;
                 default:
+#ifndef RELEASE_BUILD
                 pclog("bad texture type %i\n", (s3d_tri->cmd_set >> 5) & 7);
+#endif
                 tex_read = (s3d_tri->cmd_set & CMD_SET_TWE) ? tex_ARGB1555 : tex_ARGB1555_nowrap;
                 break;
         }
@@ -3198,6 +3212,7 @@ static void s3_virge_overlay_draw(svga_t *svga, int displine)
                 svga->overlay_latch.v_acc += (virge->streams.k2_vert_scale - virge->streams.k1_vert_scale);
                 svga->overlay_latch.addr += virge->streams.sec_stride;
         }
+	svga->overlay_latch.addr &= svga->vrammask;
 }
 
 static uint8_t s3_virge_pci_read(int func, int addr, void *p)

@@ -129,7 +129,7 @@ void slirp_cleanup(void)
 
 int slirp_init(void)
 {
-#ifdef DEBUG
+#ifdef SLIRP_DEBUG
     //    debug_init("/tmp/slirp.log", DEBUG_DEFAULT);
 	//debug_init("slirplog.txt",DEBUG_DEFAULT);
 	debug_init("slirplog.txt",DBG_CALL);

@@ -1786,6 +1786,8 @@ void s3_hwcursor_draw(svga_t *svga, int displine)
         }
         if (svga->interlace && !svga->hwcursor_oddeven)
                 svga->hwcursor_latch.addr += 16;
+
+	svga->overlay_latch.addr &= svga->vrammask;
 }
 
 
@@ -1941,6 +1943,19 @@ static int vram_sizes[] =
         3 /*8 MB*/
 };
 
+static int vpc_vram_sizes[] =
+{
+        7, /*512 kB*/
+        6, /*1 MB*/
+        4, /*2 MB*/
+        3, /*2.5 MB*/
+        0, /*4 MB*/
+        0,
+        0, /*6 MB*/
+        0,
+        0 /*8 MB*/
+};
+
 static void *s3_init(char *bios_fn, int chip)
 {
         s3_t *s3 = malloc(sizeof(s3_t));
@@ -1955,6 +1970,7 @@ static void *s3_init(char *bios_fn, int chip)
                 vram_size = vram << 20;
         else
                 vram_size = 512 << 10;
+	if ((vram_size == 3) && (gfxcard == GFX_VPC_TRIO64))  vram_size += (512 << 10);
         s3->vram_mask = vram_size - 1;
 
         rom_init(&s3->bios_rom, bios_fn, 0xc0000, 0x8000, 0x7fff, 0, MEM_MAPPING_EXTERNAL);
@@ -1973,9 +1989,9 @@ static void *s3_init(char *bios_fn, int chip)
                    NULL);
 
         if (PCI)
-                svga->crtc[0x36] = 2 | (3 << 2) | (1 << 4) | (vram_sizes[vram] << 5);
+                svga->crtc[0x36] = 2 | (3 << 2) | (1 << 4) | (((gfxcard == GFX_VPC_TRIO64) ? vpc_vram_sizes[vram] : vram_sizes[vram]) << 5);
         else
-                svga->crtc[0x36] = 1 | (3 << 2) | (1 << 4) | (vram_sizes[vram] << 5);
+                svga->crtc[0x36] = 1 | (3 << 2) | (1 << 4) | (((gfxcard == GFX_VPC_TRIO64) ? vpc_vram_sizes[vram] : vram_sizes[vram]) << 5);
         svga->crtc[0x37] = 1 | (7 << 5);
 
         s3_io_set(s3);
@@ -2054,7 +2070,7 @@ int s3_phoenix_trio32_available()
 
 void *s3_phoenix_trio64_init()
 {
-        s3_t *s3 = s3_init("roms/86c764x1.bin", S3_TRIO64);
+        s3_t *s3 = s3_init("roms/86c764x1.bin", S3_TRIO64);	/* CORRECT */
         // s3_t *s3 = s3_init("roms/STB64.ROM", S3_TRIO64);
         svga_t *svga = &s3->svga;
 
@@ -2072,6 +2088,26 @@ int s3_phoenix_trio64_available()
 {
         return rom_present("roms/86c764x1.bin");
         // return rom_present("roms/STB64.ROM");
+}
+
+void *s3_vpc_trio64_init()
+{
+        s3_t *s3 = s3_init("roms/vpcs3.bin", S3_VISION964);	/* CORRECT */
+        svga_t *svga = &s3->svga;
+
+        s3->id = 0xe1; /*Trio64*/
+        s3->id_ext = s3->id_ext_pci = 0x11;
+        s3->packed_mmio = 1;
+
+        s3->getclock = s3_trio64_getclock;
+        s3->getclock_p = s3;
+
+        return s3;
+}
+
+int s3_vpc_trio64_available()
+{
+        return rom_present("roms/vpcs3.bin");
 }
 
 void *s3_phoenix_vision964_init()
@@ -2254,6 +2290,45 @@ static device_config_t s3_phoenix_trio64_config[] =
         }
 };
 
+static device_config_t s3_vpc_trio64_config[] =
+{
+        {
+                .name = "memory",
+                .description = "Memory size",
+                .type = CONFIG_SELECTION,
+                .selection =
+                {
+                        {
+                                .description = "512 KB",
+                                .value = 0
+                        },
+                        {
+                                .description = "1 MB",
+                                .value = 1
+                        },
+                        {
+                                .description = "2 MB",
+                                .value = 2
+                        },
+                        {
+                                .description = "2.5 MB",
+                                .value = 3
+                        },
+                        {
+                                .description = "4 MB",
+                                .value = 4
+                        },
+                        {
+                                .description = ""
+                        }
+                },
+                .default_int = 4
+        },
+        {
+                .type = -1
+        }
+};
+
 static device_config_t s3_phoenix_vision964_config[] =
 {
         {
@@ -2350,6 +2425,18 @@ device_t s3_phoenix_trio64_device =
         s3_phoenix_trio64_config
 };
 
+device_t s3_vpc_trio64_device =
+{
+        "Virtual PC S3 Trio64",
+        0,
+        s3_vpc_trio64_init,
+        s3_close,
+        s3_vpc_trio64_available,
+        s3_speed_changed,
+        s3_force_redraw,
+        s3_add_status_info,
+        s3_vpc_trio64_config
+};
 
 device_t s3_phoenix_vision964_device =
 {

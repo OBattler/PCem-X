@@ -417,7 +417,7 @@ int fdc_fail(int dint)
 {
 	discint=dint;
 	if (dint==0xFE)  return 2;
-	disctime = 1024 * (1 << TIMER_SHIFT);
+	disctime = 1024 * (1 << TIMER_SHIFT) * 3;
 	return 1;
 }
 
@@ -720,10 +720,12 @@ void fdc_implied_seek(uint8_t track)
 	}
 
 	timer_process();
-	disctime = 2048 * (1 << TIMER_SHIFT);
+	disctime = 2048 * (1 << TIMER_SHIFT) * 3;
 	timer_update_outstanding();
 
+#ifndef RELEASE_BUILD
 	pclog("Seeked (implied) to track %i, real track %i, TRK0 is %i\n", fdc.pcn[fdc.drive], fdd[vfdd[fdc.drive]].track, fdd[vfdd[fdc.drive]].trk0);
+#endif
 }
 
 void fdc_seek()
@@ -762,7 +764,7 @@ void fdc_seek()
 		if (!fdd[vfdd[fdc.drive]].driveempty)  fdd[vfdd[fdc.drive]].discchanged = 0;
 		discint=-3;
                 timer_process();
-                disctime = 2048 * (1 << TIMER_SHIFT);
+                disctime = 2048 * (1 << TIMER_SHIFT) * 3;
                 timer_update_outstanding();
        	        fdc.stat = 0x80 | (1 << fdc.drive);
 
@@ -827,7 +829,7 @@ void fdc_seek()
 
 		discint=-3;
                 timer_process();
-                disctime = 2048 * (1 << TIMER_SHIFT);
+                disctime = 2048 * (1 << TIMER_SHIFT) * 3;
                 timer_update_outstanding();
        	        fdc.stat = 0x80 | (1 << fdc.drive);
 	}
@@ -848,7 +850,9 @@ void fdc_seek(uint8_t during_rw)
 	step = get_step();
 
 	// pclog("fdc_seek with IS_BIG=%02X, VF_DEN=%02X, and VF_CLS=%02X\n", IS_BIG, VF_DEN, VF_CLS);
+#ifndef RELEASE_BUILD
 	if (step == 2)  pclog("Step is 2\n");
+#endif
 
 	max = 85;
 	// if (((VF_CLS < CLASS_800) && (VF_CLS != -1)) && (step == 1))  max = 42;
@@ -901,7 +905,7 @@ void fdc_seek(uint8_t during_rw)
 		if (!fdd[vfdd[fdc.drive]].driveempty)  fdd[vfdd[fdc.drive]].discchanged = 0;
 		discint=-3;
                 timer_process();
-                disctime = 2048 * (1 << TIMER_SHIFT);
+                disctime = 2048 * (1 << TIMER_SHIFT) * 3;
                 timer_update_outstanding();
        	        fdc.stat = 0x80 | (1 << fdc.drive);
 	}
@@ -1054,7 +1058,7 @@ end_of_seek:
 		fdc.st0 |= fdc.drive;
 		if (!during_rw)  discint=-3;
                 timer_process();
-                disctime = 2048 * (1 << TIMER_SHIFT);
+                disctime = 2048 * (1 << TIMER_SHIFT) * 3;
                 timer_update_outstanding();
        	        fdc.stat = 0x80 | (1 << fdc.drive);
 	}
@@ -1168,7 +1172,7 @@ void fdc_format_command()
 			}
 
                        	timer_process();
-			disctime = 600 * (1 << TIMER_SHIFT);
+			disctime = 600 * (1 << TIMER_SHIFT) * 3;
                        	timer_update_outstanding();
 
 			fdc.fdmaread[fdc.drive]++;
@@ -1185,7 +1189,9 @@ void fdc_format_command()
 	else
 	{
 		/* Format is finished! */
+#ifndef RELEASE_BUILD
 		pclog("Format finished, track %u with %u sectors!\n", fdd[vfdd[fdc.drive]].track, fdd[vfdd[fdc.drive]].spt[fdd[vfdd[fdc.drive]].track]);
+#endif
 		disctime=0;
 		discint=-2;
 		fdc_int();
@@ -1214,7 +1220,10 @@ void fifo_buf_write(int val)
 {
 	if (fdc.fifobufpos < fdc.tfifo)
 	{
-		fdc.fifobuf[fdc.fifobufpos++] = val;
+		fdc.fifobufpos++;
+		fdc.fifobufpos %= fdc.tfifo;
+		fdc.fifobuf[fdc.fifobufpos] = val;
+		pclog("FIFO buffer position = %02X\n", fdc.fifobufpos);
 		if (fdc.fifobufpos == fdc.tfifo)  fdc.fifobufpos = 0;
 	}
 }
@@ -1224,7 +1233,10 @@ int fifo_buf_read()
 	int temp = 0;
 	if (fdc.fifobufpos < fdc.tfifo)
 	{
-		temp = fdc.fifobuf[fdc.fifobufpos++];
+		fdc.fifobufpos++;
+		fdc.fifobufpos %= fdc.tfifo;
+		temp = fdc.fifobuf[fdc.fifobufpos];
+		pclog("FIFO buffer position = %02X\n", fdc.fifobufpos);
 		if (fdc.fifobufpos == fdc.tfifo)  fdc.fifobufpos = 0;
 	}
 	return temp;
@@ -1233,7 +1245,7 @@ int fifo_buf_read()
 void fdc_write(uint16_t addr, uint8_t val, void *priv)
 {
 	// printf("Write FDC %04X %02X %04X:%04X %i %02X %i rate=%i\n",addr,val,cs>>4,pc,ins,fdc.st0,ins,fdc.rate);
-	// printf("OUT 0x%04X, %02X\n", addr, val);
+	printf("OUT 0x%04X, %02X\n", addr, val);
 	// if ((addr&7) == 3)  printf("OUT 0x%04X, %02X\n", addr, val);
         switch (addr&7)
         {
@@ -1246,18 +1258,21 @@ void fdc_write(uint16_t addr, uint8_t val, void *priv)
 			// printf("DOR was %02X\n",fdc.dor);
 	                if (fdc.pcjr)
 	                {
+				pclog("PCjr DOR write\n");
 				if (!(val&0x80) && !(fdc.dor&0x80))  return;		
 	                        if ((fdc.dor & 0x40) && !(val & 0x40))
 	                        {
 	                                fdc.watchdog_timer = 1000 * TIMER_USEC;
 					fdc.watchdog_count = 1000;
 					picintc(1 << 6);
+#ifndef RELEASE_BUILD
 					pclog("watchdog set %i %i\n", fdc.watchdog_timer, TIMER_USEC);
+#endif
         	                }
                 	        if ((val & 0x80) && !(fdc.dor & 0x80))
                         	{
 	        			timer_process();
-        	                        disctime = 128 * (1 << TIMER_SHIFT);
+        	                        disctime = 128 * (1 << TIMER_SHIFT) * 3;
                 	                timer_update_outstanding();
                         	        discint=-1;
                                 	fdc_reset();
@@ -1269,7 +1284,7 @@ void fdc_write(uint16_t addr, uint8_t val, void *priv)
 	                       	if ((val&4) && !(fdc.dor&4))
 	                       	{
 	       				timer_process();
-	                               	disctime = 128 * (1 << TIMER_SHIFT);
+	                               	disctime = 128 * (1 << TIMER_SHIFT) * 3;
         	                       	timer_update_outstanding();
 	                               	discint=-1;
 	                               	fdc.stat=0x80;
@@ -1310,7 +1325,7 @@ void fdc_write(uint16_t addr, uint8_t val, void *priv)
 				if (!fdc.pcjr)  fdc.dor &= 0xFB;
 				if (fdc.pcjr)  fdc.dor &= 0x7F;
 				timer_process();
-	                        disctime = 128 * (1 << TIMER_SHIFT);
+	                        disctime = 128 * (1 << TIMER_SHIFT) * 3;
 	                        timer_update_outstanding();
         	                discint=-1;
                 	        fdc_reset();
@@ -1320,7 +1335,7 @@ void fdc_write(uint16_t addr, uint8_t val, void *priv)
 			if (val & 0x40)
 			{
 				timer_process();
-				disctime = 128 * (1 << TIMER_SHIFT);
+				disctime = 128 * (1 << TIMER_SHIFT) * 3;
 				timer_update_outstanding();
 				discint=-1;
 				fdc_reset();
@@ -1459,11 +1474,13 @@ void fdc_write(uint16_t addr, uint8_t val, void *priv)
         	                	        break;
 	                                default:
 bad_fdc_command:
+#ifndef RELEASE_BUILD
 		                                pclog("Bad FDC command %02X\n",val);
+#endif
 	        	                        fdc.stat=0x10;
 		                                discint=0xfc;
 		                                timer_process();
-	        	                        disctime = 200 * (1 << TIMER_SHIFT);
+	        	                        disctime = 200 * (1 << TIMER_SHIFT) * 3;
 	                	                timer_update_outstanding();
 		                                break;
 	                        }
@@ -1482,7 +1499,7 @@ bad_fdc_command:
 	                                fdc.stat=0x30;
         	                        discint=fdc.command&0x1F;
 	                                timer_process();
-					disctime = 1024 * (1 << TIMER_SHIFT);
+					disctime = 1024 * (1 << TIMER_SHIFT) * 3;
 					if ((discint!=9) && (discint!=12))  fdc.deldata = 0;
 					if ((discint!=8) && (discint!=0x12) && (discint!=0x14) && (discint!=0x94) && (discint!=0xE) && (discint!=0x13) && (discint!=3) && (discint!= 0x10) && ((discint<=0x16) || (discint == 0x19) || (discint == 0x1D)))
 					{
@@ -1507,7 +1524,9 @@ bad_fdc_command:
 					{
 	                                        if (fdd[vfdd[fdc.drive]].driveempty)
         	                                {
+#ifndef RELEASE_BUILD
                 	                                pclog("Drive empty\n");
+#endif
                         	                        discint=0xFE;
 							goto end_of_dwrite;
 	                                        }
@@ -1557,13 +1576,17 @@ bad_fdc_command:
 	                                if (CMD_RW || discint==10 || (discint==13 && (IS_FR)))
 	                                {
 						// Check rate after the format stuff
+#ifndef RELEASE_BUILD
 	                                        pclog("Rate (di = %08X) %i %i %i at %i RPM (dp %i, drt %i, df %i, ds %i)\n", discint, fdc.rate, VF_CLS, fdd[vfdd[fdc.drive]].driveempty, (M3_E ? 360 : 300), densel_polarity, drt[vfdd[fdc.drive]], densel_force, densel_pin());
+#endif
 						if (discint < 0xFC)  fdc_checkrate();
+#ifndef RELEASE_BUILD
 						// if (discint < 0xFC)  pclog("Rate OK\n");
 						if (discint == 0xFE)  pclog("Not ready\n");
 						if (discint == 0xFF)  pclog("Wrong rate\n");
 						if (discint == 0x100)  pclog("Write protected\n");
 						if (discint == 0x101)  pclog("Track not found\n");
+#endif
 	                                }
 	                                if (discint == 0xf || discint == 10)  fdc.head[fdc.drive] = (fdc.params[0] & 4) ? 1 : 0;
                                 	if (discint == 5 && (fdc.pcjr || !fdc.dma))  fdc.stat = 0xb0;
@@ -1657,7 +1680,7 @@ uint8_t fdc_read(uint16_t addr, void *priv)
 	                if (discint==0xA) 
 			{
 				timer_process();
-				disctime = 1024 * (1 << TIMER_SHIFT);
+				disctime = 1024 * (1 << TIMER_SHIFT) * 3;
 				timer_update_outstanding();
 			}
         	        fdc.stat &= 0xf0;
@@ -1675,7 +1698,7 @@ uint8_t fdc_read(uint16_t addr, void *priv)
 			// printf("Bad read FDC %04X\n",addr);
         }
 	// /*if (addr!=0x3f4) */printf("%02X rate=%i\n",temp,fdc.rate);
-	// printf("IN 0x%04X, %02X\n", addr, temp);
+	printf("IN 0x%04X, %02X\n", addr, temp);
 	// if (addr == 0x3F3)  printf("IN 0x%04X, %02X\n", addr, temp);
         return temp;
 }
@@ -1784,7 +1807,9 @@ void fdc_readwrite(int mode)
 			{
 				if((fdc.track[fdc.drive] << 1) != fdc.pcn[fdc.drive])
 				{
+#ifndef RELEASE_BUILD
 					pclog("Wrong cylinder: %i != %i\n", (fdc.track[fdc.drive] << 1), fdc.pcn[fdc.drive]);
+#endif
 					discint = 0x102;
 					fdc_poll();
 					return;
@@ -1794,7 +1819,9 @@ void fdc_readwrite(int mode)
 			{
 				if(fdc.track[fdc.drive] != fdc.pcn[fdc.drive])
 				{
+#ifndef RELEASE_BUILD
 					pclog("Wrong cylinder: %i != %i\n", fdc.track[fdc.drive], fdc.pcn[fdc.drive]);
+#endif
 					discint = 0x102;
 					fdc_poll();
 					return;
@@ -1806,7 +1833,9 @@ void fdc_readwrite(int mode)
 		sr = fdc_seek_by_id(*(uint32_t *) &(fdc.params[1]), &(fdc.track[fdc.drive]), &(fdc.head[fdc.drive]), &(fdc.sector[fdc.drive]));
 		if (!sr)
 		{
+#ifndef RELEASE_BUILD
 			pclog("Seek by ID failed (%08X)\n", *(uint32_t *) &(fdc.params[1]));
+#endif
 			discint = 0xFF;
 			fdc_poll();
 			return;
@@ -1815,7 +1844,9 @@ void fdc_readwrite(int mode)
 		satisfying_sectors = 0;
 		if (fdc.sector[fdc.drive] == 0)
 		{
+#ifndef RELEASE_BUILD
 			pclog("Sector is zero\n");
+#endif
 			discint = 0xFF;
 			fdc_poll();
 			return;
@@ -1954,7 +1985,7 @@ void fdc_readwrite(int mode)
 			}
 
                        	timer_process();
-			disctime = ((mode == 0) ? 600 : 256) * (1 << TIMER_SHIFT);
+			disctime = ((mode == 0) ? 600 : 256) * (1 << TIMER_SHIFT) * 3;
                        	timer_update_outstanding();
 
 			fdc.pos[fdc.drive]++;
@@ -2071,7 +2102,9 @@ end_of_track:
 						if (fdd[vfdd[fdc.drive]].SIDES == 1)  fdc.head[fdc.drive] = 0;
 						if (fdc.track[fdc.drive] >= fdd[vfdd[fdc.drive]].TRACKS)
 						{
+#ifndef RELEASE_BUILD
 							pclog("Reached the end of the disk\n");
+#endif
 							fdc.track[fdc.drive] = fdd[vfdd[fdc.drive]].TRACKS - 1;
 							fdc.pos[fdc.drive] = rbps;
 							fdc.abort[fdc.drive] = 1;
@@ -2303,7 +2336,9 @@ no_track_0:
 			fdc.res[8]=fdd[vfdd[fdc.drive]].scid[fdc.head[fdc.drive]][fdd[vfdd[fdc.drive]].track][fdc.sector[fdc.drive]-1][1];
 			fdc.res[9]=fdd[vfdd[fdc.drive]].scid[fdc.head[fdc.drive]][fdd[vfdd[fdc.drive]].track][fdc.sector[fdc.drive]-1][2];
 			fdc.res[10]=fdd[vfdd[fdc.drive]].scid[fdc.head[fdc.drive]][fdd[vfdd[fdc.drive]].track][fdc.sector[fdc.drive]-1][3];
+#ifndef RELEASE_BUILD
 			pclog("RSID: %02X %02X %02X %02X %02X %02X %02X\n", fdc.res[4], fdc.res[5], fdc.res[6], fdc.res[7], fdc.res[8], fdc.res[9], fdc.res[10]);
+#endif
 	                paramstogo=7;
 	                return;
 
@@ -2357,11 +2392,13 @@ no_track_0:
                 case 0x13: /*Configure*/
 	                fdc.config = fdc.params[1];
 	                fdc.pretrk = fdc.params[2];
-			if (fdc.params[1] & 0x20)  fdc.fifo = 0;
-			if (!(fdc.params[1] & 0x20))  fdc.fifo = 1;
+			fdc.fifo = (fdc.params[1] & 0x20) ? 0 : 1;
 			fdc.tfifo = (fdc.params[1] & 0xF) + 1;
+			pclog("FIFO is now %02X, threshold is %02X\n", fdc.fifo, fdc.tfifo);
 			fdc.eis = (fdc.params[1] & 0x40) ? 1 : 0;
+#ifndef RELEASE_BUILD
 			pclog("Implied seek now %s\n", fdc.eis ? "enabled" : "disabled");
+#endif
 	                fdc.stat = 0x80;
 	                disctime = 0;
 	                return;
@@ -2487,10 +2524,14 @@ no_track_0:
 	                return;
 
 		default:
+#ifndef RELEASE_BUILD
 			pclog("Unknown discint %08X issued\n", discint);
+#endif
 			return;
         }
+#ifndef RELEASE_BUILD
         printf("Bad FDC disc int %i\n",discint);
+#endif
 //        dumpregs();
 //        exit(-1);
 }

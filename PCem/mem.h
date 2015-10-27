@@ -165,3 +165,16 @@ void mem_resize();
 void mmu_invalidate(uint32_t addr);
 
 void resetreadlookup();
+
+void mem_reset_bios_mappings();
+
+extern int enable_extrom;
+extern int enable_netbios;
+
+extern int disable_netbios;
+
+extern mem_mapping_t netbios_mapping;
+
+void mem_load_netbios();
+
+extern uint8_t netbios[32768];

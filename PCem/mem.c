@@ -12,6 +12,7 @@
 #include "config.h"
 #include "device.h"
 #include "mem.h"
+#include "nethandler.h"
 #include "video.h"
 #include "vid_mda.h"
 #include "vid_hercules.h"
@@ -45,6 +46,7 @@ static mem_mapping_t ram_mid_mapping;
 mem_mapping_t bios_mapping[8];
 mem_mapping_t bios_high_mapping[8];
 static mem_mapping_t romext_mapping;
+mem_mapping_t netbios_mapping;
 
 int shadowbios,shadowbios_write;
 int ps1xtide;
@@ -59,9 +61,54 @@ int cachesize=256;
 
 uint8_t *ram,*rom,*vram;
 uint8_t romext[32768];
+uint8_t netbios[32768];
 
 int biostype = BIOS_NONE;
 
+int enable_extrom = 0;
+int enable_netbios = 1;
+
+int disable_netbios = 0;
+
+static int ram_mask = 0;
+
+void mem_load_netbios()
+{
+	pclog("Loading NE2000 Boot ROM...\n");
+
+	if (disable_netbios)
+	{
+		pclog("NE2000 Boot ROM is disabled\n");
+	        memset(netbios,0xff,0x8000);
+		mem_mapping_disable(&netbios_mapping);
+		enable_netbios = 0;
+		return;
+	}
+
+        FILE *f;
+        f=romfopen("roms/eb-git-rtl8029.zrom","rb");
+
+//        is486=0;
+        if (f)
+        {
+		pclog("NE2000 Boot ROM loaded successfully\n");
+                fread(netbios,32768,1,f);
+                fclose(f);
+        }
+	else
+	{
+		pclog("NE2000 Boot ROM failed to load\n");
+	        memset(netbios,0xff,0x8000);
+		mem_mapping_disable(&netbios_mapping);
+		enable_netbios = 0;
+		return;
+	}
+
+	pclog("Enabling Network BIOS mapping...\n");
+	enable_netbios = 1;
+	if (!PCI)  mem_mapping_enable(&netbios_mapping);
+}
+        
 static void mem_load_xtide_bios()
 {
         FILE *f;
@@ -73,6 +120,16 @@ static void mem_load_xtide_bios()
                 fread(romext,16384,1,f);
                 fclose(f);
         }
+	else
+	{
+	        memset(romext,0xff,0x8000);
+		mem_mapping_enable(&romext_mapping);
+		enable_extrom = 0;
+		return;
+	}
+
+	enable_extrom = 1;
+	mem_mapping_enable(&romext_mapping);
 }
         
 static void mem_load_atide_bios()
@@ -86,6 +143,15 @@ static void mem_load_atide_bios()
                 fread(romext,16384,1,f);
                 fclose(f);
         }
+	else
+	{
+		enable_extrom = 0;
+		mem_mapping_enable(&romext_mapping);
+		return;
+	}
+
+	enable_extrom = 1;
+	mem_mapping_enable(&romext_mapping);
 }
 
 static void mem_load_atide_ps1_bios()
@@ -99,6 +165,15 @@ static void mem_load_atide_ps1_bios()
                 fread(romext,16384,1,f);
                 fclose(f);
         }
+	else
+	{
+		enable_extrom = 0;
+		mem_mapping_enable(&romext_mapping);
+		return;
+	}
+
+	enable_extrom = 1;
+	mem_mapping_enable(&romext_mapping);
 }
 
 int font_index = 0;
@@ -122,8 +197,25 @@ int loadbios()
         
         biosmask = 0xffff;
         
+        memset(romext,0xff,0x8000);
         memset(romext,0x63,0x4000);
+        memset(netbios,0xff,0x8000);
+        // memset(netbios,0x63,62976);
         memset(rom, 0xff, 0x20000);
+
+	mem_mapping_disable(&romext_mapping);
+	mem_mapping_disable(&netbios_mapping);
+
+	enable_extrom = 0;
+	enable_netbios = 0;
+
+	if ((romset < ROM_AMI486) || (network_card_current == 0))
+	{
+		enable_netbios = 0;
+	        memset(netbios,0xff,0x8000);
+	}
+	else
+		mem_load_netbios();
         
         pclog("Starting with romset %i\n", romset);
 
@@ -1020,7 +1112,7 @@ extern uint32_t testr[9];
 
 uint32_t mmutranslatereal(uint32_t addr, int rw)
 {
-        uint32_t addr2;
+        uint32_t addr2,taddr;
         uint32_t temp,temp2,temp3;
         
                 if (abrt) 
@@ -1052,7 +1144,9 @@ uint32_t mmutranslatereal(uint32_t addr, int rw)
                 }*/
                 return -1;
         }
-        temp=((uint32_t *)ram)[((temp&~0xFFF)+((addr>>10)&0xFFC))>>2];
+        taddr = (((temp&~0xFFF)+((addr>>10)&0xFFC))>>2);
+	taddr %= ((mem_size * 1024 * 1024) >> 2);
+        temp=((uint32_t *)ram)[taddr];
         temp3=temp&temp2;
 //        if (output == 3) pclog("Do translate %08X %08X\n", temp, temp3);
         if (!(temp&1) || (CPL==3 && !(temp3&4) && !cpl_override) || (rw && !(temp3&2) && (CPL==3 || cr0&WP_FLAG)))
@@ -1080,7 +1174,9 @@ uint32_t mmutranslatereal(uint32_t addr, int rw)
         }
         mmu_perm=temp&4;
         ((uint32_t *)ram)[addr2>>2]|=0x20;
-        ((uint32_t *)ram)[((temp2&~0xFFF)+((addr>>10)&0xFFC))>>2]|=(rw?0x60:0x20);
+	taddr = (((temp2&~0xFFF)+((addr>>10)&0xFFC))>>2);
+	taddr %= ((mem_size * 1024 * 1024) >> 2);
+        ((uint32_t *)ram)[taddr]|=(rw?0x60:0x20);
 //        /*if (output) */pclog("Translate %08X %08X %08X  %08X:%08X  %08X\n",addr,(temp&~0xFFF)+(addr&0xFFF),temp,cs,pc,EDI);
 
         return (temp&~0xFFF)+(addr&0xFFF);
@@ -1088,7 +1184,7 @@ uint32_t mmutranslatereal(uint32_t addr, int rw)
 
 uint32_t mmutranslate_noabrt(uint32_t addr, int rw)
 {
-        uint32_t addr2;
+        uint32_t addr2,taddr;
         uint32_t temp,temp2,temp3;
         
         if (abrt) 
@@ -1100,7 +1196,9 @@ uint32_t mmutranslate_noabrt(uint32_t addr, int rw)
         if (!(temp&1))
                 return -1;
 
-        temp=((uint32_t *)ram)[((temp&~0xFFF)+((addr>>10)&0xFFC))>>2];
+	taddr = (((temp&~0xFFF)+((addr>>10)&0xFFC))>>2);
+	taddr %= ((mem_size * 1024 * 1024) >> 2);
+        temp=((uint32_t *)ram)[taddr];
         temp3=temp&temp2;
 
         if (!(temp&1) || (CPL==3 && !(temp3&4) && !cpl_override) || (rw && !(temp3&2) && (CPL==3 || cr0&WP_FLAG)))
@@ -1750,6 +1848,19 @@ uint32_t mem_read_romextl(uint32_t addr, void *priv)
         return *(uint32_t *)&romext[addr & 0x7fff];
 }
 
+uint8_t mem_read_netbios(uint32_t addr, void *priv)
+{
+        return netbios[addr & 0x7fff];
+}
+uint16_t mem_read_netbiosw(uint32_t addr, void *priv)
+{
+        return *(uint16_t *)&netbios[addr & 0x7fff];
+}
+uint32_t mem_read_netbiosl(uint32_t addr, void *priv)
+{
+        return *(uint32_t *)&netbios[addr & 0x7fff];
+}
+
 void mem_write_null(uint32_t addr, uint8_t val, void *p)
 {
 }
@@ -1766,7 +1877,7 @@ void mem_updatecache()
         if (!is386)
         {
                 cachesize=256;
-                memwaitstate=0;
+                memwaitstate=(is8086 ? 0 : (int) (1024.0 * cpu_multi));
                 return;
         }
         if (cpu_16bitbus)
@@ -2001,10 +2112,13 @@ void mem_set_mem_state(uint32_t base, uint32_t size, int state)
 
 void mem_add_bios()
 {
-	mem_mapping_add(&bios_mapping[0], 0xe0000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom,                        MEM_MAPPING_EXTERNAL, 0);
-	mem_mapping_add(&bios_mapping[1], 0xe4000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x4000  & biosmask), MEM_MAPPING_EXTERNAL, 0);
-	mem_mapping_add(&bios_mapping[2], 0xe8000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x8000  & biosmask), MEM_MAPPING_EXTERNAL, 0);
-	mem_mapping_add(&bios_mapping[3], 0xec000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0xc000  & biosmask), MEM_MAPPING_EXTERNAL, 0);
+	if (romset != ROM_430VX)
+	{
+		mem_mapping_add(&bios_mapping[0], 0xe0000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom,                        MEM_MAPPING_EXTERNAL, 0);
+		mem_mapping_add(&bios_mapping[1], 0xe4000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x4000  & biosmask), MEM_MAPPING_EXTERNAL, 0);
+		mem_mapping_add(&bios_mapping[2], 0xe8000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x8000  & biosmask), MEM_MAPPING_EXTERNAL, 0);
+		mem_mapping_add(&bios_mapping[3], 0xec000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0xc000  & biosmask), MEM_MAPPING_EXTERNAL, 0);
+	}
 	mem_mapping_add(&bios_mapping[4], 0xf0000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x10000 & biosmask), MEM_MAPPING_EXTERNAL, 0);
 	mem_mapping_add(&bios_mapping[5], 0xf4000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x14000 & biosmask), MEM_MAPPING_EXTERNAL, 0);
 	mem_mapping_add(&bios_mapping[6], 0xf8000, 0x04000, mem_read_bios,   mem_read_biosw,   mem_read_biosl,   mem_write_null, mem_write_nullw, mem_write_nulll, rom + (0x18000 & biosmask), MEM_MAPPING_EXTERNAL, 0);
@@ -2028,6 +2142,8 @@ void mem_init()
         int c;
 
 	if (mem_size > 768)  mem_size = 768;
+
+	ram_mask = (mem_size * 1024 * 1024) - 1;
 
         ram = malloc(mem_size * 1024 * 1024);
         rom = malloc(0x20000);
@@ -2081,10 +2197,21 @@ void mem_init()
         mem_mapping_add(&ram_mid_mapping,   0xc0000, 0x40000, mem_read_ram,    mem_read_ramw,    mem_read_raml,    mem_write_ram, mem_write_ramw, mem_write_raml,   ram + 0xc0000,  MEM_MAPPING_INTERNAL, NULL);
 
         mem_mapping_add(&romext_mapping,  0xc8000, 0x08000, mem_read_romext, mem_read_romextw, mem_read_romextl, NULL, NULL, NULL,   romext, 0, NULL);
+        mem_mapping_add(&netbios_mapping,  0xd0000, 0x08000, mem_read_netbios, mem_read_netbiosw, mem_read_netbiosl, NULL, NULL, NULL,   netbios, 0, NULL);
 
 //        pclog("Mem resize %i %i\n",mem_size,c);
         mem_a20_key = 2;
         mem_a20_recalc();
+
+	if (enable_extrom)
+		mem_mapping_enable(&romext_mapping);
+	else
+		mem_mapping_disable(&romext_mapping);
+
+	if (enable_netbios)
+		mem_mapping_enable(&netbios_mapping);
+	else
+		mem_mapping_disable(&netbios_mapping);
 }
 
 void mem_resize()
@@ -2092,6 +2219,8 @@ void mem_resize()
         int c;
         
 	if (mem_size > 768)  mem_size = 768;
+
+	ram_mask = (mem_size * 1024 * 1024) - 1;
 
         free(ram);
         ram = malloc(mem_size * 1024 * 1024);
@@ -2139,6 +2268,30 @@ void mem_resize()
         mem_add_bios();
 
         mem_mapping_add(&romext_mapping,  0xc8000, 0x08000, mem_read_romext, mem_read_romextw, mem_read_romextl, NULL, NULL, NULL,   romext, 0, NULL);
+        mem_mapping_add(&netbios_mapping,  0xd0000, 0x08000, mem_read_netbios, mem_read_netbiosw, mem_read_netbiosl, NULL, NULL, NULL,   netbios, 0, NULL);
+
+	if (enable_extrom)
+		mem_mapping_enable(&romext_mapping);
+	else
+		mem_mapping_disable(&romext_mapping);
+
+	if (enable_netbios)
+		mem_mapping_enable(&netbios_mapping);
+	else
+		mem_mapping_disable(&netbios_mapping);
+}
+
+void mem_reset_bios_mappings()
+{
+	if (enable_extrom)
+		mem_mapping_enable(&romext_mapping);
+	else
+		mem_mapping_disable(&romext_mapping);
+
+	if (enable_netbios)
+		mem_mapping_enable(&netbios_mapping);
+	else
+		mem_mapping_disable(&netbios_mapping);
 }
 
 void mem_reset_page_blocks()

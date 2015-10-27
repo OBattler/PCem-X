@@ -163,8 +163,8 @@ void tandy_recalctimings(tandy_t *tandy)
         _dispofftime = disptime - _dispontime;
         _dispontime  *= CGACONST;
         _dispofftime *= CGACONST;
-	tandy->dispontime  = (int)(_dispontime  * (1 << TIMER_SHIFT));
-	tandy->dispofftime = (int)(_dispofftime * (1 << TIMER_SHIFT));
+	tandy->dispontime  = (int)(_dispontime  * (1 << TIMER_SHIFT) * 3.0d);
+	tandy->dispofftime = (int)(_dispofftime * (1 << TIMER_SHIFT) * 3.0d);
 }
 
 

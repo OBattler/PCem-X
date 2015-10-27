@@ -10,6 +10,7 @@
 #include "device.h"
 
 #include "ne2000.h"
+
 #include "timer.h"
 
 int network_card_current = 0;
@@ -19,13 +20,15 @@ typedef struct
 {
         char name[32];
         device_t *device;
+	int legacy_id;
 } NETWORK_CARD;
 
 static NETWORK_CARD network_cards[] =
 {
-        {"None",                  NULL},
-        {"Novell NE2000",         &ne2000_device},
-        {"", NULL}
+        {"None",                  		NULL,			NET_NONE},
+        {"Novell NE2000",         		&ne2000_device,		NET_NE2000},
+        {"Realtek RTL8029AS (NE2000 PCI)",	&rtl8029as_device,	NET_RTL8029AS},
+        {"",					NULL,			0}
 };
 
 int network_card_available(int card)

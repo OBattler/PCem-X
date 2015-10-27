@@ -161,8 +161,8 @@ void pcjr_recalctimings(pcjr_t *pcjr)
         _dispofftime = disptime - _dispontime;
         _dispontime  *= CGACONST;
         _dispofftime *= CGACONST;
-	pcjr->dispontime  = (int)(_dispontime  * (1 << TIMER_SHIFT));
-	pcjr->dispofftime = (int)(_dispofftime * (1 << TIMER_SHIFT));
+	pcjr->dispontime  = (int)(_dispontime  * (1 << TIMER_SHIFT) * 3.0d);
+	pcjr->dispofftime = (int)(_dispofftime * (1 << TIMER_SHIFT) * 3.0d);
 }
 
 

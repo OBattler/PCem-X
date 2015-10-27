@@ -185,7 +185,7 @@ static int LOAD_REG_B(int reg)
                 addbyte(0x44); /*MOVZX W[reg],host_reg*/
                 addbyte(0x8b);
                 addbyte(0x45 | (host_reg << 3));
-                addbyte((uint64_t)&regs[host_reg & 3].b - (uint64_t)&EAX);
+                addbyte((uint32_t)&regs[host_reg & 3].b - (uint32_t)&EAX);
         }
 
         codegen_reg_loaded[reg & 3] = 1;
@@ -205,7 +205,7 @@ static int LOAD_REG_W(int reg)
                 addbyte(0x44); /*MOVZX W[reg],host_reg*/
                 addbyte(0x8b);
                 addbyte(0x45 | (host_reg << 3));
-                addbyte((uint64_t)&regs[reg & 7].w - (uint64_t)&EAX);
+                addbyte((uint32_t)&regs[reg & 7].w - (uint32_t)&EAX);
         }
 
         codegen_reg_loaded[reg & 7] = 1;
@@ -222,7 +222,7 @@ static int LOAD_REG_L(int reg)
                 addbyte(0x44); /*MOVZX W[reg],host_reg*/
                 addbyte(0x8b);
                 addbyte(0x45 | (host_reg << 3));
-                addbyte((uint64_t)&regs[reg & 7].l - (uint64_t)&EAX);
+                addbyte((uint32_t)&regs[reg & 7].l - (uint32_t)&EAX);
         }
 
         codegen_reg_loaded[reg & 7] = 1;
@@ -292,7 +292,7 @@ static void STORE_REG_TARGET_B_RELEASE(int host_reg, int guest_reg)
                 addbyte(0x44);
                 addbyte(0x89);
                 addbyte(0x45 | (dest_reg << 3));
-                addbyte((uint64_t)&regs[guest_reg & 3].w - (uint64_t)&EAX);
+                addbyte((uint32_t)&regs[guest_reg & 3].w - (uint32_t)&EAX);
         }
         else
         {
@@ -311,7 +311,7 @@ static void STORE_REG_TARGET_B_RELEASE(int host_reg, int guest_reg)
                                 addbyte(0xc0 | (dest_reg & 7));
                                 addbyte(0x88); /*MOVB regs[reg].b, AH*/
                                 addbyte(0x65);
-                                addbyte((uint64_t)&regs[guest_reg & 3].b - (uint64_t)&EAX);
+                                addbyte((uint32_t)&regs[guest_reg & 3].b - (uint32_t)&EAX);
                         }
                         else
                         {
@@ -321,7 +321,7 @@ static void STORE_REG_TARGET_B_RELEASE(int host_reg, int guest_reg)
                                 addbyte(0x44); /*MOVB regs[guest_reg].b, host_reg*/
                                 addbyte(0x88);
                                 addbyte(0x45 | ((host_reg & 3) << 3));
-                                addbyte((uint64_t)&regs[guest_reg & 3].b - (uint64_t)&EAX);
+                                addbyte((uint32_t)&regs[guest_reg & 3].b - (uint32_t)&EAX);
                         }
                 }
                 else
@@ -337,7 +337,7 @@ static void STORE_REG_TARGET_B_RELEASE(int host_reg, int guest_reg)
                         addbyte(0xc0 | (dest_reg & 7) | ((host_reg & 7) << 3));
                         addbyte(0x88); /*MOVB regs[guest_reg].b, host_reg*/
                         addbyte(0x45 | ((host_reg & 3) << 3));
-                        addbyte((uint64_t)&regs[guest_reg & 3].b - (uint64_t)&EAX);
+                        addbyte((uint32_t)&regs[guest_reg & 3].b - (uint32_t)&EAX);
                 }
         }
 }
@@ -355,7 +355,7 @@ static void STORE_REG_TARGET_W_RELEASE(int host_reg, int guest_reg)
                 addbyte(0x44);
                 addbyte(0x89);
                 addbyte(0x45 | ((host_reg & 7) << 3));
-                addbyte((uint64_t)&regs[guest_reg & 7].w - (uint64_t)&EAX);
+                addbyte((uint32_t)&regs[guest_reg & 7].w - (uint32_t)&EAX);
         }
         else
         {
@@ -366,7 +366,7 @@ static void STORE_REG_TARGET_W_RELEASE(int host_reg, int guest_reg)
                 addbyte(0x66); /*MOVW regs[guest_reg].w, host_reg*/
                 addbyte(0x89);
                 addbyte(0x45 | (host_reg << 3));
-                addbyte((uint64_t)&regs[guest_reg & 7].w - (uint64_t)&EAX);
+                addbyte((uint32_t)&regs[guest_reg & 7].w - (uint32_t)&EAX);
         }
 }
 static void STORE_REG_TARGET_L_RELEASE(int host_reg, int guest_reg)
@@ -379,7 +379,7 @@ static void STORE_REG_TARGET_L_RELEASE(int host_reg, int guest_reg)
                 addbyte(0x44); /*MOVL regs[guest_reg].l, host_reg*/
                 addbyte(0x89);
                 addbyte(0x45 | (host_reg << 3));
-                addbyte((uint64_t)&regs[guest_reg & 7].l - (uint64_t)&EAX);
+                addbyte((uint32_t)&regs[guest_reg & 7].l - (uint32_t)&EAX);
         }
         else
         {
@@ -388,7 +388,7 @@ static void STORE_REG_TARGET_L_RELEASE(int host_reg, int guest_reg)
                 addbyte(0xc0 | guest_reg | (host_reg << 3));
                 addbyte(0x89); /*MOVL regs[guest_reg].l, host_reg*/
                 addbyte(0x45 | (host_reg << 3));
-                addbyte((uint64_t)&regs[guest_reg & 7].l - (uint64_t)&EAX);
+                addbyte((uint32_t)&regs[guest_reg & 7].l - (uint32_t)&EAX);
         }
 }
 
@@ -400,14 +400,14 @@ static void STORE_REG_B_RELEASE(int host_reg)
                 addbyte(0x44);
                 addbyte(0x89);
                 addbyte(0x45 | ((host_reg & 7) << 3));
-                addbyte((uint64_t)&regs[host_reg & 7].w - (uint64_t)&EAX);
+                addbyte((uint32_t)&regs[host_reg & 7].w - (uint32_t)&EAX);
         }
         else
         {
                 addbyte(0x44); /*MOVB [reg],host_reg*/
                 addbyte(0x88);
                 addbyte(0x45 | ((host_reg & 7) << 3));
-                addbyte((uint64_t)&regs[host_reg & 7].b - (uint64_t)&EAX);
+                addbyte((uint32_t)&regs[host_reg & 7].b - (uint32_t)&EAX);
         }
 }
 static void STORE_REG_W_RELEASE(int host_reg)
@@ -416,14 +416,14 @@ static void STORE_REG_W_RELEASE(int host_reg)
         addbyte(0x44);
         addbyte(0x89);
         addbyte(0x45 | ((host_reg & 7) << 3));
-        addbyte((uint64_t)&regs[host_reg & 7].w - (uint64_t)&EAX);
+        addbyte((uint32_t)&regs[host_reg & 7].w - (uint32_t)&EAX);
 }
 static void STORE_REG_L_RELEASE(int host_reg)
 {
         addbyte(0x44); /*MOVL [reg],host_reg*/
         addbyte(0x89);
         addbyte(0x45 | ((host_reg & 7) << 3));
-        addbyte((uint64_t)&regs[host_reg & 7].l - (uint64_t)&EAX);
+        addbyte((uint32_t)&regs[host_reg & 7].l - (uint32_t)&EAX);
 }
 
 static void STORE_IMM_REG_B(int reg, uint8_t val)
@@ -445,7 +445,7 @@ static void STORE_IMM_REG_B(int reg, uint8_t val)
                 addbyte(0x44);
                 addbyte(0x89);
                 addbyte(0x45 | (host_reg << 3));
-                addbyte((uint64_t)&regs[reg & 3].w - (uint64_t)&EAX);
+                addbyte((uint32_t)&regs[reg & 3].w - (uint32_t)&EAX);
         }
         else
         {
@@ -455,7 +455,7 @@ static void STORE_IMM_REG_B(int reg, uint8_t val)
                 addbyte(0x44); /*MOVB reg, regs[reg].b*/
                 addbyte(0x88);
                 addbyte(0x45 | (reg << 3));
-                addbyte((uint64_t)&regs[reg & 7].b - (uint64_t)&EAX);
+                addbyte((uint32_t)&regs[reg & 7].b - (uint32_t)&EAX);
         }
 }
 static void STORE_IMM_REG_W(int reg, uint16_t val)
@@ -468,7 +468,7 @@ static void STORE_IMM_REG_W(int reg, uint16_t val)
         addbyte(0x44);
         addbyte(0x89);
         addbyte(0x45 | (reg << 3));
-        addbyte((uint64_t)&regs[reg & 7].w - (uint64_t)&EAX);
+        addbyte((uint32_t)&regs[reg & 7].w - (uint32_t)&EAX);
 }
 static void STORE_IMM_REG_L(int reg, uint32_t val)
 {
@@ -478,7 +478,7 @@ static void STORE_IMM_REG_L(int reg, uint32_t val)
         addbyte(0x44); /*MOVL reg, regs[reg].l*/
         addbyte(0x89);
         addbyte(0x45 | (reg << 3));
-        addbyte((uint64_t)&regs[reg & 7].l - (uint64_t)&EAX);
+        addbyte((uint32_t)&regs[reg & 7].l - (uint32_t)&EAX);
 }
 
 static void STORE_IMM_ADDR_L(uintptr_t addr, uint32_t val)
@@ -840,7 +840,7 @@ static void CHECK_SEG_READ(x86seg *seg)
         addbyte(0x83); /*CMP seg->base, -1*/
         addbyte(0x3c);
         addbyte(0x25);
-        addlong((uint64_t)&seg->base);
+        addlong((uint32_t)&seg->base);
         addbyte(-1);
         addbyte(0x0f); /*JE end*/
         addbyte(0x84);
@@ -862,7 +862,7 @@ static void CHECK_SEG_WRITE(x86seg *seg)
         addbyte(0x83); /*CMP seg->base, -1*/
         addbyte(0x3c);
         addbyte(0x25);
-        addlong((uint64_t)&seg->base);
+        addlong((uint32_t)&seg->base);
         addbyte(-1);
         addbyte(0x0f); /*JE end*/
         addbyte(0x84);
@@ -875,7 +875,7 @@ static void CHECK_SEG_LIMITS(x86seg *seg, int end_offset)
         addbyte(0x3b); /*CMP EAX, seg->limit_low*/
         addbyte(0x04);
         addbyte(0x25);
-        addlong((uint64_t)&seg->limit_low);
+        addlong((uint32_t)&seg->limit_low);
         addbyte(0x0f); /*JB BLOCK_GPF_OFFSET*/
         addbyte(0x82);
         addlong(BLOCK_GPF_OFFSET - (block_pos + 4));
@@ -887,7 +887,7 @@ static void CHECK_SEG_LIMITS(x86seg *seg, int end_offset)
                 addbyte(0x3b); /*CMP EAX, seg->limit_high*/
                 addbyte(0x04);
                 addbyte(0x25);
-                addlong((uint64_t)&seg->limit_high);
+                addlong((uint32_t)&seg->limit_high);
                 addbyte(0x0f); /*JNBE BLOCK_GPF_OFFSET*/
                 addbyte(0x87);
                 addlong(BLOCK_GPF_OFFSET - (block_pos + 4));
@@ -904,7 +904,7 @@ static void MEM_LOAD_ADDR_EA_B(x86seg *seg)
         addbyte(0x8b); /*MOVL ECX, seg->base*/
         addbyte(0x0c);
         addbyte(0x25);
-        addlong((uint64_t)&seg->base);
+        addlong((uint32_t)&seg->base);
         addbyte(0x67); /*LEA ESI, (EAX,ECX)*/
         addbyte(0x8d);
         addbyte(0x34);
@@ -921,7 +921,7 @@ static void MEM_LOAD_ADDR_EA_B(x86seg *seg)
 	        addbyte(0x8b);
 	        addbyte(0x34);
 	        addbyte(0xf5);
-	        addlong((uint64_t)readlookup2);
+	        addlong((uint32_t)readlookup2);
 	}
 	else
 	{
@@ -950,7 +950,7 @@ static void MEM_LOAD_ADDR_EA_B(x86seg *seg)
         addbyte(0x83); /*CMP abrt, 0*/
         addbyte(0x3c);
         addbyte(0x25);
-        addlong((uint64_t)&abrt);
+        addlong((uint32_t)&abrt);
         addbyte(0);
         addbyte(0x0f); /*JNE end*/
         addbyte(0x85);
@@ -962,7 +962,7 @@ static void MEM_LOAD_ADDR_EA_W(x86seg *seg)
         addbyte(0x8b); /*MOVL ECX, seg->base*/
         addbyte(0x0c);
         addbyte(0x25);
-        addlong((uint64_t)&seg->base);
+        addlong((uint32_t)&seg->base);
         addbyte(0x67); /*LEA ESI, (EAX,ECX)*/
         addbyte(0x8d);
         addbyte(0x34);
@@ -984,7 +984,7 @@ static void MEM_LOAD_ADDR_EA_W(x86seg *seg)
 	        addbyte(0x8b);
 	        addbyte(0x34);
 	        addbyte(0xf5);
-	        addlong((uint64_t)readlookup2);
+	        addlong((uint32_t)readlookup2);
 	}
 	else
 	{
@@ -1017,7 +1017,7 @@ static void MEM_LOAD_ADDR_EA_W(x86seg *seg)
         addbyte(0x83); /*CMP abrt, 0*/
         addbyte(0x3c);
         addbyte(0x25);
-        addlong((uint64_t)&abrt);
+        addlong((uint32_t)&abrt);
         addbyte(0);
         addbyte(0x0f); /*JNE end*/
         addbyte(0x85);
@@ -1029,7 +1029,7 @@ static void MEM_LOAD_ADDR_EA_L(x86seg *seg)
         addbyte(0x8b); /*MOVL ECX, seg->base*/
         addbyte(0x0c);
         addbyte(0x25);
-        addlong((uint64_t)&seg->base);
+        addlong((uint32_t)&seg->base);
         addbyte(0x67); /*LEA ESI, (EAX,ECX)*/
         addbyte(0x8d);
         addbyte(0x34);
@@ -1051,7 +1051,7 @@ static void MEM_LOAD_ADDR_EA_L(x86seg *seg)
 	        addbyte(0x8b);
 	        addbyte(0x34);
 	        addbyte(0xf5);
-	        addlong((uint64_t)readlookup2);
+	        addlong((uint32_t)readlookup2);
 	}
 	else
 	{
@@ -1083,7 +1083,7 @@ static void MEM_LOAD_ADDR_EA_L(x86seg *seg)
         addbyte(0x83); /*CMP abrt, 0*/
         addbyte(0x3c);
         addbyte(0x25);
-        addlong((uint64_t)&abrt);
+        addlong((uint32_t)&abrt);
         addbyte(0);
         addbyte(0x0f); /*JNE end*/
         addbyte(0x85);
@@ -1095,7 +1095,7 @@ static void MEM_LOAD_ADDR_EA_Q(x86seg *seg)
         addbyte(0x8b); /*MOVL ECX, seg->base*/
         addbyte(0x0c);
         addbyte(0x25);
-        addlong((uint64_t)&seg->base);
+        addlong((uint32_t)&seg->base);
         addbyte(0x67); /*LEA ESI, (EAX,ECX)*/
         addbyte(0x8d);
         addbyte(0x34);
@@ -1117,7 +1117,7 @@ static void MEM_LOAD_ADDR_EA_Q(x86seg *seg)
 	        addbyte(0x8b);
 	        addbyte(0x34);
 	        addbyte(0xf5);
-	        addlong((uint64_t)readlookup2);
+	        addlong((uint32_t)readlookup2);
 	}
 	else
 	{
@@ -1150,7 +1150,7 @@ static void MEM_LOAD_ADDR_EA_Q(x86seg *seg)
         addbyte(0x83); /*CMP abrt, 0*/
         addbyte(0x3c);
         addbyte(0x25);
-        addlong((uint64_t)&abrt);
+        addlong((uint32_t)&abrt);
         addbyte(0);
         addbyte(0x0f); /*JNE end*/
         addbyte(0x85);
@@ -1204,7 +1204,7 @@ static void MEM_STORE_ADDR_EA_B(x86seg *seg, int host_reg)
         addbyte(0x8b); /*MOVL ECX, seg->base*/
         addbyte(0x0c);
         addbyte(0x25);
-        addlong((uint64_t)&seg->base);
+        addlong((uint32_t)&seg->base);
         addbyte(0x67); /*LEA ESI, (EAX,ECX)*/
         addbyte(0x8d);
         addbyte(0x34);
@@ -1221,7 +1221,7 @@ static void MEM_STORE_ADDR_EA_B(x86seg *seg, int host_reg)
 	        addbyte(0x8b);
 	        addbyte(0x34);
 	        addbyte(0xf5);
-	        addlong((uint64_t)writelookup2);
+	        addlong((uint32_t)writelookup2);
 	}
 	else
 	{
@@ -1261,7 +1261,7 @@ static void MEM_STORE_ADDR_EA_B(x86seg *seg, int host_reg)
         addbyte(0x83); /*CMP abrt, 0*/
         addbyte(0x3c);
         addbyte(0x25);
-        addlong((uint64_t)&abrt);
+        addlong((uint32_t)&abrt);
         addbyte(0);
         addbyte(0x0f); /*JNE end*/
         addbyte(0x85);
@@ -1273,7 +1273,7 @@ static void MEM_STORE_ADDR_EA_W(x86seg *seg, int host_reg)
         addbyte(0x8b); /*MOVL ECX, seg->base*/
         addbyte(0x0c);
         addbyte(0x25);
-        addlong((uint64_t)&seg->base);
+        addlong((uint32_t)&seg->base);
         addbyte(0x67); /*LEA ESI, (EAX,ECX)*/
         addbyte(0x8d);
         addbyte(0x34);
@@ -1295,7 +1295,7 @@ static void MEM_STORE_ADDR_EA_W(x86seg *seg, int host_reg)
 	        addbyte(0x8b);
 	        addbyte(0x34);
 	        addbyte(0xf5);
-	        addlong((uint64_t)writelookup2);
+	        addlong((uint32_t)writelookup2);
 	}
 	else
 	{
@@ -1341,7 +1341,7 @@ static void MEM_STORE_ADDR_EA_W(x86seg *seg, int host_reg)
         addbyte(0x83); /*CMP abrt, 0*/
         addbyte(0x3c);
         addbyte(0x25);
-        addlong((uint64_t)&abrt);
+        addlong((uint32_t)&abrt);
         addbyte(0);
         addbyte(0x0f); /*JNE end*/
         addbyte(0x85);
@@ -1353,7 +1353,7 @@ static void MEM_STORE_ADDR_EA_L(x86seg *seg, int host_reg)
         addbyte(0x8b); /*MOVL ECX, seg->base*/
         addbyte(0x0c);
         addbyte(0x25);
-        addlong((uint64_t)&seg->base);
+        addlong((uint32_t)&seg->base);
         addbyte(0x67); /*LEA ESI, (EAX,ECX)*/
         addbyte(0x8d);
         addbyte(0x34);
@@ -1375,7 +1375,7 @@ static void MEM_STORE_ADDR_EA_L(x86seg *seg, int host_reg)
 	        addbyte(0x8b);
 	        addbyte(0x34);
 	        addbyte(0xf5);
-	        addlong((uint64_t)writelookup2);
+	        addlong((uint32_t)writelookup2);
 	}
 	else
 	{
@@ -1419,7 +1419,7 @@ static void MEM_STORE_ADDR_EA_L(x86seg *seg, int host_reg)
         addbyte(0x83); /*CMP abrt, 0*/
         addbyte(0x3c);
         addbyte(0x25);
-        addlong((uint64_t)&abrt);
+        addlong((uint32_t)&abrt);
         addbyte(0);
         addbyte(0x0f); /*JNE end*/
         addbyte(0x85);
@@ -1431,7 +1431,7 @@ static void MEM_STORE_ADDR_EA_Q(x86seg *seg, int host_reg, int host_reg2)
         addbyte(0x8b); /*MOVL ECX, seg->base*/
         addbyte(0x0c);
         addbyte(0x25);
-        addlong((uint64_t)&seg->base);
+        addlong((uint32_t)&seg->base);
         addbyte(0x67); /*LEA ESI, (EAX,ECX)*/
         addbyte(0x8d);
         addbyte(0x34);
@@ -1453,7 +1453,7 @@ static void MEM_STORE_ADDR_EA_Q(x86seg *seg, int host_reg, int host_reg2)
 	        addbyte(0x8b);
 	        addbyte(0x34);
 	        addbyte(0xf5);
-	        addlong((uint64_t)writelookup2);
+	        addlong((uint32_t)writelookup2);
 	}
 	else
 	{
@@ -1498,7 +1498,7 @@ static void MEM_STORE_ADDR_EA_Q(x86seg *seg, int host_reg, int host_reg2)
         addbyte(0x83); /*CMP abrt, 0*/
         addbyte(0x3c);
         addbyte(0x25);
-        addlong((uint64_t)&abrt);
+        addlong((uint32_t)&abrt);
         addbyte(0);
         addbyte(0x0f); /*JNE end*/
         addbyte(0x85);
@@ -2635,7 +2635,7 @@ static void LOAD_STACK_TO_EA(int off)
         {
                 addbyte(0x8b); /*MOVL EAX,[ESP]*/
                 addbyte(0x45 | (REG_EAX << 3));
-                addbyte((uint64_t)&ESP - (uint64_t)&EAX);
+                addbyte((uint32_t)&ESP - (uint32_t)&EAX);
                 if (off)
                 {
                         addbyte(0x83); /*ADD EAX, off*/
@@ -2648,7 +2648,7 @@ static void LOAD_STACK_TO_EA(int off)
                 addbyte(0x0f); /*MOVZX EAX,W[ESP]*/
                 addbyte(0xb7);
                 addbyte(0x45 | (REG_EAX << 3));
-                addbyte((uint64_t)&ESP - (uint64_t)&EAX);
+                addbyte((uint32_t)&ESP - (uint32_t)&EAX);
                 if (off)
                 {
                         addbyte(0x66); /*ADD AX, off*/
@@ -2663,7 +2663,7 @@ static void LOAD_EBP_TO_EA(int off)
         {
                 addbyte(0x8b); /*MOVL EAX,[EBP]*/
                 addbyte(0x45 | (REG_EAX << 3));
-                addbyte((uint64_t)&EBP - (uint64_t)&EAX);
+                addbyte((uint32_t)&EBP - (uint32_t)&EAX);
                 if (off)
                 {
                         addbyte(0x83); /*ADD EAX, off*/
@@ -2676,7 +2676,7 @@ static void LOAD_EBP_TO_EA(int off)
                 addbyte(0x0f); /*MOVZX EAX,W[EBP]*/
                 addbyte(0xb7);
                 addbyte(0x45 | (REG_EAX << 3));
-                addbyte((uint64_t)&EBP - (uint64_t)&EAX);
+                addbyte((uint32_t)&EBP - (uint32_t)&EAX);
                 if (off)
                 {
                         addbyte(0x66); /*ADD AX, off*/
@@ -2694,14 +2694,14 @@ static void SP_MODIFY(int off)
                 {
                         addbyte(0x83); /*ADD [ESP], off*/
                         addbyte(0x45);
-                        addbyte((uint64_t)&ESP - (uint64_t)&EAX);
+                        addbyte((uint32_t)&ESP - (uint32_t)&EAX);
                         addbyte(off);
                 }
                 else
                 {
                         addbyte(0x81); /*ADD [ESP], off*/
                         addbyte(0x45);
-                        addbyte((uint64_t)&ESP - (uint64_t)&EAX);
+                        addbyte((uint32_t)&ESP - (uint32_t)&EAX);
                         addlong(off);
                 }
         }
@@ -2712,7 +2712,7 @@ static void SP_MODIFY(int off)
                         addbyte(0x66); /*ADD [SP], off*/
                         addbyte(0x83);
                         addbyte(0x45);
-                        addbyte((uint64_t)&SP - (uint64_t)&EAX);
+                        addbyte((uint32_t)&SP - (uint32_t)&EAX);
                         addbyte(off);
                 }
                 else
@@ -2720,7 +2720,7 @@ static void SP_MODIFY(int off)
                         addbyte(0x66); /*ADD [SP], off*/
                         addbyte(0x81);
                         addbyte(0x45);
-                        addbyte((uint64_t)&SP - (uint64_t)&EAX);
+                        addbyte((uint32_t)&SP - (uint32_t)&EAX);
                         addword(off);
                 }
         }
@@ -3744,10 +3744,10 @@ static int64_t x87_fround(double b)
                 case 0: /*Nearest*/
                 a = (int64_t)floor(b);
                 c = (int64_t)floor(b + 1.0);
-                if ((b - a) < (b - c))
+                if ((b - a) < (c - b))
                         return a;
-                else if ((b - a) > (b - c))
-                        return b;
+                else if ((b - a) > (c - b))
+                        return c;
                 else
                         return (a & 1) ? c : a;
                 case 1: /*Down*/

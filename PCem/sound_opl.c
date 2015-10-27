@@ -12,7 +12,8 @@ uint8_t opl2_read(uint16_t a, void *priv)
 {
         opl_t *opl = (opl_t *)priv;
 
-        cycles -= (int)(isa_timing * 8);
+        // cycles -= (int)(isa_timing * 8);
+        cycles -= (isa_timing * 8);
         return opl_read(0, a);
 }
 void opl2_write(uint16_t a, uint8_t v, void *priv)
@@ -27,7 +28,8 @@ uint8_t opl2_l_read(uint16_t a, void *priv)
 {
         opl_t *opl = (opl_t *)priv;
 
-        cycles -= (int)(isa_timing * 8);
+        // cycles -= (int)(isa_timing * 8);
+        cycles -= (isa_timing * 8);
         return opl_read(0, a);
 }
 void opl2_l_write(uint16_t a, uint8_t v, void *priv)
@@ -41,7 +43,8 @@ uint8_t opl2_r_read(uint16_t a, void *priv)
 {
         opl_t *opl = (opl_t *)priv;
 
-        cycles -= (int)(isa_timing * 8);
+        // cycles -= (int)(isa_timing * 8);
+        cycles -= (isa_timing * 8);
         return opl_read(1, a);
 }
 void opl2_r_write(uint16_t a, uint8_t v, void *priv)
@@ -55,7 +58,8 @@ uint8_t opl3_read(uint16_t a, void *priv)
 {
         opl_t *opl = (opl_t *)priv;
 
-        cycles -= (int)(isa_timing * 8);
+        // cycles -= (int)(isa_timing * 8);
+        cycles -= (isa_timing * 8);
         return opl_read(0, a);
 }
 void opl3_write(uint16_t a, uint8_t v, void *priv)

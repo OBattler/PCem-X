@@ -184,7 +184,9 @@ void keyboard_at_adddata_keyboard(uint8_t val)
 	}
         key_queue[key_queue_end] = (((mode & 0x40) && !(mode & 0x20)) ? (nont_to_t[val] | sc_or) : val);
         key_queue_end = (key_queue_end + 1) & 0xf;
+#ifndef RELEASE_BUILD
         pclog("keyboard_at : %02X added to key queue\n", (((mode & 0x40) && !(mode & 0x20)) ? (nont_to_t[val] | sc_or) : val));
+#endif
 	if (sc_or == 0x80)  sc_or = 0;
         return;
 }
@@ -199,7 +201,9 @@ void keyboard_at_adddata_keyboard_raw(uint8_t val)
         }*/
         key_queue[key_queue_end] = val;
         key_queue_end = (key_queue_end + 1) & 0xf;
+#ifndef RELEASE_BUILD
         pclog("keyboard_at : raw %02X added to key queue\n", val);
+#endif
         return;
 }
 
@@ -230,7 +234,9 @@ void keyboard_at_write(uint16_t port, uint8_t val, void *priv)
                         switch (keyboard_at.command)
                         {
                                 case 0x40 ... 0x5f:
+#ifndef RELEASE_BUILD
 				pclog("AMI KBC memory write: mem[%02X] = %02X\n", keyboard_at.command & 0x1f, val);
+#endif
                                 keyboard_at.mem[keyboard_at.command & 0x1f] = val;
 				if (keyboard_at.command == 0x40)  goto process_60;
 				break;
@@ -243,7 +249,9 @@ void keyboard_at_write(uint16_t port, uint8_t val, void *priv)
                                 case 0x74: case 0x75: case 0x76: case 0x77:
                                 case 0x78: case 0x79: case 0x7a: case 0x7b:
                                 case 0x7c: case 0x7d: case 0x7e: case 0x7f:
+#ifndef RELEASE_BUILD
 				pclog("KBC memory write: mem[%02X] = %02X\n", keyboard_at.command & 0x1f, val);
+#endif
                                 keyboard_at.mem[keyboard_at.command & 0x1f] = val;
                                 if (keyboard_at.command == 0x60)
                                 {
@@ -256,8 +264,11 @@ process_60:
 					/* Addition by OBattler: Scan code translate ON/OFF. */
 					mode &= 0x93;
 					mode |= (val & 0xC);
+#ifndef RELEASE_BUILD
 					pclog("Val & 0x20 == %02X\n", val & 0x20);
+#endif
 					mode |= (val & 0x40);
+#ifndef RELEASE_BUILD
 					if ((val & 0x20) == 0)
 					{
 						pclog("Bit 5 is turned off\n");
@@ -268,6 +279,7 @@ process_60:
 					}
 					// mode |= (val & 0x20);
 					pclog("Mode is now %02X, val %02X\n", mode, val);
+#endif
                                 }                                           
                                 break;
 
@@ -299,7 +311,11 @@ process_60:
                                 break;     
                                 
                                 default:
+#ifndef RELEASE_BUILD
                                 pclog("Bad AT keyboard controller 0060 write %02X command %02X\n", val, keyboard_at.command);
+#else
+				;
+#endif
 //                                dumpregs();
 //                                exit(-1);
                         }
@@ -318,11 +334,15 @@ process_60:
                                         break;
 
 					case 0xf0: /*Get/set scancode*/
+#ifndef RELEASE_BUILD
 					pclog("Get/set scancode: %02X\n", val);
+#endif
 					if (val == 0)
 					{
 						keyboard_at_adddata_keyboard(mode & 3);
+#ifndef RELEASE_BUILD
 						pclog("Returned: %02X\n", (mode & 0x40) ? nont_to_t[mode & 3] : (mode & 3));
+#endif
 					}
 					else
 					{
@@ -332,7 +352,9 @@ process_60:
 							mode |= (val & 3);
 						}
 						keyboard_at_adddata_keyboard(0xfa);
+#ifndef RELEASE_BUILD
 						pclog("SC_SET: VAL %02X, MODE %02X\n", val, mode);
+#endif
 					}
 					// keyboard_at.key_wantdata = 1;
 					break;
@@ -342,7 +364,11 @@ process_60:
                                         break;
                                         
                                         default:
+#ifndef RELEASE_BUILD
                                         pclog("Bad AT keyboard 0060 write %02X command %02X\n", val, keyboard_at.key_command);
+#else
+					;
+#endif
 //                                        dumpregs();
 //                                        exit(-1);
                                 }
@@ -354,24 +380,32 @@ process_60:
                                 {
 					case 00:
 					keyboard_at_adddata_keyboard(0xfa);
+#ifndef RELEASE_BUILD
 					pclog("KBC: Zero command\n");
+#endif
 					break;
 
                                         case 0x05: /*??? - sent by NT 4.0*/
                                         keyboard_at_adddata_keyboard(0xfe);
+#ifndef RELEASE_BUILD
 					pclog("KBC: ???? - sent by NT 4.0\n");
+#endif
                                         break;
 
                                         case 0xed: /*Set/reset LEDs*/
                                         keyboard_at.key_wantdata = 1;
                                         keyboard_at_adddata_keyboard(0xfa);
+#ifndef RELEASE_BUILD
 					pclog("KBC: Set/reset LEDs\n");
+#endif
                                         break;
 
 					case 0xf0: /*Get/set scan code set*/
 					keyboard_at.key_wantdata = 1;
 					keyboard_at_adddata_keyboard(0xfa);
+#ifndef RELEASE_BUILD
 					pclog("KBC: Get/set scan code set\n");
+#endif
 					break;
                                         
                                         case 0xf2: /*Read ID*/
@@ -383,18 +417,24 @@ process_60:
                                         case 0xf3: /*Set typematic rate/delay*/
                                         keyboard_at.key_wantdata = 1;
                                         keyboard_at_adddata_keyboard(0xfa);
+#ifndef RELEASE_BUILD
 					pclog("KBC: Set typematic rate/delay\n");
+#endif
                                         break;
                                         
                                         case 0xf4: /*Enable keyboard*/
                                         keyboard_scan = 1;
                                         keyboard_at_adddata_keyboard(0xfa);
+#ifndef RELEASE_BUILD
 					pclog("KBC: Enable keyboard\n");
+#endif
                                         break;
                                         case 0xf5: /*Disable keyboard*/
                                         keyboard_scan = 0;
                                         keyboard_at_adddata_keyboard(0xfa);
+#ifndef RELEASE_BUILD
 					pclog("KBC: Disable keyboard\n");
+#endif
                                         break;
                                         
                                         case 0xf6: /*Set defaults*/
@@ -403,32 +443,42 @@ process_60:
 					memset(set3_flags, 0, 272);
 					mode = (mode & 0xFC) | 2;
                                         keyboard_at_adddata_keyboard(0xfa);
+#ifndef RELEASE_BUILD
 					pclog("KBC: Set defaults\n");
+#endif
                                         break;
                                         
                                         case 0xf7: /*Set all keys to repeat*/
 					set3_all_break = 1;
                                         keyboard_at_adddata_keyboard(0xfa);
+#ifndef RELEASE_BUILD
 					pclog("KBC: Set all keys to repeat\n");
+#endif
                                         break;
                                         
                                         case 0xf8: /*Set all keys to give make/break codes*/
 					set3_all_break = 1;
                                         keyboard_at_adddata_keyboard(0xfa);
+#ifndef RELEASE_BUILD
 					pclog("KBC: Set all keys to give make/break codes\n");
+#endif
                                         break;
                                         
                                         case 0xf9: /*Set all keys to give make codes only*/
 					set3_all_break = 0;
                                         keyboard_at_adddata_keyboard(0xfa);
+#ifndef RELEASE_BUILD
 					pclog("KBC: Set all keys to give make codes only\n");
+#endif
                                         break;
                                         
                                         case 0xfa: /*Set all keys to repeat and give make/break codes*/
                                         set3_all_repeat = 1;
 					set3_all_break = 1;
                                         keyboard_at_adddata_keyboard(0xfa);
+#ifndef RELEASE_BUILD
 					pclog("KBC: Set all keys to repeat and give make/break codes\n");
+#endif
                                         break;
                                         
                                         case 0xff: /*Reset*/
@@ -443,7 +493,9 @@ process_60:
                                         break;
                                         
                                         default:
+#ifndef RELEASE_BUILD
                                         pclog("Bad AT keyboard command %02X\n", val);
+#endif
                                         keyboard_at_adddata_keyboard(0xfe);
 //                                        dumpregs();
 //                                        exit(-1);
@@ -468,7 +520,9 @@ process_60:
                 switch (val)
                 {
 			case 0x00 ... 0x1f:
+#ifndef RELEASE_BUILD
 			pclog("AMI KBC memory read: mem[%02X] = %02X\n", val & 0x1f, keyboard_at.mem[val & 0x1f]);
+#endif
                         keyboard_at_adddata(keyboard_at.mem[val & 0x1f]);
 			break;
 
@@ -480,7 +534,9 @@ process_60:
                         case 0x34: case 0x35: case 0x36: case 0x37:
                         case 0x38: case 0x39: case 0x3a: case 0x3b:
                         case 0x3c: case 0x3d: case 0x3e: case 0x3f:
+#ifndef RELEASE_BUILD
 			pclog("KBC memory read: mem[%02X] = %02X\n", val & 0x1f, keyboard_at.mem[val & 0x1f]);
+#endif
                         keyboard_at_adddata(keyboard_at.mem[val & 0x1f]);
                         break;
 
@@ -500,6 +556,10 @@ process_60:
                                 
                         case 0xa7: /*Disable mouse port*/
                         mouse_scan = 0;
+                        break;
+                        
+                        case 0xa8: /*Enable mouse port*/
+                        mouse_scan = 1;
                         break;
                         
                         case 0xa9: /*Test mouse port*/
@@ -601,7 +661,11 @@ process_60:
 				mode |= 0x40;
 			}
 #endif
+#ifndef RELEASE_BUILD
                         pclog("Bad AT keyboard controller command %02X\n", val);
+#else
+			;
+#endif
 //                        dumpregs();
 //                        exit(-1);
                 }

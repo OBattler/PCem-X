@@ -41,6 +41,7 @@ void piix_write(int func, int addr, uint8_t val, void *priv)
 
 	if ((addr & 0xff) < 4)  return;
 
+#if 0
 	if (piix_type >= 3) /*USB*/
 	{
 		if (func == 2)
@@ -58,6 +59,7 @@ void piix_write(int func, int addr, uint8_t val, void *priv)
 			return;
 		}
 	}
+#endif
 
         if (func > 1)
            return;
@@ -93,7 +95,7 @@ void piix_write(int func, int addr, uint8_t val, void *priv)
 			}
 			piix_33 = val;
 			break;
-                        
+
                         case 0x40:
                         card_piix_ide[0x40] = val;
                         break;
@@ -145,6 +147,7 @@ uint8_t piix_read(int func, int addr, void *priv)
 {
 //        pclog("piix_read: func=%d addr=%02x %04x:%08x\n", func, addr, CS, pc);
 
+#if 0
 	if (piix_type >= 3) /*USB*/
 	{
                 if (func == 2)  return card_piix_usb[addr];
@@ -154,6 +157,7 @@ uint8_t piix_read(int func, int addr, void *priv)
 	{
                 if (func == 3)  return card_piix_acpi[addr];
 	}
+#endif
 
         if (func > 1)
            return 0xff;
@@ -169,7 +173,7 @@ uint8_t piix_read(int func, int addr, void *priv)
 
 static void piix_bus_master_next_addr(int channel)
 {
-        piix_busmaster[channel].addr = (*(uint32_t *)(&ram[piix_busmaster[channel].ptr_cur])) & ~1;
+        piix_busmaster[channel].addr = ((*(uint32_t *)(&ram[piix_busmaster[channel].ptr_cur])) & ~1) % (mem_size * 1024 * 1024);
         piix_busmaster[channel].count = (*(uint32_t *)(&ram[piix_busmaster[channel].ptr_cur + 4])) & 0xfffe;
         piix_busmaster[channel].eot = (*(uint32_t *)(&ram[piix_busmaster[channel].ptr_cur + 4])) >> 31;
         piix_busmaster[channel].ptr_cur += 8;
@@ -199,16 +203,21 @@ void piix_bus_master_write(uint16_t port, uint8_t val, void *priv)
                 break;
                 case 4:
                 piix_busmaster[channel].ptr = (piix_busmaster[channel].ptr & 0xffffff00) | val;
+		piix_busmaster[channel].ptr %= (mem_size * 1024 * 1024);
                 break;
                 case 5:
                 piix_busmaster[channel].ptr = (piix_busmaster[channel].ptr & 0xffff00ff) | (val << 8);
+		piix_busmaster[channel].ptr %= (mem_size * 1024 * 1024);
                 break;
                 case 6:
                 piix_busmaster[channel].ptr = (piix_busmaster[channel].ptr & 0xff00ffff) | (val << 16);
+		piix_busmaster[channel].ptr %= (mem_size * 1024 * 1024);
                 break;
                 case 7:
                 piix_busmaster[channel].ptr = (piix_busmaster[channel].ptr & 0x00ffffff) | (val << 24);
+		piix_busmaster[channel].ptr %= (mem_size * 1024 * 1024);
                 break;
+
         }
 }
                 
@@ -254,6 +263,7 @@ int piix_bus_master_sector_read(int channel, uint8_t *data)
                         memcpy(&ram[piix_busmaster[channel].addr], data + transferred, piix_busmaster[channel].count);
                         transferred += piix_busmaster[channel].count;
                         piix_busmaster[channel].addr += piix_busmaster[channel].count;
+			piix_busmaster[channel].addr %= (mem_size * 1024 * 1024);
                         piix_busmaster[channel].count = 0;
                 }                       
                 else
@@ -299,6 +309,7 @@ int piix_bus_master_sector_write(int channel, uint8_t *data)
                         memcpy(data + transferred, &ram[piix_busmaster[channel].addr], piix_busmaster[channel].count);
                         transferred += piix_busmaster[channel].count;
                         piix_busmaster[channel].addr += piix_busmaster[channel].count;
+			piix_busmaster[channel].addr %= (mem_size * 1024 * 1024);
                         piix_busmaster[channel].count = 0;
                 }                       
                 else
@@ -353,7 +364,7 @@ void piix_init(int card)
 	{
 	        card_piix[0x02] = 0x2e; card_piix[0x03] = 0x12; /*82371FB (PIIX)*/
 	}
-        card_piix[0x04] = 0x07; card_piix[0x05] = 0x00;
+        card_piix[0x04] = 0x03; card_piix[0x05] = 0x01;
 	if (piix_type == 4)
 	{
         	card_piix[0x06] = 0x80; card_piix[0x07] = 0x02;
@@ -367,13 +378,13 @@ void piix_init(int card)
         card_piix[0x0e] = 0x80; /*Multi-function device*/
         card_piix[0x4c] = 0x4d;
         card_piix[0x4e] = 0x03;
-        card_piix[0x60] = card_piix[0x61] = card_piix[0x62] = card_piix[0x63] = 0x80;
+        card_piix[0x60] = card_piix[0x61] = 0x0a; card_piix[0x62] = card_piix[0x63] = 0x0b;
 	if (piix_type == 4)
 	{
 		card_piix[0x64] = 0x10;
 	}
         card_piix[0x69] = 0x02;
-        card_piix[0x70] = card_piix[0x71] = 0x80;
+        card_piix[0x70] = 0x80; card_piix[0x71] = 0x00;
 	if (piix_type == 4)
 	{
         	card_piix[0x76] = card_piix[0x77] = 0x04;
@@ -408,18 +419,23 @@ void piix_init(int card)
 	{
 	        card_piix_ide[0x02] = 0x30; card_piix_ide[0x03] = 0x12; /*82371FB (PIIX)*/
 	}
-        card_piix_ide[0x04] = 0x00; card_piix_ide[0x05] = 0x00;
+        card_piix_ide[0x04] = 0x03; card_piix_ide[0x05] = 0x01;
         card_piix_ide[0x06] = 0x80; card_piix_ide[0x07] = 0x02;
         card_piix_ide[0x08] = 0x00;
         card_piix_ide[0x09] = 0x80; card_piix_ide[0x0a] = 0x01; card_piix_ide[0x0b] = 0x01;
-        card_piix_ide[0x0d] = 0x00;
+        card_piix_ide[0x0c] = card_piix_ide[0x0d] = 0x00;
         card_piix_ide[0x0e] = 0x00;
-        card_piix_ide[0x20] = 0x01; card_piix_ide[0x21] = card_piix_ide[0x22] = card_piix_ide[0x23] = 0x00; /*Bus master interface base address*/
-        card_piix_ide[0x40] = card_piix_ide[0x41] = 0x00;
-        card_piix_ide[0x42] = card_piix_ide[0x43] = 0x00;
+        card_piix_ide[0x20] = 0x01; card_piix_ide[0x21] = 0xc1; card_piix_ide[0x22] = card_piix_ide[0x23] = 0x00; /*Bus master interface base address*/
+	card_piix_ide[0x2c] = 0xf4;
+	card_piix_ide[0x2d] = 0x1a;
+	card_piix_ide[0x2e] = 0x00;
+	card_piix_ide[0x2f] = 0x11;
+        card_piix_ide[0x40] = 0x00; card_piix_ide[0x41] = 0x80;
+        card_piix_ide[0x42] = 0x00; card_piix_ide[0x43] = 0x80;
         
         ide_set_bus_master(piix_bus_master_sector_read, piix_bus_master_sector_write, piix_bus_master_set_irq);
 
+#if 0
 	if (piix_type >= 3)
 	{
 	        card_piix_usb[0x00] = 0x86; card_piix_usb[0x01] = 0x80; /*Intel*/
@@ -463,4 +479,5 @@ void piix_init(int card)
         	card_piix_acpi[0x90] = 0x01; card_piix_acpi[0x91] = 0x00;
 	        card_piix_acpi[0x92] = card_piix_acpi[0x93] = 0x00;
 	}
+#endif
 }

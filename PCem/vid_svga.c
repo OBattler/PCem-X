@@ -76,7 +76,9 @@ void svga_out(uint16_t addr, uint8_t val, void *p)
                         }
                         if (svga->attraddr == 0x11)
 			{
+#ifndef RELEASE_BUILD
 				pclog("Border color now %02X\n", svga->attrregs[svga->attraddr]);
+#endif
 			}
                         if ((svga->attraddr == 0x10) && (svga->attraddr == 0x11))
 			{
@@ -289,7 +291,9 @@ uint8_t svga_in(uint16_t addr, void *p)
 		if (svga->gdcaddr == 0xFB)  return ((svga->latch & 0xFF000000) >> 24);
                 return svga->gdcreg[svga->gdcaddr & 0xf];
 		case 0x3CA:
+#ifndef RELEASE_BUILD
 		pclog("3CA read\n");
+#endif
                 case 0x3DA:
                 svga->attrff = 0;
                 if (svga->cgastat & 0x01)
@@ -447,8 +451,8 @@ void svga_recalctimings(svga_t *svga)
         _dispontime *= crtcconst;
         _dispofftime *= crtcconst;
 
-	svga->dispontime = (int)(_dispontime * (1 << TIMER_SHIFT));
-	svga->dispofftime = (int)(_dispofftime * (1 << TIMER_SHIFT));
+	svga->dispontime = (int)(_dispontime * (1 << TIMER_SHIFT) * 3.0d);
+	svga->dispofftime = (int)(_dispofftime * (1 << TIMER_SHIFT) * 3.0d);
 /*        printf("SVGA horiz total %i display end %i vidclock %f\n",svga->crtc[0],svga->crtc[1],svga->clock);
         printf("SVGA vert total %i display end %i max row %i vsync %i\n",svga->vtotal,svga->dispend,(svga->crtc[9]&31)+1,svga->vsyncstart);
         printf("total %f on %i cycles off %i cycles frame %i sec %i %02X\n",disptime*crtcconst,svga->dispontime,svga->dispofftime,(svga->dispontime+svga->dispofftime)*svga->vtotal,(svga->dispontime+svga->dispofftime)*svga->vtotal*70,svga->seqregs[1]);
@@ -740,8 +744,8 @@ int svga_init(svga_t *svga, void *p, int memsize,
 
         svga->crtc[0] = 63;
         svga->crtc[6] = 255;
-        svga->dispontime = 1000 * (1 << TIMER_SHIFT);
-        svga->dispofftime = 1000 * (1 << TIMER_SHIFT);
+        svga->dispontime = 1000 * (1 << TIMER_SHIFT) * 3.0d;
+        svga->dispofftime = 1000 * (1 << TIMER_SHIFT) * 3.0d;
         svga->bpp = 8;
         svga->dac8bit = 0;
         svga->vram = malloc(memsize);
@@ -1225,14 +1229,18 @@ void svga_writew(uint32_t addr, uint16_t val, void *p)
         cycles -= video_timing_w;
         cycles_lost += video_timing_w;
 
+#ifndef RELEASE_BUILD
         if (svga_output) pclog("svga_writew: %05X ", addr);
+#endif
         addr = (addr & svga->banked_mask) + svga->write_bank;
         addr &= 0x7FFFFF;        
         if (addr >= svga->vram_limit)
                 return;
 	if (!svga->enablevram)  return;
 	if ((addr > 0xFFFF) && !svga->extvram)  return;
+#ifndef RELEASE_BUILD
         if (svga_output) pclog("%08X (%i, %i) %04X\n", addr, addr & 1023, addr >> 10, val);
+#endif
         *(uint16_t *)&svga->vram[addr] = val;
         svga->changedvram[addr >> 12] = changeframecount;
 }
@@ -1255,14 +1263,18 @@ void svga_writel(uint32_t addr, uint32_t val, void *p)
         cycles -= video_timing_l;
         cycles_lost += video_timing_l;
 
+#ifndef RELEASE_BUILD
         if (svga_output) pclog("svga_writel: %05X ", addr);
+#endif
         addr = (addr & svga->banked_mask) + svga->write_bank;
         addr &= 0x7FFFFF;
         if (addr >= svga->vram_limit)
                 return;
 	if (!svga->enablevram)  return;
 	if ((addr > 0xFFFF) && !svga->extvram)  return;
+#ifndef RELEASE_BUILD
         if (svga_output) pclog("%08X (%i, %i) %08X\n", addr, addr & 1023, addr >> 10, val);
+#endif
         
         *(uint32_t *)&svga->vram[addr] = val;
         svga->changedvram[addr >> 12] = changeframecount;
@@ -1330,7 +1342,9 @@ void svga_writew_linear(uint32_t addr, uint16_t val, void *p)
         cycles -= video_timing_w;
         cycles_lost += video_timing_w;
 
+#ifndef RELEASE_BUILD
 	if (svga_output) pclog("Write LFBw %08X %04X\n", addr, val);
+#endif
         addr &= 0x7FFFFF;
         if (addr >= svga->vram_limit)
                 return;
@@ -1358,7 +1372,9 @@ void svga_writel_linear(uint32_t addr, uint32_t val, void *p)
         cycles -= video_timing_l;
         cycles_lost += video_timing_l;
 
+#ifndef RELEASE_BUILD
 	if (svga_output) pclog("Write LFBl %08X %08X\n", addr, val);
+#endif
         addr &= 0x7fffff;
         if (addr >= svga->vram_limit)
                 return;
