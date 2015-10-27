@@ -1,7 +1,7 @@
 VPATH = . dosbox resid-fp slirp
-CPP  = g++.exe
-CC   = gcc.exe
-WINDRES = windres.exe
+CPP  = x86_64-w64-mingw32-g++
+CC   = x86_64-w64-mingw32-gcc
+WINDRES = x86_64-w64-mingw32-windres
 basecflags = -O3 -march=native -mtune=native -fomit-frame-pointer -ffast-math -msse -msse2 -msse3 -mssse3 -mfpmath=sse -DDYNAREC
 basebflags = -O3 -fomit-frame-pointer -DDYNAREC
 CXXFLAGS = $(basecflags)
