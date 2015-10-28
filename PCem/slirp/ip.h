@@ -203,7 +203,7 @@ struct	ip_timestamp {
 #include <sys/types32.h>
 #else
 #if SIZEOF_CHAR_P == 4
-typedef caddr_t caddr32_t;
+typedef SLIRPcaddr_t caddr32_t;
 #else
 typedef u_int32_t caddr32_t;
 #endif

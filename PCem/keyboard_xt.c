@@ -105,7 +105,17 @@ uint8_t keyboard_xt_read(uint16_t port, void *priv)
         switch (port)
         {
                 case 0x60:
-                temp = keyboard_xt.pa;
+                if ((romset == ROM_IBMPC) && (keyboard_xt.pb & 0x80))
+                {
+                        if (VGA || gfxcard == GFX_EGA)
+                           temp = 0x4D;
+                        else if (MDA)
+                           temp = 0x7D;
+                        else
+                           temp = 0x6D;
+                }
+                else
+                        temp = keyboard_xt.pa;
                 break;
                 
                 case 0x61:

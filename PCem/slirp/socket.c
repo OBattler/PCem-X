@@ -281,7 +281,7 @@ sosendoob(so)
 			len += n;
 		}
 		n = send(so->s, buff, len, (MSG_OOB)); /* |MSG_DONTWAIT)); */
-#ifdef DEBUG
+#ifdef SLIRP_DEBUG
 		if (n != len)
 		   DEBUG_ERROR((dfd, "Didn't send all data urgently XXXXX\n"));
 #endif		

@@ -1089,11 +1089,18 @@ if(net_is_pcap && net_pcap!=NULL) {
 
     // Inhibit-CRC not supported.
     if (value & 0x01)
-      fatal("TCR write, inhibit-CRC not supported\n");
+    {
+      //fatal("TCR write, inhibit-CRC not supported\n");
+      //pclog("TCR write, inhibit-CRC not supported\n");
+      return;
+    }
 
     // Auto-transmit disable very suspicious
     if (value & 0x08)
-      fatal("TCR write, auto transmit disable not supported\n");
+    {
+      //fatal("TCR write, auto transmit disable not supported\n");
+      pclog("TCR write, auto transmit disable not supported\n");
+    }
 
     // Allow collision-offset to be set, although not used
     ne2000->TCR.coll_prio = ((value & 0x08) == 0x08);
@@ -1262,7 +1269,8 @@ if(net_is_pcap && net_pcap!=NULL) {
 		}
 		break;
     default:
-      fatal("ne2000: unknown value of pgsel in write - %d\n", ne2000->CR.pgsel);
+      pclog("ne2000: unknown value of pgsel in write - %d\n", ne2000->CR.pgsel);
+      break;
     }
     }
 }
@@ -1535,7 +1543,7 @@ void ne2000_io_remove(ne2000_t *ne2000)
 {
     pclog("NE2000: IO remove handler: %04X\n", ne2000_baseaddr);
     io_removehandler(ne2000_baseaddr, 0x0010, ne2000_read, NULL, NULL, ne2000_write, NULL, NULL, ne2000);
-    io_removehandler(ne2000_baseaddr+0x10, 0x000f, ne2000_asic_read_b, ne2000_asic_read_w, NULL, ne2000_asic_write_b, ne2000_asic_write_w, NULL, ne2000);
+    io_removehandler(ne2000_baseaddr+0x10, 0x0010, ne2000_asic_read_b, ne2000_asic_read_w, NULL, ne2000_asic_write_b, ne2000_asic_write_w, NULL, ne2000);
     io_removehandler(ne2000_baseaddr+0x1f, 0x0001, ne2000_reset_read, NULL, NULL, ne2000_reset_write, NULL, NULL, ne2000);
     if (network_card_current == NET_RTL8029AS)
     {
@@ -1547,7 +1555,7 @@ void ne2000_io_set(ne2000_t *ne2000)
 {
     pclog("NE2000: IO set handler: %04X\n", ne2000_baseaddr);
     io_sethandler(ne2000_baseaddr, 0x0010, ne2000_read, NULL, NULL, ne2000_write, NULL, NULL, ne2000);
-    io_sethandler(ne2000_baseaddr+0x10, 0x000f, ne2000_asic_read_b, ne2000_asic_read_w, NULL, ne2000_asic_write_b, ne2000_asic_write_w, NULL, ne2000);
+    io_sethandler(ne2000_baseaddr+0x10, 0x0010, ne2000_asic_read_b, ne2000_asic_read_w, NULL, ne2000_asic_write_b, ne2000_asic_write_w, NULL, ne2000);
     io_sethandler(ne2000_baseaddr+0x1f, 0x0001, ne2000_reset_read, NULL, NULL, ne2000_reset_write, NULL, NULL, ne2000);
     if (network_card_current == NET_RTL8029AS)
     {

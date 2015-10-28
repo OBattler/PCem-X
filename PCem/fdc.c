@@ -1866,6 +1866,11 @@ void fdc_readwrite(int mode)
 		fdd[vfdd[fdc.drive]].discmodified = 1;
 	}
 
+	if (fdc.abort[fdc.drive])
+	{
+		goto rw_result_phase;
+	}
+
 	if (fdc.pos[fdc.drive]<rbps)
 	{
 		for(i = 0; i < quantity; i++)
@@ -2116,10 +2121,6 @@ end_of_track:
 					fdc.pos[fdc.drive] = rbps;
 					// Make sure we point to the last sector read/written, not to the next
 					fdc.abort[fdc.drive] = 1;
-				}
-				if (fdc.abort[fdc.drive])
-				{
-					goto rw_result_phase;
 				}
 			}
 rw_break:

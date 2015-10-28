@@ -90,13 +90,31 @@ getouraddr()
 {
 	char buff[512];
 	struct hostent *he = NULL;
-	
+#define ANCIENT
+	#ifdef ANCIENT	
 	if (gethostname(&buff,500) == 0)
             he = gethostbyname(&buff);
         if (he)
             our_addr = *(struct in_addr *)he->h_addr;
         if (our_addr.s_addr == 0)
             our_addr.s_addr = loopback_addr.s_addr;
+	#else
+ 	if (gethostname(buff,256) == 0)
+	{
+		struct addrinfo hints = { 0 };
+		hints.ai_flags = AI_NUMERICHOST;
+		hints.ai_family = AF_INET;
+		struct addrinfo* ai;
+		if (getaddrinfo(buff, NULL, &hints, &ai) == 0)
+		{
+			our_addr = *(struct in_addr *)ai->ai_addr->sa_data;
+			freeaddrinfo(ai);
+		}
+	}
+    if (our_addr.s_addr == 0)
+        our_addr.s_addr = loopback_addr.s_addr;
+	#endif
+	#undef ANCIENT
 }
 
 //#if SIZEOF_CHAR_P == 8
@@ -132,6 +150,7 @@ remque_32(a)
 }
 
 //#endif /* SIZEOF_CHAR_P == 8 */
+//Should be for 64bit
 
 struct quehead {
 	struct quehead *qh_link;

@@ -282,7 +282,7 @@ send:
 			opt[0] = TCPOPT_MAXSEG;
 			opt[1] = 4;
 			mss = htons((u_int16_t) tcp_mss(tp, 0));
-			memcpy((caddr_t)(opt + 2), (caddr_t)&mss, sizeof(mss));
+			memcpy((SLIRPcaddr_t)(opt + 2), (SLIRPcaddr_t)&mss, sizeof(mss));
 			optlen = 4;
 
 /*			if ((tp->t_flags & TF_REQ_SCALE) &&
@@ -359,7 +359,7 @@ send:
 		 */
 /*		if (len <= MHLEN - hdrlen - max_linkhdr) { */
 
-			sbcopy(&so->so_snd, off, (int) len, mtod(m, caddr_t) + hdrlen);
+			sbcopy(&so->so_snd, off, (int) len, mtod(m, SLIRPcaddr_t) + hdrlen);
 			m->m_len += len;
 
 /*		} else {
@@ -398,7 +398,7 @@ send:
 
 	ti = mtod(m, struct tcpiphdr *);
 	
-	memcpy((caddr_t)ti, &tp->t_template, sizeof (struct tcpiphdr));
+	memcpy((SLIRPcaddr_t)ti, &tp->t_template, sizeof (struct tcpiphdr));
 
 	/*
 	 * Fill in fields, remembering maximum advertised
@@ -427,7 +427,7 @@ send:
 		ti->ti_seq = htonl(tp->snd_max);
 	ti->ti_ack = htonl(tp->rcv_nxt);
 	if (optlen) {
-		memcpy((caddr_t)(ti + 1), (caddr_t)opt, optlen);
+		memcpy((SLIRPcaddr_t)(ti + 1), (SLIRPcaddr_t)opt, optlen);
 		ti->ti_off = (sizeof (struct tcphdr) + optlen) >> 2;
 	}
 	ti->ti_flags = flags;
