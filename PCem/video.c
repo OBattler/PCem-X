@@ -91,8 +91,6 @@ static VIDEO_CARD video_cards[] =
 int cga_color_burst = 1;
 int cga_brown = 1;
 
-int old_color_burst;
-
 int enable_overscan = 1;
 int overscan_color = 0;
 int overscan_x = 0;

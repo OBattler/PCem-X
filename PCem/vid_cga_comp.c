@@ -68,8 +68,6 @@ static uint8_t comp_pal[256][3];
 
 static Bit8u byte_clamp_other(int v) { return v < 0 ? 0 : (v > 255 ? 255 : v); }
 
-#define M_CGA_TEXT_COMPOSITE ((cga->cgamode & 1) || !(cga->cgamode & 2))
-
 FILE *df;
 
 void update_cga16_color(cga_t *cga) {
@@ -88,7 +86,7 @@ void update_cga16_color(cga_t *cga) {
         }
         mode_contrast = 256/(max_v - min_v);
         mode_brightness = -min_v*mode_contrast;
-        if (M_CGA_TEXT_COMPOSITE && (cga->cgamode & 1) != 0)
+        if ((cga->cgamode & 3) == 1)
                 mode_hue = 14;
         else
                 mode_hue = 4;
@@ -96,8 +94,6 @@ void update_cga16_color(cga_t *cga) {
         mode_contrast *= contrast * (new_cga ? 1.2 : 1)/100;             // new CGA: 120%
         mode_brightness += (new_cga ? brightness-10 : brightness)*5;     // new CGA: -10
         double mode_saturation = (new_cga ? 4.35 : 2.9)*saturation/100;  // new CGA: 150%
-
-	if (!cga_color_burst)  mode_saturation = 0;
 
         for (x = 0; x < 1024; ++x) {
                 int phase = x & 3;
@@ -131,8 +127,6 @@ void update_cga16_color(cga_t *cga) {
         double c = cos(a);
         double s = sin(a);
         double r = 256*mode_saturation/sqrt(i*i+q*q);
-        if ((cga->cgamode & 4) != 0)
-                r = 0;
 
         double iq_adjust_i = -(i*c + q*s)*r;
         double iq_adjust_q = (q*c - i*s)*r;
@@ -238,7 +232,7 @@ Bit8u * Composite_Process(cga_t *cga, Bit8u border, Bit32u blocks/*, bool double
         for (x = 0; x < 5; ++x)
                 OUT(b[x&3]);
 
-        if ((cga->cgamode & 4) != 0) {
+        if ((cga->cgamode & 4) != 0 || !cga_color_burst) {
                 // Decode
                 int* i = temp + 5;
                 Bit32u* srgb = (Bit32u *)TempLine;

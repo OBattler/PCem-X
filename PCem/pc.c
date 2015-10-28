@@ -706,7 +706,6 @@ void loadconfig(char *fn)
         turbo = config_get_int(NULL, "turbo", 1);
 
         cga_color_burst = config_get_int(NULL, "cga_color_burst", 1);
-	old_color_burst = cga_color_burst;
 
         cga_brown = config_get_int(NULL, "cga_brown", 1);
 }

@@ -20,8 +20,6 @@ static uint8_t crtcmask[32] =
         0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
-static int old_cgacol = 0;
-
 void cga_recalctimings(cga_t *cga);
 
 void cga_out(uint16_t addr, uint8_t val, void *p)
@@ -47,15 +45,14 @@ void cga_out(uint16_t addr, uint8_t val, void *p)
                 }
                 return;
                 case 0x3D8:
+                if (((cga->cgamode ^ val) & 5) != 0) {
+                        cga->cgamode = val;
+                        update_cga16_color(cga);
+                }
                 cga->cgamode = val;
                 return;
                 case 0x3D9:
                 cga->cgacol = val;
-				if (cga->cgacol != old_cgacol)
-				{
-					update_cga16_color(cga);
-					old_cgacol = cga->cgacol;
-				}
                 return;
         }
 }
@@ -304,12 +301,6 @@ void cga_poll(void *p)
                 if (cga->cgamode & 1) x = (cga->crtc[1] << 3) + 16;
                 else                  x = (cga->crtc[1] << 4) + 16;
 
-				if (cga_color_burst != old_color_burst)
-				{
-					update_cga16_color(cga);
-					old_color_burst = cga_color_burst;
-				}
-
                 if (cga_comp)
                 {
 					tline = (uint8_t *) buffer32->line[cga->displine];
@@ -469,7 +460,6 @@ void *cga_standalone_init()
         int cga_tint = -2;
         cga_t *cga = malloc(sizeof(cga_t));
         memset(cga, 0, sizeof(cga_t));
-		old_cgacol = 0;
 
         cga->vram = malloc(0x4000);
                 
