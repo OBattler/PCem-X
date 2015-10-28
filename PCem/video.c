@@ -234,11 +234,6 @@ void video_updatetiming()
         }
         if (cpu_16bitbus)
            video_timing_l = video_timing_w * 2;
-	if (!is8086)
-	{
-		video_timing_w = video_timing_b * 2;
-		video_timing_l = video_timing_w * 2;
-	}
 }
 
 int video_timing_b, video_timing_w, video_timing_l;

@@ -1877,7 +1877,7 @@ void mem_updatecache()
         if (!is386)
         {
                 cachesize=256;
-                memwaitstate=(is8086 ? 0 : (int) (1024.0 * cpu_multi));
+                memwaitstate=0;
                 return;
         }
         if (cpu_16bitbus)
