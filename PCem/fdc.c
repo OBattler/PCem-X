@@ -1985,7 +1985,7 @@ void fdc_readwrite(int mode)
 			}
 
                        	timer_process();
-			disctime = ((mode == 0) ? 600 : 256) * (1 << TIMER_SHIFT) * 3;
+			disctime = ((mode == 0) ? 600 : (((fdc.command & 0x1f) == 2) ? 60 : 256)) * (1 << TIMER_SHIFT) * 3;
                        	timer_update_outstanding();
 
 			fdc.pos[fdc.drive]++;
