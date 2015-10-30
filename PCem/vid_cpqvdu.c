@@ -19,30 +19,21 @@ static uint8_t crtcmask[32] =
 
 static int mdacols[256][2][2];
 
-static uint8_t intregs[5] = {0, 0, 0, 0, 0};
-
 void cpqvdu_recalctimings(cpqvdu_t *cpqvdu);
 
 void cpqvdu_out(uint16_t addr, uint8_t val, void *p)
 {
         cpqvdu_t *cpqvdu = (cpqvdu_t *)p;
         uint8_t old;
-        // pclog("cpqvdu_OUT %04X %02X\n", addr, val);
+//        pclog("cpqvdu_OUT %04X %02X\n", addr, val);
         switch (addr)
         {
-                case 0x3b0: case 0x3b2: case 0x3b4: case 0x3b6:
                 case 0x3D4:
                 cpqvdu->crtcreg = val & 31;
                 return;
-                case 0x3b1: case 0x3b3: case 0x3b5: case 0x3b7:
                 case 0x3D5:
                 old = cpqvdu->crtc[cpqvdu->crtcreg];
                 cpqvdu->crtc[cpqvdu->crtcreg] = val & crtcmask[cpqvdu->crtcreg];
-                if (cpqvdu->crtc[10] == 6 && cpqvdu->crtc[11] == 7) /*Fix for Generic Turbo XT BIOS, which sets up cursor registers wrong*/
-                {
-                        cpqvdu->crtc[10] = 0xb;
-                        cpqvdu->crtc[11] = 0xc;
-                }
                 if (old != val)
                 {
                         if (cpqvdu->crtcreg < 0xe || cpqvdu->crtcreg > 0x10)
@@ -52,46 +43,29 @@ void cpqvdu_out(uint16_t addr, uint8_t val, void *p)
                         }
                 }
                 return;
-		case 0x3B8:
                 case 0x3D8:
                 cpqvdu->cpqvdumode = val;
                 return;
-		case 0x3B9:
                 case 0x3D9:
                 cpqvdu->cpqvducol = val;
                 return;
-		case 0x3BB:
-		case 0x3BC:
-		case 0x3BD:
-		case 0x3BE:
-		case 0x3BF:
-		intregs[addr - 0x3BB] = val;
-		return;
         }
+
+	// pclog("What's a bitplane?\n");
 }
 
 uint8_t cpqvdu_in(uint16_t addr, void *p)
 {
         cpqvdu_t *cpqvdu = (cpqvdu_t *)p;
-        // pclog("cpqvdu_IN %04X\n", addr);
+//        pclog("cpqvdu_IN %04X\n", addr);
         switch (addr)
         {
-                case 0x3b0: case 0x3b2: case 0x3b4: case 0x3b6:
                 case 0x3D4:
                 return cpqvdu->crtcreg;
                 case 0x3D5:
-                case 0x3b1: case 0x3b3: case 0x3b5: case 0x3b7:
                 return cpqvdu->crtc[cpqvdu->crtcreg];
                 case 0x3DA:
                 return cpqvdu->cpqvdustat;
-                case 0x3ba:
-                return cpqvdu->cpqvdustat | 0xF0;
-		case 0x3BB:
-		case 0x3BC:
-		case 0x3BD:
-		case 0x3BE:
-		case 0x3BF:
-		return intregs[addr - 0x3BB];
         }
         return 0xFF;
 }
@@ -99,41 +73,27 @@ uint8_t cpqvdu_in(uint16_t addr, void *p)
 void cpqvdu_write(uint32_t addr, uint8_t val, void *p)
 {
         cpqvdu_t *cpqvdu = (cpqvdu_t *)p;
-//        pclog("cpqvdu_WRITE %04X %02X\n", addr, val);
+//        pclog("CGA_WRITE %04X %02X\n", addr, val);
 	if ((cs == 0xE0000) && (pc == 0xBF2F) && (romset == ROM_440FX))  return;
 	if ((cs == 0xE0000) && (pc == 0xBF77) && (romset == ROM_440FX))  return;
         cpqvdu->vram[addr & 0x3fff] = val;
-	if (cpqvdu->cpqvdumode & 1) {}
-	else if (!(cpqvdu->cpqvdumode & 2)) {}
-	else
-	{
-	        cpqvdu->charbuffer[ ((int)(((cpqvdu->dispontime - cpqvdu->vidtime) * 2) / CGACONST)) & 0xfc] = val;
-	        cpqvdu->charbuffer[(((int)(((cpqvdu->dispontime - cpqvdu->vidtime) * 2) / CGACONST)) & 0xfc) | 1] = val;
-	}
+        cpqvdu->charbuffer[ ((int)(((cpqvdu->dispontime - cpqvdu->vidtime) * 2) / CGACONST)) & 0xfc] = val;
+        cpqvdu->charbuffer[(((int)(((cpqvdu->dispontime - cpqvdu->vidtime) * 2) / CGACONST)) & 0xfc) | 1] = val;
         egawrites++;
-	if (cpqvdu->cpqvdumode & 1) {}
-	else if (!(cpqvdu->cpqvdumode & 2)) {}
-	else
-	{
-	        cycles -= 4;
-	}
+        cycles -= 4;
+	// pclog("Dots are my favours, except when they're saviour's...\n");
 }
 
 uint8_t cpqvdu_read(uint32_t addr, void *p)
 {
         cpqvdu_t *cpqvdu = (cpqvdu_t *)p;
+        cycles -= 4;        
 	if ((cs == 0xE0000) && (pc == 0xBF2F) && (romset == ROM_440FX))  return 0xff;
 	if ((cs == 0xE0000) && (pc == 0xBF77) && (romset == ROM_440FX))  return 0xff;
-	if (cpqvdu->cpqvdumode & 1) {}
-	else if (!(cpqvdu->cpqvdumode & 2)) {}
-	else
-	{
-	        cycles -= 4;        
-	        cpqvdu->charbuffer[ ((int)(((cpqvdu->dispontime - cpqvdu->vidtime) * 2) / CGACONST)) & 0xfc] = cpqvdu->vram[addr & 0x3fff];
-	        cpqvdu->charbuffer[(((int)(((cpqvdu->dispontime - cpqvdu->vidtime) * 2) / CGACONST)) & 0xfc) | 1] = cpqvdu->vram[addr & 0x3fff];
-	}
+        cpqvdu->charbuffer[ ((int)(((cpqvdu->dispontime - cpqvdu->vidtime) * 2) / CGACONST)) & 0xfc] = cpqvdu->vram[addr & 0x3fff];
+        cpqvdu->charbuffer[(((int)(((cpqvdu->dispontime - cpqvdu->vidtime) * 2) / CGACONST)) & 0xfc) | 1] = cpqvdu->vram[addr & 0x3fff];
         egareads++;
-//        pclog("cpqvdu_READ %04X\n", addr);
+//        pclog("CGA_READ %04X\n", addr);
         return cpqvdu->vram[addr & 0x3fff];
 }
 
@@ -141,7 +101,9 @@ void cpqvdu_recalctimings(cpqvdu_t *cpqvdu)
 {
         double disptime;
 	double _dispontime, _dispofftime;
-        // pclog("Recalc - %i %i %i\n", cpqvdu->crtc[0], cpqvdu->crtc[1], cpqvdu->cpqvdumode & 1);
+#ifndef RELEASE_BUILD
+        pclog("Recalc - %i %i %i\n", cpqvdu->crtc[0], cpqvdu->crtc[1], cpqvdu->cpqvdumode & 1);
+#endif
         if (cpqvdu->cpqvdumode & 1)
         {
                 disptime = cpqvdu->crtc[0] + 1;
@@ -154,13 +116,14 @@ void cpqvdu_recalctimings(cpqvdu_t *cpqvdu)
         }
         _dispofftime = disptime - _dispontime;
 //        printf("%i %f %f %f  %i %i\n",cpqvdumode&1,disptime,dispontime,dispofftime,crtc[0],crtc[1]);
-        /* _dispontime *= CGACONST;
-        _dispofftime *= CGACONST; */
-        _dispontime *= MDACONST;
-        _dispofftime *= MDACONST;
+        _dispontime *= CGACONST;
+        _dispofftime *= CGACONST;
 //        printf("Timings - on %f off %f frame %f second %f\n",dispontime,dispofftime,(dispontime+dispofftime)*262.0,(dispontime+dispofftime)*262.0*59.92);
 	cpqvdu->dispontime = (int)(_dispontime * (1 << TIMER_SHIFT) * 3.0d);
 	cpqvdu->dispofftime = (int)(_dispofftime * (1 << TIMER_SHIFT) * 3.0d);
+#ifndef RELEASE_BUILD
+	pclog("Recalc end\n");
+#endif
 }
 
 static int ntsc_col[8][8]=
@@ -187,7 +150,6 @@ void cpqvdu_poll(void *p)
         int cols[4];
         int col;
         int oldsc;
-        int blink;
         int y_buf[8] = {0, 0, 0, 0, 0, 0, 0, 0}, y_val, y_tot;
         int i_buf[8] = {0, 0, 0, 0, 0, 0, 0, 0}, i_val, i_tot;
         int q_buf[8] = {0, 0, 0, 0, 0, 0, 0, 0}, q_val, q_tot;
@@ -227,16 +189,14 @@ void cpqvdu_poll(void *p)
                         {
                                 for (x = 0; x < cpqvdu->crtc[1]; x++)
                                 {
-                                        /* chr = cpqvdu->charbuffer[x << 1];
-                                        attr = cpqvdu->charbuffer[(x << 1) + 1]; */
-                                        chr  = cpqvdu->vram[((cpqvdu->ma << 1) & 0x3fff)];
-                                        attr = cpqvdu->vram[(((cpqvdu->ma << 1) + 1) & 0x3fff)];
+                                        chr = cpqvdu->charbuffer[x << 1];
+                                        attr = cpqvdu->charbuffer[(x << 1) + 1];
                                         drawcursor = ((cpqvdu->ma == ca) && cpqvdu->con && cpqvdu->cursoron);
                                         if (cpqvdu->cpqvdumode & 0x20)
                                         {
                                                 cols[1] = (attr & 15) + 16;
                                                 cols[0] = ((attr >> 4) & 7) + 16;
-                                                if ((cpqvdu->cpqvdublink & 16) && (attr & 0x80) && !cpqvdu->drawcursor) 
+                                                if ((cpqvdu->cpqvdublink & 8) && (attr & 0x80) && !cpqvdu->drawcursor) 
                                                         cols[1] = cols[0];
                                         }
                                         else
@@ -246,38 +206,13 @@ void cpqvdu_poll(void *p)
                                         }
                                         if (drawcursor)
                                         {
-                                                for (c = 0; c < 9; c++)
-						{
-							if (cpqvdu->crtc[9] > 7)
-								buffer->line[cpqvdu->displine][(x * 9) + c + 9] = cols[(cga_fontdatm[chr][cpqvdu->sc] & (1 << (c ^ 7))) ? 1 : 0] ^ 15;
-							else
-								buffer->line[cpqvdu->displine][(x * 9) + c + 9] = cols[(cga_fontdat[chr][cpqvdu->sc] & (1 << (c ^ 7))) ? 1 : 0] ^ 15;
-						}
+                                                for (c = 0; c < 8; c++)
+                                                    buffer->line[cpqvdu->displine][(x << 3) + c + 8] = cols[(cga_fontdat[chr][cpqvdu->sc & 7] & (1 << (c ^ 7))) ? 1 : 0] ^ 15;
                                         }
                                         else
                                         {
-                                		if (cpqvdu->sc == 12 && ((attr & 7) == 1))
-                		                {
-		                                        for (c = 0; c < 9; c++)
-							buffer->line[cpqvdu->displine][(x * 9) + c + 9] = cols[1];
-		                                }
-						else
-						{
-							if (cpqvdu->crtc[9] > 7)
-							{
-	                                                	for (c = 0; c < 8; c++)
-									buffer->line[cpqvdu->displine][(x * 9) + c + 9] = cols[(cga_fontdatm[chr][cpqvdu->sc] & (1 << (c ^ 7))) ? 1 : 0];
-	                		                        if ((chr & ~0x1f) == 0xc0) buffer->line[cpqvdu->displine][(x * 9) + 17] = cols[(cga_fontdatm[chr][cpqvdu->sc] & (1 << (7 ^ 7))) ? 1 : 0];
-			                                        else                       buffer->line[cpqvdu->displine][(x * 9) + 17] = cols[0];
-							}
-							else
-							{
-	                                                	for (c = 0; c < 8; c++)
-									buffer->line[cpqvdu->displine][(x * 9) + c + 9] = cols[(cga_fontdat[chr][cpqvdu->sc] & (1 << (c ^ 7))) ? 1 : 0];
-	                		                        if ((chr & ~0x1f) == 0xc0) buffer->line[cpqvdu->displine][(x * 9) + 17] = cols[(cga_fontdat[chr][cpqvdu->sc] & (1 << (7 ^ 7))) ? 1 : 0];
-			                                        else                       buffer->line[cpqvdu->displine][(x * 9) + 17] = cols[0];
-							}
-						}
+                                                for (c = 0; c < 8; c++)
+                                                    buffer->line[cpqvdu->displine][(x << 3) + c + 8] = cols[(cga_fontdat[chr][cpqvdu->sc & 7] & (1 << (c ^ 7))) ? 1 : 0];
                                         }
                                         cpqvdu->ma++;
                                 }
@@ -369,8 +304,7 @@ void cpqvdu_poll(void *p)
                         else                  hline(buffer, 0, cpqvdu->displine, (cpqvdu->crtc[1] << 4) + 16, cols[0]);
                 }
 
-                if (cpqvdu->cpqvdumode & 1) x = (cpqvdu->crtc[1] * 9) + 18;
-                else if (!(cpqvdu->cpqvdumode & 2)) x = (cpqvdu->crtc[1] * 18) + 18;
+                if (cpqvdu->cpqvdumode & 1) x = (cpqvdu->crtc[1] << 3) + 16;
                 else                  x = (cpqvdu->crtc[1] << 4) + 16;
                 if (cga_comp)
                 {
@@ -453,7 +387,7 @@ void cpqvdu_poll(void *p)
                 if (cpqvdu->vc == cpqvdu->crtc[7] && !cpqvdu->sc)
                    cpqvdu->cpqvdustat |= 8;
                 cpqvdu->displine++;
-                if (cpqvdu->displine >= 500) 
+                if (cpqvdu->displine >= 360) 
                         cpqvdu->displine = 0;
         }
         else
@@ -472,12 +406,8 @@ void cpqvdu_poll(void *p)
                         cpqvdu->con = 0; 
                         cpqvdu->coff = 1; 
                 }
-		if (cpqvdu->crtc[9] <= 7)
-		{
-	                if ((cpqvdu->crtc[8] & 3) == 3 && cpqvdu->sc == (cpqvdu->crtc[9] >> 1))
-	                // if ((cpqvdu->crtc[8] & 3) == 3 && cpqvdu->sc == (13 >> 1))
-	                   cpqvdu->maback = cpqvdu->ma;
-		}
+                if ((cpqvdu->crtc[8] & 3) == 3 && cpqvdu->sc == (cpqvdu->crtc[9] >> 1))
+                   cpqvdu->maback = cpqvdu->ma;
                 if (cpqvdu->vadj)
                 {
                         cpqvdu->sc++;
@@ -492,7 +422,6 @@ void cpqvdu_poll(void *p)
                         }
                 }
                 else if (cpqvdu->sc == cpqvdu->crtc[9])
-                // else if (cpqvdu->sc == 13)
                 {
                         cpqvdu->maback = cpqvdu->ma;
                         cpqvdu->sc = 0;
@@ -520,8 +449,7 @@ void cpqvdu_poll(void *p)
                                 cpqvdu->vsynctime = (cpqvdu->crtc[3] >> 4) + 1;
                                 if (cpqvdu->crtc[7])
                                 {
-                                        if (cpqvdu->cpqvdumode & 1) x = (cpqvdu->crtc[1] * 9) + 18;
-                                        else if (!(cpqvdu->cpqvdumode & 2))                  x = (cpqvdu->crtc[1]  * 18) + 18;
+                                        if (cpqvdu->cpqvdumode & 1) x = (cpqvdu->crtc[1] << 3) + 16;
                                         else                  x = (cpqvdu->crtc[1] << 4) + 16;
                                         cpqvdu->lastline++;
                                         if (x != xsize || (cpqvdu->lastline - cpqvdu->firstline) != ysize)
@@ -530,37 +458,25 @@ void cpqvdu_poll(void *p)
                                                 ysize = cpqvdu->lastline - cpqvdu->firstline;
                                                 if (xsize < 64) xsize = 656;
                                                 if (ysize < 32) ysize = 200;
-						if (ysize > 250)
-	                                                updatewindowsize(xsize, ysize + 14);
-						else
-	                                                updatewindowsize(xsize, (ysize << 1) + 16);
+                                                updatewindowsize(xsize, (ysize << 1) + 16);
                                         }
                                         
 startblit();
-                                        if (cga_comp) 
-                                           video_blit_memtoscreen(0, cpqvdu->firstline - 4, 0, (cpqvdu->lastline - cpqvdu->firstline) + 8, xsize, (cpqvdu->lastline - cpqvdu->firstline) + 8);
-                                        else          
-                                           video_blit_memtoscreen(0, cpqvdu->firstline - 4, 0, (cpqvdu->lastline - cpqvdu->firstline) + 8, xsize, (cpqvdu->lastline - cpqvdu->firstline) + 8);
-                                           // video_blit_memtoscreen_8(0, cpqvdu->firstline - 4, xsize, (cpqvdu->lastline - cpqvdu->firstline) + 8);
+                                        video_blit_memtoscreen(0, cpqvdu->firstline - 4, 0, (cpqvdu->lastline - cpqvdu->firstline) + 8, xsize, (cpqvdu->lastline - cpqvdu->firstline) + 8);
                                         frames++;
 endblit();
-                                        if (cpqvdu->cpqvdumode & 1) video_res_x = xsize - 18;
-                                        else if (!(cpqvdu->cpqvdumode & 2))                  video_res_x = xsize - 18;
-                                        else                  video_res_x = xsize - 16;
-
+                                        video_res_x = xsize - 16;
                                         video_res_y = ysize;
                                         if (cpqvdu->cpqvdumode & 1)
                                         {
-                                                video_res_x /= 9;
+                                                video_res_x /= 8;
                                                 video_res_y /= cpqvdu->crtc[9] + 1;
-                                                // video_res_y /= 14;
                                                 video_bpp = 0;
                                         }
                                         else if (!(cpqvdu->cpqvdumode & 2))
                                         {
-                                                video_res_x /= 18;
+                                                video_res_x /= 16;
                                                 video_res_y /= cpqvdu->crtc[9] + 1;
-                                                // video_res_y /= 14;
                                                 video_bpp = 0;
                                         }
                                         else if (!(cpqvdu->cpqvdumode & 16))
@@ -607,10 +523,6 @@ void *cpqvdu_standalone_init()
         cpqvdu_t *cpqvdu = malloc(sizeof(cpqvdu_t));
         memset(cpqvdu, 0, sizeof(cpqvdu_t));
 
-	// loadfont("mda.rom", 0);
-
-	overscan_x = overscan_y = 16;
-
         cpqvdu->vram = malloc(0x4000);
                 
         for (c = 0; c < 8; c++)
@@ -618,11 +530,6 @@ void *cpqvdu_standalone_init()
                 i_filt[c] = 512.0 * cos((3.14 * (cpqvdu_tint + c * 4) / 16.0) - 33.0 / 180.0);
                 q_filt[c] = 512.0 * sin((3.14 * (cpqvdu_tint + c * 4) / 16.0) - 33.0 / 180.0);
         }
-        timer_add(cpqvdu_poll, &cpqvdu->vidtime, TIMER_ALWAYS_ENABLED, cpqvdu);
-        mem_mapping_add(&cpqvdu->mapping, 0xb8000, 0x08000, cpqvdu_read, NULL, NULL, cpqvdu_write, NULL, NULL,  NULL, 0, cpqvdu);
-        // mem_mapping_add(&cpqvdu->mapping, 0xb0000, 0x08000, cpqvdu_read, NULL, NULL, cpqvdu_write, NULL, NULL,  NULL, 0, cpqvdu);
-        // io_sethandler(0x03b0, 0x0010, cpqvdu_in, NULL, NULL, cpqvdu_out, NULL, NULL, cpqvdu);
-        io_sethandler(0x03d0, 0x0010, cpqvdu_in, NULL, NULL, cpqvdu_out, NULL, NULL, cpqvdu);
 
         for (c = 0; c < 256; c++)
         {
@@ -643,11 +550,17 @@ void *cpqvdu_standalone_init()
         mdacols[0x80][0][1] = mdacols[0x80][1][1] = 16;
         mdacols[0x88][0][1] = mdacols[0x88][1][1] = 16 + 8;
 
-        cpqvdu->crtc[0] = 63;
-        cpqvdu->dispontime = 1000 * (1 << TIMER_SHIFT) * 3.0d;
-        cpqvdu->dispofftime = 1000 * (1 << TIMER_SHIFT) * 3.0d;
-
+        timer_add(cpqvdu_poll, &cpqvdu->vidtime, TIMER_ALWAYS_ENABLED, cpqvdu);
+        mem_mapping_add(&cpqvdu->mapping, 0xb8000, 0x08000, cpqvdu_read, NULL, NULL, cpqvdu_write, NULL, NULL,  NULL, 0, cpqvdu);
+        io_sethandler(0x03d0, 0x0010, cpqvdu_in, NULL, NULL, cpqvdu_out, NULL, NULL, cpqvdu);
         return cpqvdu;
+}
+
+void cpqvdu_speed_changed(void *p)
+{
+        cpqvdu_t *cpqvdu = (cpqvdu_t *)p;
+        
+        cpqvdu_recalctimings(cpqvdu);
 }
 
 void cpqvdu_close(void *p)
@@ -658,16 +571,9 @@ void cpqvdu_close(void *p)
         free(cpqvdu);
 }
 
-void cpqvdu_speed_changed(void *p)
-{
-        cpqvdu_t *cpqvdu = (cpqvdu_t *)p;
-        
-        cpqvdu_recalctimings(cpqvdu);
-}
-
 device_t cpqvdu_device =
 {
-        "cpqvdu",
+        "Compaq VDU",
         0,
         cpqvdu_standalone_init,
         cpqvdu_close,

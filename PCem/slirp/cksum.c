@@ -119,7 +119,7 @@ int cksum(struct SLIRPmbuf *m, int len)
 	   s_util.c[0] = *(u_int8_t *)w;
 	
 cont:
-#ifdef DEBUG
+#ifdef SLIRP_DEBUG
 	if (len) {
 		DEBUG_ERROR((dfd, "cksum: out of data\n"));
 		DEBUG_ERROR((dfd, " len = %d\n", len));

@@ -175,7 +175,7 @@ struct tcpcb {
  * tcpcb) are overlayed with an mbuf pointer.
  */
 #if SIZEOF_CHAR_P == 4
-typedef struct mbuf *mbufp_32;
+typedef struct SLIRPmbuf *mbufp_32;
 #else
 typedef u_int32_t mbufp_32;
 #endif

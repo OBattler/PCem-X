@@ -151,7 +151,7 @@ tcp_respond(tp, ti, m, ack, seq, flags)
 		 * ti points into m so the next line is just making
 		 * the SLIRPmbuf point to ti
 		 */
-		m->m_data = (caddr_t)ti;
+		m->m_data = (SLIRPcaddr_t)ti;
 		
 		m->m_len = sizeof (struct tcpiphdr);
 		tlen = 0;

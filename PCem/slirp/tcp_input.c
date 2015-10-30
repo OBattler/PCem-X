@@ -237,7 +237,7 @@ tcp_input(m, iphlen, inso)
 {
   	struct ip save_ip, *ip;
 	struct tcpiphdr *ti;
-	caddr_t optp = NULL;
+	SLIRPcaddr_t optp = NULL;
 	int optlen = 0;
 	int len, tlen, off;
 	struct tcpcb *tp = 0;
@@ -322,7 +322,7 @@ tcp_input(m, iphlen, inso)
 	ti->ti_len = tlen;
 	if (off > sizeof (struct tcphdr)) {
 	  optlen = off - sizeof (struct tcphdr);
-	  optp = mtod(m, caddr_t) + sizeof (struct tcpiphdr);
+	  optp = mtod(m, SLIRPcaddr_t) + sizeof (struct tcpiphdr);
 
 		/* 
 		 * Do quick retrieval of timestamp options ("options
@@ -1578,7 +1578,7 @@ tcp_pulloutofband(so, ti, m)
 	
 	while (cnt >= 0) {
 		if (m->m_len > cnt) {
-			char *cp = mtod(m, caddr_t) + cnt;
+			char *cp = mtod(m, SLIRPcaddr_t) + cnt;
 			struct tcpcb *tp = sototcpcb(so);
 
 			tp->t_iobc = *cp;

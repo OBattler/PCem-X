@@ -22,7 +22,6 @@
  * THE SOFTWARE.
  */
 #include "slirp.h"
-#include "../config.h"
 
 /* XXX: only DHCP is supported */
 
@@ -189,10 +188,6 @@ static void bootp_reply(struct bootp_t *bp)
         
     if (dhcp_msg_type == DHCPDISCOVER ||
         dhcp_msg_type == DHCPREQUEST) {
-
-        snprintf((char *)rbp->bp_file, sizeof(rbp->bp_file),
-                config_get_string(NULL, "slirp_dhcp_bootfile", "pxelinux.0"));
-
         *q++ = RFC2132_SRV_ID;
         *q++ = 4;
         memcpy(q, &saddr.sin_addr, 4);
@@ -227,14 +222,6 @@ static void bootp_reply(struct bootp_t *bp)
             *q++ = RFC1533_HOSTNAME;
             *q++ = val;
             memcpy(q, slirp_hostname, val);
-            q += val;
-        }
-
-        if (*rbp->bp_file) {
-            val = strlen(rbp->bp_file);
-            *q++ = RFC2132_BOOT_FILE_NAME;
-            *q++ = val;
-            memcpy(q, rbp->bp_file, val);
             q += val;
         }
     }

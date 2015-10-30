@@ -593,8 +593,6 @@ extern int piix_type;
 extern int disable_xchg_dynarec;
 extern int cga_color_burst;
 
-extern int old_color_burst;
-
 void dumppic();
 void dumpregs();
 void cpu_set();

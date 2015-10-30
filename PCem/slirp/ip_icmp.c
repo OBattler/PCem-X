@@ -222,7 +222,7 @@ icmp_error(msrc, type, code, minsize, message)
   /* check msrc */
   if(!msrc) goto end_error;
   ip = mtod(msrc, struct ip *);
-#if DEBUG  
+#if SLIRP_DEBUG
   { char bufa[20], bufb[20];
     strcpy(bufa, inet_ntoa(ip->ip_src));
     strcpy(bufb, inet_ntoa(ip->ip_dst));
@@ -244,7 +244,7 @@ icmp_error(msrc, type, code, minsize, message)
 
   /* make a copy */
   if(!(m=m_get())) goto end_error;               /* get SLIRPmbuf */
-  { int new_m_size;
+  { u_int new_m_size;
     new_m_size=sizeof(struct ip )+ICMP_MINLEN+msrc->m_len+ICMP_MAXDATALEN;
     if(new_m_size>m->m_size) m_inc(m, new_m_size);
   }
@@ -279,7 +279,7 @@ icmp_error(msrc, type, code, minsize, message)
   HTONS(icp->icmp_ip.ip_id);
   HTONS(icp->icmp_ip.ip_off);
 
-#if DEBUG
+#if SLIRP_DEBUG
   if(message) {           /* DEBUG : append message to ICMP packet */
     int message_len;
     char *cpnt;
@@ -299,7 +299,7 @@ icmp_error(msrc, type, code, minsize, message)
 
   /* fill in ip */
   ip->ip_hl = hlen >> 2;
-  ip->ip_len = m->m_len;
+  ip->ip_len = (u_int16_t)m->m_len;
   
   ip->ip_tos=((ip->ip_tos & 0x1E) | 0xC0);  /* high priority for errors */
 
@@ -349,7 +349,7 @@ icmp_reflect(m)
      * Strip out original options by copying rest of first
      * SLIRPmbuf's data back, and adjust the IP length.
      */
-    memmove((caddr_t)(ip + 1), (caddr_t)ip + hlen,
+    memmove((SLIRPcaddr_t)(ip + 1), (SLIRPcaddr_t)ip + hlen,
 	    (unsigned )(m->m_len - hlen));
     hlen -= optlen;
     ip->ip_hl = hlen >> 2;

@@ -91,8 +91,6 @@ static VIDEO_CARD video_cards[] =
 int cga_color_burst = 1;
 int cga_brown = 1;
 
-int old_color_burst;
-
 int enable_overscan = 1;
 int overscan_color = 0;
 int overscan_x = 0;
@@ -234,11 +232,6 @@ void video_updatetiming()
         }
         if (cpu_16bitbus)
            video_timing_l = video_timing_w * 2;
-	if (!is8086)
-	{
-		video_timing_w = video_timing_b * 2;
-		video_timing_l = video_timing_w * 2;
-	}
 }
 
 int video_timing_b, video_timing_w, video_timing_l;

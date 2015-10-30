@@ -63,11 +63,11 @@ struct m_hdr {
 	struct	SLIRPmbuf *mh_prevpkt; /* Flags aren't used in the output queue */
 	int	mh_flags;	  /* Misc flags */
 
-	int	mh_size;		/* Size of data */
+	size_t	mh_size;		/* Size of data */
 	struct	SLIRPsocket *mh_so;
 	
-	caddr_t	mh_data;		/* Location of data */
-	int	mh_len;			/* Amount of data in this mbuf */
+	SLIRPcaddr_t	mh_data;		/* Location of data */
+	size_t	mh_len;			/* Amount of data in this mbuf */
 };
 
 /* 

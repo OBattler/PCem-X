@@ -5,9 +5,6 @@
 
 #define CONFIG_QEMU
 
-//#define DEBUG 1
-#undef DEBUG
-
 #ifndef CONFIG_QEMU
 #include "version.h"
 #endif
@@ -21,7 +18,7 @@ typedef uint8_t u_int8_t;
 typedef uint16_t u_int16_t;
 typedef uint32_t u_int32_t;
 typedef uint64_t u_int64_t;
-typedef char *caddr_t;
+typedef char *SLIRPcaddr_t;
 typedef int socklen_t;
 typedef unsigned long ioctlsockopt_t;
 #else
@@ -36,7 +33,7 @@ typedef unsigned int	uint32_t;
 typedef	int				int32_t;
 
 typedef unsigned __int64 u_int64_t;
-typedef char 		*caddr_t;
+typedef char 		*SLIRPcaddr_t;
 typedef int 		socklen_t;
 typedef unsigned long 	ioctlsockopt_t;
 
@@ -412,5 +409,7 @@ struct tcpcb *tcp_drop(struct tcpcb *tp, int err);
 #undef errno
 #define errno (WSAGetLastError())
 #endif
+
+#define PROBE_CONN
 
 #endif
