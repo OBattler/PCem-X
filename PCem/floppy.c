@@ -445,8 +445,8 @@ void set_sector_id(int d, int t, int h, int s, int sid, int nb)
 		if (!s)  fdd[d].scid[h][t][s][4]|=0x40;
 	}
 
-	fdd[d].disc[h][t][s] = (uint8_t *) malloc(128 << nb);
-	initialize_sector(d, t, h, s, nb, 0xF6);
+	// fdd[d].disc[h][t][s] = (uint8_t *) malloc(128 << nb);
+	// initialize_sector(d, t, h, s, nb, 0xF6);
 }
 
 void set_sector_id_nh(int d, int t, int h, int s, int sid, int nb)
@@ -466,8 +466,8 @@ void set_sector_id_nh(int d, int t, int h, int s, int sid, int nb)
 		if (!s)  fdd[d].scid[h][t][s][4]|=0x40;
 	}
 
-	fdd[d].disc[h][t][s] = (uint8_t *) malloc(128 << nb);
-	initialize_sector(d, h, t, s, nb, 0xF6);
+	// fdd[d].disc[h][t][s] = (uint8_t *) malloc(128 << nb);
+	// initialize_sector(d, h, t, s, nb, 0xF6);
 }
 
 void set_sector_id_2m(int d, int t, int h, int s, int sid, int nb)
@@ -487,8 +487,8 @@ void set_sector_id_2m(int d, int t, int h, int s, int sid, int nb)
 		if (!s)  fdd[d].scid[h][t][s][4]|=0x40;
 	}
 
-	fdd[d].disc[h][t][s] = (uint8_t *) malloc(128 << nb);
-	initialize_sector(d, h, t, s, nb, 0xF6);
+	// fdd[d].disc[h][t][s] = (uint8_t *) malloc(128 << nb);
+	// initialize_sector(d, h, t, s, nb, 0xF6);
 }
 
 void read_raw_sectors(FILE *f, int d, uint8_t st, uint8_t nt, uint8_t sh, uint8_t nh, uint8_t ss2, uint8_t ns, int nb, uint8_t si)

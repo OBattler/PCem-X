@@ -1987,6 +1987,7 @@ uint8_t atapi_ready_handler(IDE *ide, uint8_t command)
 		{
 			changed_status = 2;
 			atapi_cmd_error(ide, SENSE_UNIT_ATTENTION, ASC_MEDIUM_MAY_HAVE_CHANGED);
+			ide->error |= MCR_ERR;
 			return 0;	/* Disc changed, we returned medium may have changed. */
 		}
 
