@@ -35,10 +35,7 @@ PCem-X.exe: $(OBJ) $(FMOBJ) $(SIDOBJ) $(SLIRPOBJ)
 fall : PCem-X.exe
 
 clean :
-	rm *.o32
-	rm *.obj
-	rm *.exe
-	rm *.res32
+	rm *.o32 *.obj *.exe *.res32
 
 %.obj : %.c
 	$(CC) $(initcflags) -o $@ -c $<
