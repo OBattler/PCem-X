@@ -177,6 +177,7 @@ static void piix_bus_master_next_addr(int channel)
         piix_busmaster[channel].count = (*(uint32_t *)(&ram[piix_busmaster[channel].ptr_cur + 4])) & 0xfffe;
         piix_busmaster[channel].eot = (*(uint32_t *)(&ram[piix_busmaster[channel].ptr_cur + 4])) >> 31;
         piix_busmaster[channel].ptr_cur += 8;
+	piix_busmaster[channel].ptr %= ((mem_size * 1024 * 1024) - 8);
 //        pclog("New DMA settings on channel %i - Addr %08X Count %04X EOT %i\n", channel, piix_busmaster[channel].addr, piix_busmaster[channel].count, piix_busmaster[channel].eot);
 }
 
@@ -203,19 +204,19 @@ void piix_bus_master_write(uint16_t port, uint8_t val, void *priv)
                 break;
                 case 4:
                 piix_busmaster[channel].ptr = (piix_busmaster[channel].ptr & 0xffffff00) | val;
-		piix_busmaster[channel].ptr %= (mem_size * 1024 * 1024);
+		piix_busmaster[channel].ptr %= ((mem_size * 1024 * 1024) - 8);
                 break;
                 case 5:
                 piix_busmaster[channel].ptr = (piix_busmaster[channel].ptr & 0xffff00ff) | (val << 8);
-		piix_busmaster[channel].ptr %= (mem_size * 1024 * 1024);
+		piix_busmaster[channel].ptr %= ((mem_size * 1024 * 1024) - 8);
                 break;
                 case 6:
                 piix_busmaster[channel].ptr = (piix_busmaster[channel].ptr & 0xff00ffff) | (val << 16);
-		piix_busmaster[channel].ptr %= (mem_size * 1024 * 1024);
+		piix_busmaster[channel].ptr %= ((mem_size * 1024 * 1024) - 8);
                 break;
                 case 7:
                 piix_busmaster[channel].ptr = (piix_busmaster[channel].ptr & 0x00ffffff) | (val << 24);
-		piix_busmaster[channel].ptr %= (mem_size * 1024 * 1024);
+		piix_busmaster[channel].ptr %= ((mem_size * 1024 * 1024) - 8);
                 break;
 
         }
