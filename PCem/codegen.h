@@ -163,5 +163,3 @@ extern int codegen_fpu_entered;
 
 extern int codegen_fpu_loaded_iq[8];
 extern int codegen_reg_loaded[8];
-
-void codegen_block_end();

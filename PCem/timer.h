@@ -38,6 +38,6 @@ void timer_set_callback(int timer, void (*callback)(void *priv));
 extern int timer_count;
 extern int timer_one;
 
-#define TIMER_SHIFT 6
+#define TIMER_SHIFT 4
 
 extern double TIMER_USEC;

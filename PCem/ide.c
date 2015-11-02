@@ -1987,6 +1987,7 @@ uint8_t atapi_ready_handler(IDE *ide, uint8_t command)
 		{
 			changed_status = 2;
 			atapi_cmd_error(ide, SENSE_UNIT_ATTENTION, ASC_MEDIUM_MAY_HAVE_CHANGED);
+			ide->error |= MCR_ERR;
 			return 0;	/* Disc changed, we returned medium may have changed. */
 		}
 
@@ -2005,7 +2006,7 @@ static uint8_t atapi_check_ready(int ide_board)
 	// if (changed_status == 2)
 	/* Clear UNIT_ATTENTION on TEST UNIT READY, REQUEST SENSE, and READ TOC commands.
 	   The clear on READ TOC is an undocumented behavior VIDE-CDD.SYS relies on. */
-	if ((idebufferb[0] == 0x00) || (idebufferb[0] == 0x43))
+	if (idebufferb[0] == 0x43)
 	{
 		changed_status = 0;
                 atapi_prev=idebufferb[0];
@@ -2086,6 +2087,14 @@ static void atapicommand(int ide_board)
 	                break;
 
         	case REQUEST_SENSE: /* Used by ROS 4+ */ /*0x03*/
+			if (changed_status == 1)
+			{
+				pclog("Request sense with changed status 2, setting sense to attention / medium changed\n");
+				changed_status = 2;
+				atapi_sense.sensekey = SENSE_UNIT_ATTENTION;
+				atapi_sense.asc = ASC_MEDIUM_MAY_HAVE_CHANGED;
+			}
+
 			/*Will return 18 bytes of 0*/
 			memset(idebufferb,0,512);
 			idebufferb[0]=0x80|0x70;

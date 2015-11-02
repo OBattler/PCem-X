@@ -328,7 +328,6 @@ void cga_poll(void *p)
         else
         {
                 cga->vidtime += cga->dispontime;
-                if (cga->cgadispon) cga->cgastat &= ~1;
                 cga->linepos = 0;
                 if (cga->vsynctime)
                 {
@@ -440,6 +439,7 @@ endblit();
                         cga->sc &= 31;
                         cga->ma = cga->maback;
                 }
+                if (cga->cgadispon) cga->cgastat &= ~1;
                 if ((cga->sc == (cga->crtc[10] & 31) || ((cga->crtc[8] & 3) == 3 && cga->sc == ((cga->crtc[10] & 31) >> 1)))) 
                         cga->con = 1;
                 if (cga->cgadispon && (cga->cgamode & 1))

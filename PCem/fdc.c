@@ -1075,7 +1075,7 @@ int fdc_format()
 	fdc.pos[fdc.drive] = 0;
 
 	/* Make sure the "sector" points to the correct position in the track buffer. */
-	fdd[vfdd[fdc.drive]].disc[fdc.head[fdc.drive]][fdd[vfdd[fdc.drive]].track][fdc.sector[fdc.drive] - 1] = fdd[vfdd[fdc.drive]].trackbufs[fdc.head[fdc.drive]][fdc.track[fdc.drive]] + ((uint32_t) fdd[vfdd[fdc.drive]].ltpos);
+	fdd[vfdd[fdc.drive]].disc[fdc.head[fdc.drive]][fdd[vfdd[fdc.drive]].track][fdc.sector[fdc.drive] - 1] = fdd[vfdd[fdc.drive]].trackbufs[fdc.head[fdc.drive]][fdd[vfdd[fdc.drive]].track] + ((uint32_t) fdd[vfdd[fdc.drive]].ltpos);
 	for (b = 0; b < 4; b++)
 	{
 		fdd[vfdd[fdc.drive]].scid[fdc.head[fdc.drive]][fdd[vfdd[fdc.drive]].track][fdc.sector[fdc.drive] - 1][b] = fdc.params[b + 5];
@@ -1245,7 +1245,7 @@ int fifo_buf_read()
 void fdc_write(uint16_t addr, uint8_t val, void *priv)
 {
 	// printf("Write FDC %04X %02X %04X:%04X %i %02X %i rate=%i\n",addr,val,cs>>4,pc,ins,fdc.st0,ins,fdc.rate);
-	printf("OUT 0x%04X, %02X\n", addr, val);
+	// printf("OUT 0x%04X, %02X\n", addr, val);
 	// if ((addr&7) == 3)  printf("OUT 0x%04X, %02X\n", addr, val);
         switch (addr&7)
         {
@@ -1349,7 +1349,7 @@ void fdc_write(uint16_t addr, uint8_t val, void *priv)
 				if (!fdc.fifo)
 				{
 	                        	fdc.dat = val;
-					fifo_buf_write(val);
+					// fifo_buf_write(val);
 	                        	fdc.stat &= ~0x80;
 				}
 				else
@@ -1654,8 +1654,16 @@ uint8_t fdc_read(uint16_t addr, void *priv)
 	                fdc.stat&=~0x80;
 	                if ((fdc.stat & 0xf0) == 0xf0)
         	        {
-				temp = fifo_buf_read();
-				if (fdc.fifobufpos != 0)  fdc.stat |= 0x80;
+				if (!fdc.fifo)
+				{
+					temp = fdc.dat;
+					fdc.stat |= 0x80;
+				}
+				else
+				{
+					temp = fifo_buf_read();
+					if (fdc.fifobufpos != 0)  fdc.stat |= 0x80;
+				}
 	                        break;
         	        }
 	                if (paramstogo)
@@ -1698,7 +1706,7 @@ uint8_t fdc_read(uint16_t addr, void *priv)
 			// printf("Bad read FDC %04X\n",addr);
         }
 	// /*if (addr!=0x3f4) */printf("%02X rate=%i\n",temp,fdc.rate);
-	printf("IN 0x%04X, %02X\n", addr, temp);
+	// printf("IN 0x%04X, %02X\n", addr, temp);
 	// if (addr == 0x3F3)  printf("IN 0x%04X, %02X\n", addr, temp);
         return temp;
 }
@@ -1792,44 +1800,21 @@ void fdc_readwrite(int mode)
 	{
 		if (fdc.eis)
 		{
-			if (FDDSPECIAL)
-			{
-				fdc_implied_seek(fdc.track[fdc.drive] << 1);
-			}
-			else
-			{
-				fdc_implied_seek(fdc.track[fdc.drive]);
-			}
+			fdc_implied_seek(fdc.track[fdc.drive] << ((FDDSPECIAL) ? 1 : 0));
 		}
 		else
 		{
-			if (FDDSPECIAL)
+			if((fdc.track[fdc.drive] << ((FDDSPECIAL) ? 1 : 0)) != fdc.pcn[fdc.drive])
 			{
-				if((fdc.track[fdc.drive] << 1) != fdc.pcn[fdc.drive])
-				{
 #ifndef RELEASE_BUILD
-					pclog("Wrong cylinder: %i != %i\n", (fdc.track[fdc.drive] << 1), fdc.pcn[fdc.drive]);
+				pclog("Wrong cylinder: %i != %i\n", (fdc.track[fdc.drive] << ((FDDSPECIAL) ? 1 : 0)), fdc.pcn[fdc.drive]);
 #endif
-					discint = 0x102;
-					fdc_poll();
-					return;
-				}
-			}
-			else
-			{
-				if(fdc.track[fdc.drive] != fdc.pcn[fdc.drive])
-				{
-#ifndef RELEASE_BUILD
-					pclog("Wrong cylinder: %i != %i\n", fdc.track[fdc.drive], fdc.pcn[fdc.drive]);
-#endif
-					discint = 0x102;
-					fdc_poll();
-					return;
-				}
+				discint = 0x102;
+				fdc_poll();
+				return;
 			}
 		}
 
-		/* If not XDF, sector ID's are normal so we already point at the correct sector. */
 		sr = fdc_seek_by_id(*(uint32_t *) &(fdc.params[1]), &(fdc.track[fdc.drive]), &(fdc.head[fdc.drive]), &(fdc.sector[fdc.drive]));
 		if (!sr)
 		{
@@ -1866,6 +1851,17 @@ void fdc_readwrite(int mode)
 		fdd[vfdd[fdc.drive]].discmodified = 1;
 	}
 
+	if ((mode == 0) || (mode >= 3))
+	{
+		if (fdc.pcjr || !fdc.dma)
+		{
+			// Return and wait for byte if non-DMA write or scan
+			fdc.stat = 0x90;
+			if (fdc.pcjr || !fdc.dma)  fdc.stat |= 0x20;
+			return;
+		}
+	}
+
 	if (fdc.abort[fdc.drive])
 	{
 		goto rw_result_phase;
@@ -1900,7 +1896,7 @@ void fdc_readwrite(int mode)
 						if (fdc.pcjr || !fdc.dma)
 						{
 							fdc.stat = 0xf0;
-							fifo_buf_write(fdc.dat);
+							if (fdc.fifo)  fifo_buf_write(fdc.dat);
 						}
 						else
 						{
@@ -1915,7 +1911,7 @@ void fdc_readwrite(int mode)
 					if (fdc.pcjr || !fdc.dma)
 					{
 						fdc.stat = 0xb0;
-						fdc.dat = fifo_buf_read();
+						if (fdc.fifo)  fdc.dat = fifo_buf_read();
 					}
 					else
 					{
@@ -2080,6 +2076,7 @@ void fdc_readwrite(int mode)
 					{
 end_of_track:
 						fdc.sector[fdc.drive] = 1;
+#if 0
 						if (fdc.head[fdc.drive])
 						{
 							fdc.head[fdc.drive] = 0;
@@ -2089,6 +2086,7 @@ end_of_track:
 						}
 						else
 							fdc.head[fdc.drive] = 1;
+#endif
 						fdc.pos[fdc.drive] = 0;
 						fdc.abort[fdc.drive] = 1;
 					}
@@ -2126,6 +2124,9 @@ end_of_track:
 rw_break:
 			;
 		}
+
+		if ((fdc.pcjr || !fdc.dma) && ((mode == 0) || (mode >= 3)))  goto rw_result_phase;
+
 		return;
 	}
 	else

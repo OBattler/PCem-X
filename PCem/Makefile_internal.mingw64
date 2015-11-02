@@ -2,7 +2,7 @@ VPATH = . dosbox resid-fp slirp
 CPP  = x86_64-w64-mingw32-g++
 CC   = x86_64-w64-mingw32-gcc
 WINDRES = x86_64-w64-mingw32-windres
-basecflags = -O3 -march=core2 -fomit-frame-pointer -ffast-math -msse -msse2 -msse3 -mssse3 -mfpmath=sse -DDYNAREC
+basecflags = -O3 -march=core2 -mtune=core2 -fomit-frame-pointer -ffast-math -msse -msse2 -msse3 -mssse3 -mfpmath=sse -DDYNAREC
 CXXFLAGS = $(basecflags)
 OBJ = 386.o 386_dynarec.o 386_dynarec_ops.o 808x.o acer386sx.o ali1429.o amstrad.o cdrom-ioctl.o \
 	codegen.o codegen_ops.o codegen_timing_486.o codegen_timing_pentium.o codegen_x86-64.o colorbook_io.o compaq.o config.o cpqio.o cpu.o dac.o \
