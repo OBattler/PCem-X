@@ -34,7 +34,7 @@ PCem-X64.exe: $(OBJ) $(FMOBJ) $(SIDOBJ) $(SLIRPOBJ)
 all : PCem-X64.exe
 
 clean :
-	rm *.o *.exe *.res
+	rm -f *.o *.exe *.res
 
 %.o : %.c
 	$(CC) $(CFLAGS) -c $<
