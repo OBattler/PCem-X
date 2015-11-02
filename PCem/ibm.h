@@ -3,9 +3,6 @@
 #include <string.h>
 #define printf pclog
 
-/* For CPU */
-extern int trap;
-
 /*Memory*/
 uint8_t *ram,*vram;
 

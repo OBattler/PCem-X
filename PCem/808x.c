@@ -1090,8 +1090,6 @@ int skipnextprint=0;
 
 int instime=0;
 
-int trap;
-
 //#if 0
 void execx86(int cycs)
 {
@@ -1102,6 +1100,7 @@ void execx86(int cycs)
         uint32_t templ;
         int c;
         int tempi;
+	int trap;
 
 //        printf("Run x86! %i %i\n",cycles,cycs);
         cycles+=cycs;
