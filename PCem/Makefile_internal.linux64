@@ -33,8 +33,7 @@ pcem-x64: $(OBJ) $(FMOBJ) $(SIDOBJ)
 all : pcem-x64
 
 clean :
-	rm *.o
-	rm pcem-x64
+	rm *.o pcem-x64
 
 %.o : %.c
 	$(CC) $(CFLAGS) -c $<
