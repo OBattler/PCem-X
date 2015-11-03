@@ -76,35 +76,25 @@ FILE *pclogf;
 void pclog(const char *format, ...)
 {
 #ifndef RELEASE_BUILD
-   char buf[1024];
-   //return;
-   if (!pclogf)
-      pclogf=fopen("pclog.txt","wt");
-//return;
    va_list ap;
    va_start(ap, format);
-   vsprintf(buf, format, ap);
+   vprintf(format, ap);
    va_end(ap);
-   fputs(buf,pclogf);
-//fflush(pclogf);
+   fflush(stdout);
 #endif
 }
 
 void fatal(const char *format, ...)
 {
-   char buf[256];
-//   return;
-   if (!pclogf)
-      pclogf=fopen("pclog.txt","wt");
-//return;
    va_list ap;
    va_start(ap, format);
-   vsprintf(buf, format, ap);
+   vprintf(format, ap);
    va_end(ap);
-   fputs(buf,pclogf);
-   fflush(pclogf);
+   closeide();
+   fflush(stdout);
    dumppic();
    dumpregs();
+   fflush(stdout);
    exit(-1);
 }
 
