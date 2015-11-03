@@ -51,7 +51,7 @@ static void flash_write(uint32_t addr, uint8_t val, void *p)
 {
         flash_t *flash = (flash_t *)p;
 	int is_ami = ((romset == ROM_REVENGE) || (romset == ROM_PLATO) || (romset == ROM_ENDEAVOR));
-	int has_dmi = ((romset == ROM_430HX) || (romset == ROM_430VX) || (romset == ROM_430TX) || (romset == ROM_440FX));
+	int has_dmi = ((romset == ROM_430HX) || (romset == ROM_430VX) || (romset == ROM_430TX) || (romset == ROM_440FX) || (romset == ROM_KN97));
 	int is_bxb = ((romset == ROM_ACERV35N) || (romset == ROM_ACERV12LC));
 #ifndef RELEASE_BUILD
         pclog("flash_write : addr=%08x val=%02x command=%02x %04x:%08x\n", addr, val, flash->command, CS, pc);        
@@ -180,7 +180,7 @@ static void flash_write(uint32_t addr, uint8_t val, void *p)
                         break;
                         
                         case CMD_READ_ARRAY:
-			if ((is_ami || is_bxb) || (romset == ROM_430HX) || (romset == ROM_430TX))
+			if ((is_ami || is_bxb) || (romset == ROM_430HX) || (romset == ROM_430TX) || (romset == ROM_KN97))
 			{
                         	mem_mapping_enable(&bios_mapping[0]);
                 	        mem_mapping_enable(&bios_mapping[1]);
@@ -263,6 +263,9 @@ static void configure_path()
 		case ROM_440FX:
 			path = "roms/440fx/";
 			break;
+		case ROM_KN97:
+			path = "roms/kn97/";
+			break;
 	}
 }
 
@@ -270,7 +273,7 @@ void flash_1mbit_readfiles()
 {
         FILE *f;
 	int is_ami = ((romset == ROM_REVENGE) || (romset == ROM_PLATO) || (romset == ROM_ENDEAVOR));
-	int has_dmi = ((romset == ROM_430HX) || (romset == ROM_430VX) || (romset == ROM_430TX) || (romset == ROM_440FX));
+	int has_dmi = ((romset == ROM_430HX) || (romset == ROM_430VX) || (romset == ROM_430TX) || (romset == ROM_440FX) || (romset == ROM_KN97));
 	int is_bxb = ((romset == ROM_ACERV35N) || (romset == ROM_ACERV12LC));
 
         memset(&rom[is_ami ? 0xd000 : (is_bxb ? 0x2000 : 0x1d000)], 0xFF, 0x1000);
@@ -305,7 +308,7 @@ void *intel_flash_init()
         FILE *f;
         flash_t *flash = malloc(sizeof(flash_t));
 	int is_ami = ((romset == ROM_REVENGE) || (romset == ROM_PLATO) || (romset == ROM_ENDEAVOR));
-	int has_dmi = ((romset == ROM_430HX) || (romset == ROM_430VX) || (romset == ROM_430TX) || (romset == ROM_440FX));
+	int has_dmi = ((romset == ROM_430HX) || (romset == ROM_430VX) || (romset == ROM_430TX) || (romset == ROM_440FX) || (romset == ROM_KN97));
 	int is_bxb = ((romset == ROM_ACERV35N) || (romset == ROM_ACERV12LC));
         memset(flash, 0, sizeof(flash_t));
 
@@ -394,7 +397,7 @@ void intel_flash_close(void *p)
         FILE *f;
         flash_t *flash = (flash_t *)p;
 	int is_ami = ((romset == ROM_REVENGE) || (romset == ROM_PLATO) || (romset == ROM_ENDEAVOR));
-	int has_dmi = ((romset == ROM_430HX) || (romset == ROM_430VX) || (romset == ROM_430TX) || (romset == ROM_440FX));
+	int has_dmi = ((romset == ROM_430HX) || (romset == ROM_430VX) || (romset == ROM_430TX) || (romset == ROM_440FX) || (romset == ROM_KN97));
 	int is_bxb = ((romset == ROM_ACERV35N) || (romset == ROM_ACERV12LC));
 
 	if (closed)  return;

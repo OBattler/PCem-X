@@ -745,6 +745,17 @@ int loadbios()
 		flash_1mbit_readfiles();
                 return 1;
 
+                case ROM_KN97:
+		f = romfopen("roms/kn97/NAKI0116.AWD", "rb");
+                if (!f) break;
+                fread(rom,           0x20000, 1, f);                
+                fclose(f);
+                biosmask = 0x1ffff;
+                //is486=1;
+		biostype = BIOS_AWARD;
+		flash_1mbit_readfiles();
+                return 1;
+
 #ifdef BROKEN_CHIPSETS
                 case ROM_PCI486:
                 f=romfopen("roms/hot-433/hot-433.ami","rb");               
@@ -1458,8 +1469,9 @@ uint16_t readmemwl(uint32_t seg, uint32_t addr)
         }
         if (seg==-1)
         {
-                x86gpf("NULL segment", 0);
-                printf("NULL segment! rw %04X(%08X):%08X %02X %08X\n",CS,cs,pc,opcode,addr);
+                // x86gpf("NULL segment", 0);
+                // printf("NULL segment! rw %04X(%08X):%08X %02X %08X\n",CS,cs,pc,opcode,addr);
+		return 0xffff;
                 return -1;
         }
         if (cr0>>31)

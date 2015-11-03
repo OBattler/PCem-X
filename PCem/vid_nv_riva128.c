@@ -528,13 +528,16 @@ static void riva128_pci_write(int func, int addr, uint8_t val, void *p)
     return;
 
     case PCI_REG_COMMAND:
+    if (romset == ROM_KN97)  return;
     if (val & PCI_COMMAND_IO)
     {
       io_removehandler(0x03c0, 0x0020, riva128_in, NULL, NULL, riva128_out, NULL, NULL, riva128);
       io_sethandler(0x03c0, 0x0020, riva128_in, NULL, NULL, riva128_out, NULL, NULL, riva128);
     }
     else
+    {
       io_removehandler(0x03c0, 0x0020, riva128_in, NULL, NULL, riva128_out, NULL, NULL, riva128);
+    }
     riva128->pci_regs[PCI_REG_COMMAND] = val & 0x37;
     return;
 

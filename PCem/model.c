@@ -103,6 +103,7 @@ void     at_i430hx_init();
 void     at_i430vx_init();
 void     at_i430tx_init();
 void     at_i440fx_init();
+void       at_kn97_init();
 #ifdef BROKEN_CHIPSETS
 void    at_um8881f_init();
 void     at_apollo_init();
@@ -177,6 +178,7 @@ MODEL models[] =
         {"Award 430VX PCI",     ROM_430VX,     { "Intel", cpus_Pentium, "IDT", cpus_WinChip, "AMD",   cpus_K6},      0,    at_i430vx_init},
         {"Award 430TX PCI",     ROM_430TX,     { "Intel", cpus_Pentium, "IDT", cpus_WinChip, "AMD",   cpus_K6},      0,    at_i430tx_init},
         {"Award 440FX PCI",     ROM_440FX,     { "Intel", cpus_PentiumPro,"Klamath",    cpus_Pentium2,         "Deschut.",      cpus_Pentium2D},         0,    at_i440fx_init},
+        {"Award KN97 (440FX PCI)",ROM_KN97,    { "Intel", cpus_PentiumPro,"Klamath",    cpus_Pentium2,         "Deschut.",      cpus_Pentium2D},         0,    at_kn97_init},
 #ifdef BROKEN_CHIPSETS
         {"AMI Goliath 730 PCI", ROM_GOLIATH,   { "Intel", cpus_PentiumPro,"Klamath",    cpus_Pentium2,         "Deschut.",      cpus_Pentium2D},         0,    at_i440fx_init},
         {"Award 440BX PCI",     ROM_440BX,     { "Intel", cpus_Pentium2,"Deschut.",    cpus_Pentium2D,         "",      NULL},         0,    at_i440bx_init},
@@ -648,6 +650,20 @@ void at_i440fx_init()
 	/* Note by OBattler: Switched to a BIOS using that Super I/O chip because it's better than UMC. */
 	// fdc37c669_init();
 	fdc37c665_init();
+        device_add(&intel_flash_device);
+}
+
+void at_kn97_init()
+{
+	maxide = 4;
+        at_init();
+	maxide = 4;
+	mouse_ps2_init();
+        pci_init(PCI_CONFIG_TYPE_1, 0, 31);
+        i440fx_init();
+	piix_type = 3;
+        piix_init(7);
+	w83877f_init();
         device_add(&intel_flash_device);
 }
 
