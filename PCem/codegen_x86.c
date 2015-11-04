@@ -60,10 +60,10 @@ void codegen_init()
 {
         int c;
 #ifdef __linux__
-	void *start;
-	size_t len;
-	long pagesize = sysconf(_SC_PAGESIZE);
-	long pagemask = ~(pagesize - 1);
+        void *start;
+        size_t len;
+        long pagesize = sysconf(_SC_PAGESIZE);
+        long pagemask = ~(pagesize - 1);
 #endif
         
 #if defined WIN32 || defined _WIN32 || defined _WIN32
@@ -77,13 +77,13 @@ void codegen_init()
         memset(codeblock_hash, 0, HASH_SIZE * sizeof(codeblock_t *));
 
 #ifdef __linux__
-	start = (void *)((long)codeblock & pagemask);
-	len = ((BLOCK_SIZE * sizeof(codeblock_t)) + pagesize) & pagemask;
-	if (mprotect(start, len, PROT_READ | PROT_WRITE | PROT_EXEC) != 0)
-	{
-		perror("mprotect");
-		exit(-1);
-	}
+        start = (void *)((long)codeblock & pagemask);
+        len = ((BLOCK_SIZE * sizeof(codeblock_t)) + pagesize) & pagemask;
+        if (mprotect(start, len, PROT_READ | PROT_WRITE | PROT_EXEC) != 0)
+        {
+                perror("mprotect");
+                exit(-1);
+        }
 #endif
 //        pclog("Codegen is %p\n", (void *)pages[0xfab12 >> 12].block);
 }
@@ -502,14 +502,14 @@ int opcode_0f_modrm[256] =
         1, 1, 1, 1,  1, 1, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, /*20*/
         0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, /*30*/
 
-        0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, /*40*/
+        1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1, /*40*/
         0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, /*50*/
         1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  0, 0, 1, 1, /*60*/
         0, 1, 1, 1,  1, 1, 1, 0,  0, 0, 0, 0,  0, 0, 1, 1, /*70*/
 
         0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, /*80*/
         1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1, /*90*/
-        0, 0, 0, 1,  1, 1, 0, 0,  0, 0, 0, 1,  1, 1, 0, 1, /*a0*/
+        0, 0, 0, 1,  1, 1, 0, 0,  0, 0, 0, 1,  1, 1, 1, 1, /*a0*/
         1, 1, 1, 1,  1, 1, 1, 1,  0, 0, 1, 1,  1, 1, 1, 1, /*b0*/
 
         1, 1, 0, 0,  0, 0, 0, 1,  0, 0, 0, 0,  0, 0, 0, 0, /*c0*/

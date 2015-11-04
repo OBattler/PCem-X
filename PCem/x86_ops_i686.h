@@ -317,12 +317,14 @@ static int opFXSAVESTOR_a16(uint32_t fetchdat)
 
 	if (CPUID < 0x650)  return ILLEGAL(fetchdat);
 
+	FP_ENTER();
+
 	fetch_ea_16(fetchdat);
 
 	if (eaaddr & 0xf)
 	{
 		pclog("Effective address %04X not on 16-byte boundary\n", eaaddr);
-		x86gpf(NULL, 0xD);
+		x86gpf(NULL, 0);
 		return 1;
 	}
 
@@ -356,10 +358,7 @@ static int opFXSAVESTOR_a16(uint32_t fetchdat)
 
 		/* foo = readmemw(easeg, eaaddr + 6) & 0x7FF; */
 
-		if (cr0 & 1)
-                	x87_pc_off = readmeml(easeg, eaaddr+8);
-		else
-                	x87_pc_off = readmemw(easeg, eaaddr+8);
+               	x87_pc_off = readmeml(easeg, eaaddr+8);
                 x87_pc_seg = readmemw(easeg, eaaddr+12);
 		/* if (cr0 & 1)
 		{
@@ -378,10 +377,8 @@ static int opFXSAVESTOR_a16(uint32_t fetchdat)
 		if (ftwb & 0x40)  rec_ftw |= 0x3000;
 		if (ftwb & 0x80)  rec_ftw |= 0xC000;
 
-		if (cr0 & 1)
-                	x87_op_off = readmeml(easeg, eaaddr+16);
-		else
-                	x87_op_off = readmemw(easeg, eaaddr+16);
+               	x87_op_off = readmeml(easeg, eaaddr+16);
+		x87_op_off |= (readmemw(easeg, eaaddr + 6) >> 12) << 16;
                 x87_op_seg = readmemw(easeg, eaaddr+20);
 		/* if (cr0 & 1)
 		{
@@ -446,16 +443,10 @@ static int opFXSAVESTOR_a16(uint32_t fetchdat)
                 writememb(easeg,eaaddr+4,ftwb);
 
                 writememw(easeg,eaaddr+6,(x87_op_off>>16)<<12);
-		if (cr0 & 1)
-                	writememl(easeg,eaaddr+8,x87_pc_off);
-		else
-                	writememw(easeg,eaaddr+8,x87_pc_off);
+               	writememl(easeg,eaaddr+8,x87_pc_off);
                 writememw(easeg,eaaddr+12,x87_pc_seg);
 
-		if (cr0 & 1)
-	                writememl(easeg,eaaddr+16,x87_op_off);
-		else
-	                writememw(easeg,eaaddr+16,x87_op_off);
+                writememl(easeg,eaaddr+16,x87_op_off);
                 writememw(easeg,eaaddr+20,x87_op_seg);
 
 		eaaddr = old_eaaddr + 32;
@@ -504,12 +495,14 @@ static int opFXSAVESTOR_a32(uint32_t fetchdat)
 
 	if (CPUID < 0x650)  return ILLEGAL(fetchdat);
 
+	FP_ENTER();
+
 	fetch_ea_32(fetchdat);
 
 	if (eaaddr & 0xf)
 	{
 		pclog("Effective address %08X not on 16-byte boundary\n", eaaddr);
-		x86gpf(NULL, 0xD);
+		x86gpf(NULL, 0);
 		return 1;
 	}
 
@@ -543,10 +536,7 @@ static int opFXSAVESTOR_a32(uint32_t fetchdat)
 
 		/* foo = readmemw(easeg, eaaddr + 6) & 0x7FF; */
 
-		if (cr0 & 1)
-                	x87_pc_off = readmeml(easeg, eaaddr+8);
-		else
-                	x87_pc_off = readmemw(easeg, eaaddr+8);
+               	x87_pc_off = readmeml(easeg, eaaddr+8);
                 x87_pc_seg = readmemw(easeg, eaaddr+12);
 		/* if (cr0 & 1)
 		{
@@ -565,10 +555,8 @@ static int opFXSAVESTOR_a32(uint32_t fetchdat)
 		if (ftwb & 0x40)  rec_ftw |= 0x3000;
 		if (ftwb & 0x80)  rec_ftw |= 0xC000;
 
-		if (cr0 & 1)
-                	x87_op_off = readmeml(easeg, eaaddr+16);
-		else
-                	x87_op_off = readmemw(easeg, eaaddr+16);
+               	x87_op_off = readmeml(easeg, eaaddr+16);
+		x87_op_off |= (readmemw(easeg, eaaddr + 6) >> 12) << 16;
                 x87_op_seg = readmemw(easeg, eaaddr+20);
 		/* if (cr0 & 1)
 		{
@@ -633,16 +621,10 @@ static int opFXSAVESTOR_a32(uint32_t fetchdat)
                 writememb(easeg,eaaddr+4,ftwb);
 
                 writememw(easeg,eaaddr+6,(x87_op_off>>16)<<12);
-		if (cr0 & 1)
-                	writememl(easeg,eaaddr+8,x87_pc_off);
-		else
-                	writememw(easeg,eaaddr+8,x87_pc_off);
+               	writememl(easeg,eaaddr+8,x87_pc_off);
                 writememw(easeg,eaaddr+12,x87_pc_seg);
 
-		if (cr0 & 1)
-	                writememl(easeg,eaaddr+16,x87_op_off);
-		else
-	                writememw(easeg,eaaddr+16,x87_op_off);
+                writememl(easeg,eaaddr+16,x87_op_off);
                 writememw(easeg,eaaddr+20,x87_op_seg);
 
 		eaaddr = old_eaaddr + 32;
