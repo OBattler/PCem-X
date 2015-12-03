@@ -13,7 +13,7 @@ static ATAPI iso_atapi;
 static uint32_t last_block = 0;
 static uint64_t image_size = 0;
 static int iso_inited = 0;
-static char iso_path[255];
+static char iso_path[1024];
 static void iso_close(void);
 static FILE* iso_image;
 
@@ -21,7 +21,6 @@ static uint32_t iso_cd_pos = 0, iso_cd_end = 0;
 
 void ioctl_audio_callback(int16_t *output, int len)
 {
-    pclog("ioctl_audio_callback stub\n");
     memset(output, 0, len * 2);
     return;
 }
@@ -158,16 +157,16 @@ static int iso_readtoc(unsigned char *buf, unsigned char start_track, int msf, i
     *q++ = 0x16; /* ADR, control */
     *q++ = 0xaa; /* track number */
     *q++ = 0; /* reserved */
-    uint64_t nb_sectors = image_size / 2048;
+    last_block = image_size >> 11;
     if (msf) {
         *q++ = 0; /* reserved */
-        lba_to_msf(q, nb_sectors);
+        lba_to_msf(q, last_block);
         q += 3;
     } else {
-        *q++ = nb_sectors >> 24;
-        *q++ = nb_sectors >> 16;
-        *q++ = nb_sectors >> 8;
-        *q++ = nb_sectors;
+        *q++ = last_block >> 24;
+        *q++ = last_block >> 16;
+        *q++ = last_block >> 8;
+        *q++ = last_block;
     }
     len = q - buf;
     buf[0] = (uint8_t)(((len-2) >> 8) & 0xff);
@@ -233,12 +232,12 @@ static int iso_readtoc_raw(unsigned char *buf, int maxlen)
     *q++ = 0; /* min */
     *q++ = 0; /* sec */
     *q++ = 0; /* frame */
-    uint64_t nb_sectors = image_size / 2048;
+    last_block = image_size >> 11;
     /* is this supposed to lba or msb? */
-    *q++ = nb_sectors >> 24;
-    *q++ = nb_sectors >> 16;
-    *q++ = nb_sectors >> 8;
-    *q++ = nb_sectors;
+    *q++ = last_block >> 24;
+    *q++ = last_block >> 16;
+    *q++ = last_block >> 8;
+    *q++ = last_block;
 
     *q++ = 1; /* session number */
     *q++ = 0x14; /* ADR, control */
