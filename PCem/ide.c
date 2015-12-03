@@ -689,7 +689,8 @@ void resetide(void)
 		if (ide_drives[i].type == IDE_HDD)
 		{
 			hds_count++;
-			fclose(ide_drives[d].hdfile);
+			if (ide_drives[d].hdfile != NULL)
+				fclose(ide_drives[d].hdfile);
 			ide_drives[d].hdfile = NULL;
 			ide_drives[d].type = IDE_NONE;
 		}
