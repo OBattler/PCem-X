@@ -62,10 +62,10 @@ void codegen_init()
 {
         int c;
 #ifdef __linux__
-	void *start;
-	size_t len;
-	long pagesize = sysconf(_SC_PAGESIZE);
-	long pagemask = ~(pagesize - 1);
+        void *start;
+        size_t len;
+        long pagesize = sysconf(_SC_PAGESIZE);
+        long pagemask = ~(pagesize - 1);
 #endif
         
 #if WIN64
@@ -79,13 +79,13 @@ void codegen_init()
         memset(codeblock_hash, 0, HASH_SIZE * sizeof(codeblock_t *));
 
 #ifdef __linux__
-	start = (void *)((long)codeblock & pagemask);
-	len = ((BLOCK_SIZE * sizeof(codeblock_t)) + pagesize) & pagemask;
-	if (mprotect(start, len, PROT_READ | PROT_WRITE | PROT_EXEC) != 0)
-	{
-		perror("mprotect");
-		exit(-1);
-	}
+        start = (void *)((long)codeblock & pagemask);
+        len = ((BLOCK_SIZE * sizeof(codeblock_t)) + pagesize) & pagemask;
+        if (mprotect(start, len, PROT_READ | PROT_WRITE | PROT_EXEC) != 0)
+        {
+                perror("mprotect");
+                exit(-1);
+        }
 #endif
 //        pclog("Codegen is %p\n", (void *)pages[0xfab12 >> 12].block);
 }
@@ -238,9 +238,9 @@ void codegen_block_init(uint32_t phys_addr)
         addbyte(0x31); /*XOR ESI, ESI*/
         addbyte(0xf6);
 #endif
-	call(block, (uintptr_t)x86gpf);
-	while (block_pos < BLOCK_EXIT_OFFSET)
-	       addbyte(0x90); /*NOP*/
+        call(block, (uintptr_t)x86gpf);
+        while (block_pos < BLOCK_EXIT_OFFSET)
+               addbyte(0x90); /*NOP*/
         block_pos = BLOCK_EXIT_OFFSET; /*Exit code*/
         addbyte(0x48); /*ADDL $32,%rsp*/
         addbyte(0x83);
@@ -543,14 +543,14 @@ int opcode_0f_modrm[256] =
         1, 1, 1, 1,  1, 1, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, /*20*/
         0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, /*30*/
 
-        0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, /*40*/
+        1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1, /*40*/
         0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, /*50*/
         1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  0, 0, 1, 1, /*60*/
         0, 1, 1, 1,  1, 1, 1, 0,  0, 0, 0, 0,  0, 0, 1, 1, /*70*/
 
         0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, /*80*/
         1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1, /*90*/
-        0, 0, 0, 1,  1, 1, 0, 0,  0, 0, 0, 1,  1, 1, 0, 1, /*a0*/
+        0, 0, 0, 1,  1, 1, 0, 0,  0, 0, 0, 1,  1, 1, 1, 1, /*a0*/
         1, 1, 1, 1,  1, 1, 1, 1,  0, 0, 1, 1,  1, 1, 1, 1, /*b0*/
 
         1, 1, 0, 0,  0, 0, 0, 1,  0, 0, 0, 0,  0, 0, 0, 0, /*c0*/
@@ -1199,8 +1199,8 @@ generate_call:
                 addlong(op_32);
         }
 
-	load_param_1_32(block, fetchdat);
-	call(block, (uintptr_t)op);  
+        load_param_1_32(block, fetchdat);
+        call(block, (uintptr_t)op);  
 
         codegen_block_ins++;
         
@@ -1211,7 +1211,7 @@ generate_call:
         addbyte(0x0F); addbyte(0x85); /*JNZ 0*/
         addlong((uint32_t)&block->data[BLOCK_EXIT_OFFSET] - (uint32_t)(&block->data[block_pos + 4]));
 
-//	call(block, codegen_debug);
+//      call(block, codegen_debug);
 
         codegen_endpc = (cs + pc) + 8;
 }

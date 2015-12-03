@@ -3,9 +3,6 @@
 #include <string.h>
 #define printf pclog
 
-/* For CPU */
-extern int trap;
-
 /*Memory*/
 uint8_t *ram,*vram;
 
@@ -341,6 +338,7 @@ enum
 	ROM_ACERV35N,
 	ROM_PLATO,
 	ROM_ACERV12LC,
+	ROM_KN97,
 #ifdef BROKEN_CHIPSETS
         ROM_MISC286,
 	ROM_APOLLO,

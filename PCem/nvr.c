@@ -360,6 +360,7 @@ void loadnvr()
                 case ROM_430VX:      f = romfopen("430vx-x.nvr",    "rb"); nvrmask = 127; break;
                 case ROM_430TX:      f = romfopen("430tx.nvr",      "rb"); nvrmask = 127; break;
                 case ROM_440FX:      f = romfopen("440fx.nvr",      "rb"); nvrmask = 127; break;
+                case ROM_KN97:       f = romfopen("kn97.nvr",       "rb"); nvrmask = 127; break;
 #ifdef BROKEN_CHIPSETS
                 case ROM_PCI486:     f = romfopen("hot-433.nvr",    "rb"); nvrmask = 127; break;
                 case ROM_APOLLO:     f = romfopen("apollo.nvr",     "rb"); nvrmask = 127; break;
@@ -423,6 +424,7 @@ void savenvr()
                 case ROM_430VX:      f = romfopen("430vx-x.nvr",    "wb"); break;
                 case ROM_430TX:      f = romfopen("430tx.nvr",      "wb"); break;
                 case ROM_440FX:      f = romfopen("440fx.nvr",      "wb"); break;
+                case ROM_KN97:       f = romfopen("kn97.nvr",       "wb"); break;
 #ifdef BROKEN_CHIPSETS
                 case ROM_PCI486:     f = romfopen("hot-433.nvr",    "wb"); break;
                 case ROM_APOLLO:     f = romfopen("apollo.nvr",     "wb"); break;

@@ -2203,11 +2203,14 @@ void mach64_pci_write(int func, int addr, uint8_t val, void *p)
         switch (addr)
         {
                 case PCI_REG_COMMAND:
+		if (romset == ROM_KN97)  return;
                 mach64->pci_regs[PCI_REG_COMMAND] = val & 0x27;
                 if (val & PCI_COMMAND_IO)
                         mach64_io_set(mach64);
                 else
+		{
                         mach64_io_remove(mach64);
+		}
                 mach64_updatemapping(mach64);
                 break;
 

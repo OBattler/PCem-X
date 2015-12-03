@@ -106,7 +106,9 @@ uint64_t ecx11x_msr[4] = {0, 0, 0, 0};
 uint64_t ecx11e_msr = 0;
 uint64_t ecx1e0_msr = 0;
 
-/* AMD K6 MSR's. */
+/* AMD K5 and K6 MSR's. */
+uint64_t ecx83_msr = 0;
+/* These are K6-only. */
 uint64_t star = 0;
 uint64_t sfmask = 0;
 
@@ -403,9 +405,37 @@ CPU cpus_Pentium[] =
         {"",             -1,        0, 0, 0}
 };
 
-CPU cpus_K6[] =
+CPU cpus_K5[] =
 {
-        /*AMD K6*/
+        /*AMD K5 (Socket 5)*/
+        {"K5 (5k86) 75 (P75)",    CPU_K5,     9,  75000000, 1.50, 25000000, 0x500, 0x500, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"K5 (SSA/5) 75 (PR75)",  CPU_K5,     9,  75000000, 1.50, 25000000, 0x501, 0x501, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"K5 (5k86) 90 (P90)",    CPU_K5,    12,  90000000, 1.50, 30000000, 0x500, 0x500, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"K5 (SSA/5) 90 (PR90)",  CPU_K5,    12,  90000000, 1.50, 30000000, 0x501, 0x501, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"K5 (5k86) 100 (P100)",  CPU_K5,    13, 100000000, 1.50, 33333333, 0x500, 0x500, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"K5 (SSA/5) 100 (PR100)",CPU_K5,    13, 100000000, 1.50, 33333333, 0x501, 0x501, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"K5 (5k86) 90 (PR120)",  CPU_5K86,  14, 120000000, 2.00, 30000000, 0x511, 0x511, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"K5 (5k86) 100 (PR133)", CPU_5K86,  16, 133333333, 2.00, 33333333, 0x514, 0x514, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"K5 (5k86) 105 (PR150)", CPU_5K86,  17, 150000000, 2.50, 30000000, 0x524, 0x524, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"K5 (5k86) 116.5 (PR166)",CPU_5K86,  19, 166666666, 2.50, 33333333, 0x524, 0x524, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"K5 (5k86) 133 (PR200)", CPU_5K86,  21, 200000000, 3.00, 33333333, 0x534, 0x534, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"",             -1,        0, 0, 0}
+};
+
+CPU cpus_K56[] =
+{
+        /*AMD K5 and K6 (Socket 7)*/
+        {"K5 (5k86) 75 (P75)",    CPU_K5,     9,  75000000, 1.50, 25000000, 0x500, 0x500, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"K5 (SSA/5) 75 (PR75)",  CPU_K5,     9,  75000000, 1.50, 25000000, 0x501, 0x501, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"K5 (5k86) 90 (P90)",    CPU_K5,    12,  90000000, 1.50, 30000000, 0x500, 0x500, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"K5 (SSA/5) 90 (PR90)",  CPU_K5,    12,  90000000, 1.50, 30000000, 0x501, 0x501, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"K5 (5k86) 100 (P100)",  CPU_K5,    13, 100000000, 1.50, 33333333, 0x500, 0x500, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"K5 (SSA/5) 100 (PR100)",CPU_K5,    13, 100000000, 1.50, 33333333, 0x501, 0x501, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"K5 (5k86) 90 (PR120)",  CPU_5K86,  14, 120000000, 2.00, 30000000, 0x511, 0x511, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"K5 (5k86) 100 (PR133)", CPU_5K86,  16, 133333333, 2.00, 33333333, 0x514, 0x514, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"K5 (5k86) 105 (PR150)", CPU_5K86,  17, 150000000, 2.50, 30000000, 0x524, 0x524, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"K5 (5k86) 116.5 (PR166)",CPU_5K86,  19, 166666666, 2.50, 33333333, 0x524, 0x524, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"K5 (5k86) 133 (PR200)", CPU_5K86,  21, 200000000, 3.00, 33333333, 0x534, 0x534, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
         {"K6 (Model 6) 166",      CPU_K6,    19, 166666666, 2.50, 33333333, 0x562, 0x562, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
         {"K6 (Model 6) 200",      CPU_K6,    21, 200000000, 3.00, 33333333, 0x562, 0x562, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
         {"K6 (Model 6) 233",      CPU_K6,    24, 233333333, 3.50, 33333333, 0x562, 0x562, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
@@ -426,19 +456,19 @@ CPU cpus_PentiumPro[] =
         {"Pentium II Overdrive 210",  CPU_PENTIUM2D, 22, 210000000, 3.50, 30000000, 0x1632, 0x1632, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
         {"Pentium II Overdrive 233",  CPU_PENTIUM2D, 24, 233333333, 3.50, 33333333, 0x1632, 0x1632, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
         {"Pentium II Overdrive 240",  CPU_PENTIUM2D, 25, 240000000, 4.00, 30000000, 0x1632, 0x1632, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
-        {"Pentium II Overdrive 266",  CPU_PENTIUM2D, 26, 266666666, 4.00, 33333333, 0x1633, 0x1633, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
-        {"Pentium II Overdrive 270",  CPU_PENTIUM2D, 27, 270000000, 4.50, 30000000, 0x1633, 0x1633, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
-        {"Pentium II Overdrive 300/66",CPU_PENTIUM2D, 28, 300000000, 4.50, 33333333, 0x1634, 0x1634, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
-        {"Pentium II Overdrive 300/60",CPU_PENTIUM2D, 28, 300000000, 5.00, 30000000, 0x1634, 0x1634, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
-        {"Pentium II Overdrive 333",  CPU_PENTIUM2D, 29, 333333333, 5.00, 33333333, 0x1634, 0x1634, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium II Overdrive 266",  CPU_PENTIUM2D, 26, 266666666, 4.00, 33333333, 0x1632, 0x1632, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium II Overdrive 270",  CPU_PENTIUM2D, 27, 270000000, 4.50, 30000000, 0x1632, 0x1632, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium II Overdrive 300/66",CPU_PENTIUM2D, 28, 300000000, 4.50, 33333333, 0x1632, 0x1632, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium II Overdrive 300/60",CPU_PENTIUM2D, 28, 300000000, 5.00, 30000000, 0x1632, 0x1632, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium II Overdrive 333",  CPU_PENTIUM2D, 29, 333333333, 5.00, 33333333, 0x1632, 0x1632, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
         {"",             -1,        0, 0, 0}
 };
 
 CPU cpus_Pentium2[] =
 {
         /*Intel Pentium II Klamath*/
-        {"Pentium II 233",  CPU_PENTIUM2, 24, 233333333, 3.50, 33333333, 0x634, 0x634, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
-        {"Pentium II 266",  CPU_PENTIUM2, 26, 266666666, 4.00, 33333333, 0x634, 0x634, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium II 233",  CPU_PENTIUM2, 24, 233333333, 3.50, 33333333, 0x632, 0x632, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
+        {"Pentium II 266",  CPU_PENTIUM2, 26, 266666666, 4.00, 33333333, 0x633, 0x633, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
         {"Pentium II 300",  CPU_PENTIUM2, 28, 300000000, 4.50, 33333333, 0x634, 0x634, 0, CPU_SUPPORTS_DYNAREC | CPU_REQUIRES_DYNAREC},
         {"",             -1,        0, 0, 0}
 };
@@ -786,6 +816,26 @@ void cpu_set()
                 codegen_timing_set(&codegen_timing_pentium);
                 break;
 
+                case CPU_K5:
+                case CPU_5K86:
+                x86_setopcodes(ops_386, ops_k6_0f, dynarec_ops_386, dynarec_ops_k6_0f);
+                timing_rr  = 1; /*register dest - register src*/
+                timing_rm  = 2; /*register dest - memory src*/
+                timing_mr  = 3; /*memory dest   - register src*/
+                timing_mm  = 3;
+                timing_rml = 2; /*register dest - memory src long*/
+                timing_mrl = 3; /*memory dest   - register src long*/
+                timing_mml = 3;
+                timing_bt  = 0; /*branch taken*/
+                timing_bnt = 1; /*branch not taken*/
+                cpu_hasrdtsc = 1;
+                msr.fcr = (1 << 8) | (1 << 9) | (1 << 12) |  (1 << 16) | (1 << 19) | (1 << 21);
+                cpu_hasMMX = 1;
+                cpu_hasMSR = 1;
+                cpu_hasCR4 = 1;
+                cpu_CR4_mask = CR4_TSD | CR4_DE | CR4_MCE | CR4_PCE;
+                break;
+
                 case CPU_K6:
                 x86_setopcodes(ops_386, ops_k6_0f, dynarec_ops_386, dynarec_ops_k6_0f);
                 timing_rr  = 1; /*register dest - register src*/
@@ -982,6 +1032,76 @@ void cpu_CPUID()
 			EDX = 0x0C040843;
 		}
 #endif
+                else
+                        EAX = 0;
+                break;
+
+                case CPU_K5:
+                if (!EAX)
+                {
+                        EAX = 0x00000001;
+                        EBX = 0x68747541;
+                        EDX = 0x69746E65;
+                        ECX = 0x444D4163;
+                }
+                else if (EAX == 1)
+                {
+                        EAX = CPUID;
+                        EBX = ECX = 0;
+                        EDX = CPUID_FPU | CPUID_TSC | CPUID_MSR | CPUID_CMPXCHG8B;
+                }
+                else
+                        EAX = 0;
+                break;
+
+                case CPU_5K86:
+                if (!EAX)
+                {
+                        EAX = 0x00000001;
+                        EBX = 0x68747541;
+                        EDX = 0x69746E65;
+                        ECX = 0x444D4163;
+                }
+                else if (EAX == 1)
+                {
+                        EAX = CPUID;
+                        EBX = ECX = 0;
+                        EDX = CPUID_FPU | CPUID_TSC | CPUID_MSR | CPUID_CMPXCHG8B;
+                }
+                else if (EAX == 0x80000000)
+                {
+                        EAX = 0x80000005;
+                        EBX = ECX = EDX = 0;
+                }
+                else if (EAX == 0x80000001)
+                {
+                        EAX = CPUID;
+                        EBX = ECX = 0;
+                        EDX = CPUID_FPU | CPUID_TSC | CPUID_MSR | CPUID_CMPXCHG8B;
+                }
+		else if (EAX == 0x80000002)
+		{
+			EAX = 0x2D444D41;
+			EBX = 0x7428354B;
+			ECX = 0x5020296D;
+			EDX = 0x65636F72;
+		}
+		else if (EAX == 0x80000003)
+		{
+			EAX = 0x726F7373;
+			EBX = ECX = EDX = 0;
+		}
+		else if (EAX == 0x80000004)
+		{
+			EAX = EBX = ECX = EDX = 0;
+		}
+		else if (EAX == 0x80000005)
+		{
+			EAX = 0;
+			EBX = 0x04800000;
+			ECX = 0x08040120;
+			EDX = 0x10040120;
+		}
                 else
                         EAX = 0;
                 break;
@@ -1184,6 +1304,8 @@ void cpu_RDMSR()
                 }
                 break;
 
+                case CPU_K5:
+                case CPU_5K86:
                 case CPU_K6:
                 EAX = EDX = 0;
                 switch (ECX)
@@ -1194,6 +1316,10 @@ void cpu_RDMSR()
                         case 0x10:
                         EAX = tsc & 0xffffffff;
                         EDX = tsc >> 32;
+                        break;
+                        case 0x83:
+                        EAX = ecx83_msr & 0xffffffff;
+                        EDX = ecx83_msr >> 32;
                         break;
                         case 0xC0000081:
                         EAX = star & 0xffffffff;
@@ -1391,6 +1517,8 @@ void cpu_WRMSR()
                         break;
                 }
                 break;
+                case CPU_K5:
+                case CPU_5K86:
                 case CPU_K6:
                 switch (ECX)
                 {
@@ -1400,6 +1528,9 @@ void cpu_WRMSR()
                         case 0x10:
                         tsc = EAX | ((uint64_t)EDX << 32);
                         break;
+			case 0x83:
+			ecx83_msr = EAX | ((uint64_t)EDX << 32);
+			break;
 			case 0xC0000081:
 			star = EAX | ((uint64_t)EDX << 32);
 			break;

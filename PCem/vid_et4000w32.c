@@ -1022,11 +1022,14 @@ void et4000w32p_pci_write(int func, int addr, uint8_t val, void *p)
         switch (addr)
         {
                 case PCI_REG_COMMAND:
+		if (romset == ROM_KN97)  return;
                 et4000->pci_regs[PCI_REG_COMMAND] = val & 0x27;
                 if (val & PCI_COMMAND_IO)
                         et4000w32p_io_set(et4000);
                 else
+		{
                         et4000w32p_io_remove(et4000);
+		}
                 et4000w32p_recalcmapping(et4000);
                 break;
 

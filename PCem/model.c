@@ -103,6 +103,7 @@ void     at_i430hx_init();
 void     at_i430vx_init();
 void     at_i430tx_init();
 void     at_i440fx_init();
+void       at_kn97_init();
 #ifdef BROKEN_CHIPSETS
 void    at_um8881f_init();
 void     at_apollo_init();
@@ -164,23 +165,24 @@ MODEL models[] =
         {"Award SiS 496/497",   ROM_SIS496,    { "Intel", cpus_i486,    "AMD", cpus_Am486,   "Cyrix", cpus_Cx486},   0,    at_sis496_init},
         {"Intel Premiere/PCI",  ROM_REVENGE,   { "Intel", cpus_Pentium5V, "",  NULL,         "",      NULL},         0,    at_batman_init},
         {"Award 430LX PCI",     ROM_430LX,     { "Intel", cpus_Pentium5V, "",  NULL,         "",      NULL},         0,    at_i430lx_init},
-        {"Acer V12LC",          ROM_ACERV12LC, { "Intel", cpus_PentiumS5,"IDT", cpus_WinChip, "",      NULL},         0,    at_acerv12lc_init},
-        {"Intel Premiere/PCI II",ROM_PLATO,    { "Intel", cpus_PentiumS5,"IDT", cpus_WinChip, "",      NULL},         0,   at_plato_init},
-        {"Award 430NX PCI",     ROM_430NX,     { "Intel", cpus_PentiumS5,"IDT", cpus_WinChip, "",      NULL},         0,   at_i430nx_init},
-        {"Intel Advanced/EV",   ROM_ENDEAVOR,  { "Intel", cpus_PentiumS5,"IDT", cpus_WinChip, "",      NULL},         0,  at_endeavor_init},
+        {"Acer V12LC",          ROM_ACERV12LC, { "Intel", cpus_PentiumS5,"IDT", cpus_WinChip, "AMD",   cpus_K5},         0,    at_acerv12lc_init},
+        {"Intel Premiere/PCI II",ROM_PLATO,    { "Intel", cpus_PentiumS5,"IDT", cpus_WinChip, "AMD",   cpus_K5},         0,   at_plato_init},
+        {"Award 430NX PCI",     ROM_430NX,     { "Intel", cpus_PentiumS5,"IDT", cpus_WinChip, "AMD",   cpus_K5},         0,   at_i430nx_init},
+        {"Intel Advanced/EV",   ROM_ENDEAVOR,  { "Intel", cpus_PentiumS5,"IDT", cpus_WinChip, "AMD",   cpus_K5},         0,  at_endeavor_init},
 #ifdef BROKEN_CHIPSETS
-        {"AMI WinBIOS Pent. PCI",ROM_APOLLO,   { "Intel", cpus_PentiumS5,"IDT", cpus_WinChip, "",      NULL},         0,   at_apollo_init},
+        {"AMI WinBIOS Pent. PCI",ROM_APOLLO,   { "Intel", cpus_PentiumS5,"IDT", cpus_WinChip, "AMD",   cpus_K5},         0,   at_apollo_init},
 #endif
-        {"Award 430FX PCI",     ROM_430FX,     { "Intel", cpus_PentiumS5,"IDT", cpus_WinChip, "",      NULL},         0,   at_i430fx_init},
-        {"Award 430HX PCI",     ROM_430HX,     { "Intel", cpus_Pentium, "IDT", cpus_WinChip, "AMD",   cpus_K6},      0,    at_i430hx_init},
-        {"Acer V35N",           ROM_ACERV35N,  { "Intel", cpus_Pentium, "IDT", cpus_WinChip, "AMD",   cpus_K6},      0,    at_acerv35n_init},
-        {"Award 430VX PCI",     ROM_430VX,     { "Intel", cpus_Pentium, "IDT", cpus_WinChip, "AMD",   cpus_K6},      0,    at_i430vx_init},
-        {"Award 430TX PCI",     ROM_430TX,     { "Intel", cpus_Pentium, "IDT", cpus_WinChip, "AMD",   cpus_K6},      0,    at_i430tx_init},
-        {"Award 440FX PCI",     ROM_440FX,     { "Intel", cpus_PentiumPro,"Klamath",    cpus_Pentium2,         "Deschut.",      cpus_Pentium2D},         0,    at_i440fx_init},
+        {"Award 430FX PCI",     ROM_430FX,     { "Intel", cpus_PentiumS5,"IDT", cpus_WinChip, "AMD",   cpus_K5},         0,   at_i430fx_init},
+        {"Award 430HX PCI",     ROM_430HX,     { "Intel", cpus_Pentium, "IDT", cpus_WinChip, "AMD",   cpus_K56},      0,    at_i430hx_init},
+        {"Acer V35N",           ROM_ACERV35N,  { "Intel", cpus_Pentium, "IDT", cpus_WinChip, "AMD",   cpus_K56},      0,    at_acerv35n_init},
+        {"Award 430VX PCI",     ROM_430VX,     { "Intel", cpus_Pentium, "IDT", cpus_WinChip, "AMD",   cpus_K56},      0,    at_i430vx_init},
+        {"Award 430TX PCI",     ROM_430TX,     { "Intel", cpus_Pentium, "IDT", cpus_WinChip, "AMD",   cpus_K56},      0,    at_i430tx_init},
+        {"Award 440FX PCI",     ROM_440FX,     { "Intel", cpus_PentiumPro,"Klamath",    cpus_Pentium2,         "Deschutes",      cpus_Pentium2D},         0,    at_i440fx_init},
+        {"Award KN97 (440FX PCI)",ROM_KN97,    { "Intel", cpus_PentiumPro,"Klamath",    cpus_Pentium2,         "Deschutes",      cpus_Pentium2D},         0,    at_kn97_init},
 #ifdef BROKEN_CHIPSETS
-        {"AMI Goliath 730 PCI", ROM_GOLIATH,   { "Intel", cpus_PentiumPro,"Klamath",    cpus_Pentium2,         "Deschut.",      cpus_Pentium2D},         0,    at_i440fx_init},
-        {"Award 440BX PCI",     ROM_440BX,     { "Intel", cpus_Pentium2,"Deschut.",    cpus_Pentium2D,         "",      NULL},         0,    at_i440bx_init},
-        {"Virtual PC 2007",     ROM_VPC2007,   { "Intel", cpus_Pentium2,"Deschut.",    cpus_Pentium2D,         "",      NULL},         0,    at_vpc2007_init},
+        {"AMI Goliath 730 PCI", ROM_GOLIATH,   { "Intel", cpus_PentiumPro,"Klamath",    cpus_Pentium2,         "Deschutes",      cpus_Pentium2D},         0,    at_i440fx_init},
+        {"Award 440BX PCI",     ROM_440BX,     { "Intel", cpus_Pentium2,"Deschutes",    cpus_Pentium2D,         "",      NULL},         0,    at_i440bx_init},
+        {"Virtual PC 2007",     ROM_VPC2007,   { "Intel", cpus_Pentium2,"Deschutes",    cpus_Pentium2D,         "",      NULL},         0,    at_vpc2007_init},
 #endif
         {"", -1, {"", 0, "", 0, "", 0}, 0}
 };
@@ -648,6 +650,20 @@ void at_i440fx_init()
 	/* Note by OBattler: Switched to a BIOS using that Super I/O chip because it's better than UMC. */
 	// fdc37c669_init();
 	fdc37c665_init();
+        device_add(&intel_flash_device);
+}
+
+void at_kn97_init()
+{
+	maxide = 4;
+        at_init();
+	maxide = 4;
+	mouse_ps2_init();
+        pci_init(PCI_CONFIG_TYPE_1, 0, 31);
+        i440fx_init();
+	piix_type = 3;
+        piix_init(7);
+	w83877f_init();
         device_add(&intel_flash_device);
 }
 

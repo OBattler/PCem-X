@@ -4,7 +4,7 @@ typedef struct
         int id;
         struct
         {
-                char name[8];
+                char name[12];
                 CPU *cpus;
         } cpu[4];
         int fixed_gfxcard;

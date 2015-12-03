@@ -1891,11 +1891,14 @@ void s3_pci_write(int func, int addr, uint8_t val, void *p)
         switch (addr)
         {
                 case PCI_REG_COMMAND:
+		if (romset == ROM_KN97)  return;
                 s3->pci_regs[PCI_REG_COMMAND] = val & 0x27;
                 if (val & PCI_COMMAND_IO)
                         s3_io_set(s3);
                 else
+		{
                         s3_io_remove(s3);
+		}
                 s3_updatemapping(s3);
                 break;
 
