@@ -1,12 +1,9 @@
 /*ISO CD-ROM support*/
 
-#include <windows.h>
-#include <io.h>
 #include "ibm.h"
 #include "ide.h"
 #include "cdrom-ioctl.h"
 #include <sys/stat.h>
-#include <fcntl.h>
 
 int cdrom_drive;
 int old_cdrom_drive;
