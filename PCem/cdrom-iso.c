@@ -233,11 +233,10 @@ static int iso_readtoc_raw(unsigned char *buf, int maxlen)
     *q++ = 0; /* sec */
     *q++ = 0; /* frame */
     last_block = image_size >> 11;
-    /* is this supposed to lba or msb? */
-    *q++ = last_block >> 24;
-    *q++ = last_block >> 16;
-    *q++ = last_block >> 8;
-    *q++ = last_block;
+    /* this is raw, must be msf */
+	*q++ = 0; /* reserved */
+    lba_to_msf(q, last_block);
+    q += 3;
 
     *q++ = 1; /* session number */
     *q++ = 0x14; /* ADR, control */
