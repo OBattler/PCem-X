@@ -149,7 +149,7 @@ static int opSYSENTER(uint32_t fetchdat)
 	// fatal("SYSENTER with regular parameters\n");
 
 	/* Set VM, IF, RF to 0. */
-	eflags &= ~0x00030200;
+	eflags &= ~0x0003;
 	flags &= ~0x0200;
 
 	/* CS */
@@ -219,7 +219,7 @@ static int opSYSENTER(uint32_t fetchdat)
 	pclog("CS (%04X): base=%08X, limit=%08X, access=%02X, seg=%04X, limit_low=%08X, limit_high=%08X, checked=%i\n", CS, _cs.base, _cs.limit, _cs.access, _cs.seg, _cs.limit_low, _cs.limit_high, _cs.checked);
 	pclog("SS (%04X): base=%08X, limit=%08X, access=%02X, seg=%04X, limit_low=%08X, limit_high=%08X, checked=%i\n", SS, _ss.base, _ss.limit, _ss.access, _ss.seg, _ss.limit_low, _ss.limit_high, _ss.checked);
 	pclog("Model specific registers: cs_msr=%04X, esp_msr=%08X, eip_msr=%08X\n", cs_msr, esp_msr, eip_msr);
-	pclog("Other information: eflags=%08X flags=%04X use32=%04X stack32=%i\n", eflags, flags, use32, stack32); */
+	pclog("Other information: eflags=%04X flags=%04X use32=%04X stack32=%i\n", eflags, flags, use32, stack32); */
 
 	return 0;
 }
@@ -300,7 +300,7 @@ static int opSYSEXIT(uint32_t fetchdat)
 	pclog("CS (%04X): base=%08X, limit=%08X, access=%02X, seg=%04X, limit_low=%08X, limit_high=%08X, checked=%i\n", CS, _cs.base, _cs.limit, _cs.access, _cs.seg, _cs.limit_low, _cs.limit_high, _cs.checked);
 	pclog("SS (%04X): base=%08X, limit=%08X, access=%02X, seg=%04X, limit_low=%08X, limit_high=%08X, checked=%i\n", SS, _ss.base, _ss.limit, _ss.access, _ss.seg, _ss.limit_low, _ss.limit_high, _ss.checked);
 	pclog("Model specific registers: cs_msr=%04X, esp_msr=%08X, eip_msr=%08X\n", cs_msr, esp_msr, eip_msr);
-	pclog("Other information: eflags=%08X flags=%04X use32=%04X stack32=%i ECX=%08X EDX=%08X\n", eflags, flags, use32, stack32, ECX, EDX); */
+	pclog("Other information: eflags=%04X flags=%04X use32=%04X stack32=%i ECX=%08X EDX=%08X\n", eflags, flags, use32, stack32, ECX, EDX); */
 
 	return 0;
 }
@@ -679,7 +679,7 @@ static int opSYSCALL(uint32_t fetchdat)
 	ECX = pc;
 	pc = AMD_SYSCALL_EIP;
 
-	eflags &= ~0x00020200;
+	eflags &= ~0x0002;
 	flags &= ~0x0200;
 
 	/* CS */
@@ -748,7 +748,7 @@ static int opSYSCALL(uint32_t fetchdat)
 	pclog("CS (%04X): base=%08X, limit=%08X, access=%02X, seg=%04X, limit_low=%08X, limit_high=%08X, checked=%i\n", CS, _cs.base, _cs.limit, _cs.access, _cs.seg, _cs.limit_low, _cs.limit_high, _cs.checked);
 	pclog("SS (%04X): base=%08X, limit=%08X, access=%02X, seg=%04X, limit_low=%08X, limit_high=%08X, checked=%i\n", SS, _ss.base, _ss.limit, _ss.access, _ss.seg, _ss.limit_low, _ss.limit_high, _ss.checked);
 	pclog("Model specific registers: cs_msr=%04X, esp_msr=%08X, eip_msr=%08X\n", cs_msr, esp_msr, eip_msr);
-	pclog("Other information: eflags=%08X flags=%04X use32=%04X stack32=%i\n", eflags, flags, use32, stack32); */
+	pclog("Other information: eflags=%04X flags=%04X use32=%04X stack32=%i\n", eflags, flags, use32, stack32); */
 
 	return 0;
 }
@@ -761,8 +761,7 @@ static int opSYSRET(uint32_t fetchdat)
 
 	pc = ECX;
 
-	eflags |= (1 << 9);
-	flags |= (1 << 9);
+	eflags |= (1 << 1);
 
 	/* CS */
 	_cs.seg = AMD_SYSRET_SB & ~7;
@@ -829,7 +828,7 @@ static int opSYSRET(uint32_t fetchdat)
 	pclog("CS (%04X): base=%08X, limit=%08X, access=%02X, seg=%04X, limit_low=%08X, limit_high=%08X, checked=%i\n", CS, _cs.base, _cs.limit, _cs.access, _cs.seg, _cs.limit_low, _cs.limit_high, _cs.checked);
 	pclog("SS (%04X): base=%08X, limit=%08X, access=%02X, seg=%04X, limit_low=%08X, limit_high=%08X, checked=%i\n", SS, _ss.base, _ss.limit, _ss.access, _ss.seg, _ss.limit_low, _ss.limit_high, _ss.checked);
 	pclog("Model specific registers: cs_msr=%04X, esp_msr=%08X, eip_msr=%08X\n", cs_msr, esp_msr, eip_msr);
-	pclog("Other information: eflags=%08X flags=%04X use32=%04X stack32=%i ECX=%08X EDX=%08X\n", eflags, flags, use32, stack32, ECX, EDX); */
+	pclog("Other information: eflags=%04X flags=%04X use32=%04X stack32=%i ECX=%08X EDX=%08X\n", eflags, flags, use32, stack32, ECX, EDX); */
 
 	return 0;
 }
