@@ -833,12 +833,43 @@ static int opSYSRET(uint32_t fetchdat)
 	return 0;
 }
 
+static int set_segment_limit(x86seg *s, uint8_t segdat3)
+{
+	uint32_t segdat2 = (s->base >> 16) || (((uint32_t) s->access) << 8);
+
+        if ((segdat2 & 0x1800) != 0x1000 || !(segdat2 & (1 << 10))) /*expand-down*/
+        {
+                s->limit_high = s->limit;
+                s->limit_low = 0;
+        }
+        else
+        {
+                s->limit_high = (segdat3 & 0x40) ? 0xffffffff : 0xffff;
+                s->limit_low = s->limit + 1;
+        }
+}
+
+static int loadall_load_segment(uint32_t addr, x86seg *s)
+{
+	uint32_t attrib = readmeml(0, addr);
+	uint32_t segdat3 = (attrib >> 16) & 0xff;
+	s->access = (attrib >> 8) & 0xff;
+	s->base = readmeml(0, addr + 4);
+	s->limit = readmeml(0, addr + 8);
+
+	if (s == &_cs)  use32=(segdat3&0x40)?0x300:0;
+	if (s == &_ss)  stack32 = (segdat3 & 0x40) ? 1 : 0;
+
+	set_segment_limit(s, segdat3);
+}
+
 static int opLOADALL386(uint32_t fetchdat)
 {
 	uint32_t la_addr = es + EDI;
 
-        eflags = (readmemw(0, la_addr + 4) & 0xffffffd5) | 2;
-	flags = eflags & 0xffff;
+	cr0 = readmeml(0, la_addr);
+        flags = readmemw(0, la_addr + 4);
+        eflags = readmemw(0, la_addr + 6);
         flags_extract();
         pc = readmeml(0, la_addr + 8);
 	EDI = readmeml(0, la_addr + 0xC);
@@ -859,17 +890,20 @@ static int opLOADALL386(uint32_t fetchdat)
         SS = readmemw(0, la_addr + 0x48);
         CS = readmemw(0, la_addr + 0x4C);
         ES = readmemw(0, la_addr + 0x50);
-	tr.base = readmemw(0, la_addr + 0x54) | (readmemb(0, la_addr + 0x58) << 16);
-	idt.base = readmemw(0, la_addr + 0x60) | (readmemb(0, la_addr + 0x64) << 16);
-	gdt.base = readmemw(0, la_addr + 0x6C) | (readmemb(0, la_addr + 0x70) << 16);
-	ldt.base = readmemw(0, la_addr + 0x78) | (readmemb(0, la_addr + 0x7C) << 16);
-	gs = readmemw(0, la_addr + 0x84) | (readmemb(0, la_addr + 0x88) << 16);
-	seg_fs = readmemw(0, la_addr + 0x90) | (readmemb(0, la_addr + 0x94) << 16);
-	ds = readmemw(0, la_addr + 0x9C) | (readmemb(0, la_addr + 0xA0) << 16);
-	ss = readmemw(0, la_addr + 0xA8) | (readmemb(0, la_addr + 0xAC) << 16);
-	cs = readmemw(0, la_addr + 0xB4) | (readmemb(0, la_addr + 0xB8) << 16);
-	es = readmemw(0, la_addr + 0xC0) | (readmemb(0, la_addr + 0xC4) << 16);
-        CLOCK_CYCLES(122);
-				CPU_BLOCK_END();
+
+	loadall_load_segment(la_addr + 0x54, &tr);
+	loadall_load_segment(la_addr + 0x60, &idt);
+	loadall_load_segment(la_addr + 0x6c, &gdt);
+	loadall_load_segment(la_addr + 0x78, &ldt);
+	loadall_load_segment(la_addr + 0x84, &_gs);
+	loadall_load_segment(la_addr + 0x90, &_fs);
+	loadall_load_segment(la_addr + 0x9c, &_ds);
+	loadall_load_segment(la_addr + 0xa8, &_ss);
+	loadall_load_segment(la_addr + 0xb4, &_cs);
+	loadall_load_segment(la_addr + 0xc0, &_es);
+
+	if (CPL==3 && oldcpl!=3) flushmmucache_cr3();
+
+	CLOCK_CYCLES(350);
         return 0;
-}
+}                          
