@@ -608,8 +608,8 @@ void at_i430vx_init()
 	maxide = 4;
         at_init();
 	maxide = 4;
-        mouse_serial_init();
-	// mouse_ps2_init();
+        // mouse_serial_init();
+	mouse_ps2_init();
         pci_init(PCI_CONFIG_TYPE_1, 0, 31);
         i430vx_init();
 	piix_type = 3;
