@@ -142,71 +142,33 @@ static int internal_illegal()
 
 static int opSYSENTER(uint32_t fetchdat)
 {
-	// if (!cs_msr)  fatal("SYSENTER outside protected mode\n");
 	if (!(cr0 & 1))  return internal_illegal();
-	// if (!cs_msr)  fatal("SYSENTER with CS zero\n");
 	if (!cs_msr)  return internal_illegal();
-	// fatal("SYSENTER with regular parameters\n");
 
 	/* Set VM, IF, RF to 0. */
 	eflags &= ~0x0003;
 	flags &= ~0x0200;
 
 	/* CS */
-	_cs.seg = cs_msr & ~7;
-	if (cs_msr & 4)
-	{
-		if (_cs.seg >= ldt.limit)
-		{
-			pclog("Bigger than LDT limit %04X %04X CS\n",cs_msr,ldt.limit);
-			x86gpf(NULL, cs_msr & ~3);
-			return 1;
-		}
-		_cs.seg +=ldt.base;
-	}
-	else
-	{
-		if (_cs.seg >= gdt.limit)
-		{
-			pclog("Bigger than GDT limit %04X %04X CS\n",cs_msr,gdt.limit);
-			x86gpf(NULL, cs_msr & ~3);
-			return 1;
-		}
-		_cs.seg += gdt.base;
-	}
 	cpl_override = 1;
 
 	temp_seg_data[0] = 0xFFFF;
 	temp_seg_data[1] = 0;
 	temp_seg_data[2] = 0x9B00;
-	temp_seg_data[3] = 0xC0;
+	temp_seg_data[3] = 0xCF;
 
-	cpl_override = 0;
-
-	use32 = 0x300;
 	CS = (cs_msr & ~3) | 0;
-
 	do_seg_load(&_cs, temp_seg_data);
 	use32 = 0x300;
-
-	CS = (CS & 0xFFFC) | 0;
-
-	_cs.limit = 0xFFFFFFFF;
-	_cs.limit_high = 0xFFFFFFFF;
 
 	/* SS */
 	temp_seg_data[0] = 0xFFFF;
 	temp_seg_data[1] = 0;
 	temp_seg_data[2] = 0x9300;
-	temp_seg_data[3] = 0xC0;
+	temp_seg_data[3] = 0xCF;
+	SS = ((cs_msr + 8) & ~3) | 0;
 	do_seg_load(&_ss, temp_seg_data);
-	_ss.seg = (cs_msr + 8) & 0xFFFC;
 	stack32 = 1;
-
-	_ss.limit = 0xFFFFFFFF;
-	_ss.limit_high = 0xFFFFFFFF;
-
-	_ss.checked = 0;
 
 	ESP = esp_msr;
 	pc = eip_msr;
@@ -226,68 +188,29 @@ static int opSYSENTER(uint32_t fetchdat)
 
 static int opSYSEXIT(uint32_t fetchdat)
 {
-	// if (!cs_msr)  fatal("SYSEXIT with CS zero\n");
 	if (!cs_msr)  return internal_illegal();
-	// if (!(cr0 & 1))  fatal("SYSEXIT outside protected mode\n");
 	if (!(cr0 & 1))  return internal_illegal();
-	// fatal("SYSEXIT with regular parameters\n");
+	if (CS & 3)  return internal_illegal();
 
 	/* CS */
-	_cs.seg = (cs_msr + 16) & ~7;
-	if (cs_msr & 4)
-	{
-		if (_cs.seg >= ldt.limit)
-		{
-			pclog("Bigger than LDT limit %04X %04X CS\n",cs_msr,ldt.limit);
-			x86gpf(NULL, cs_msr & ~3);
-			return 1;
-		}
-		_cs.seg +=ldt.base;
-	}
-	else
-	{
-		if (_cs.seg >= gdt.limit)
-		{
-			pclog("Bigger than GDT limit %04X %04X CS\n",cs_msr,gdt.limit);
-			x86gpf(NULL, cs_msr & ~3);
-			return 1;
-		}
-		_cs.seg += gdt.base;
-	}
-	cpl_override = 1;
-
 	temp_seg_data[0] = 0xFFFF;
 	temp_seg_data[1] = 0;
 	temp_seg_data[2] = 0xFB00;
-	temp_seg_data[3] = 0xC0;
+	temp_seg_data[3] = 0xCF;
 
-	cpl_override = 0;
-
-	use32 = 0x300;
 	CS = ((cs_msr + 16) & ~3) | 3;
-
 	do_seg_load(&_cs, temp_seg_data);
 	flushmmucache_cr3();
 	use32 = 0x300;
-
-	CS = (CS & 0xFFFC) | 3;
-
-	_cs.limit = 0xFFFFFFFF;
-	_cs.limit_high = 0xFFFFFFFF;
 
 	/* SS */
 	temp_seg_data[0] = 0xFFFF;
 	temp_seg_data[1] = 0;
 	temp_seg_data[2] = 0xF300;
-	temp_seg_data[3] = 0xC0;
+	temp_seg_data[3] = 0xCF;
+	SS = ((cs_msr + 24) & ~3) | 3;
 	do_seg_load(&_ss, temp_seg_data);
-	_ss.seg = ((cs_msr + 24) & 0xFFFC) | 3;
 	stack32 = 1;
-
-	_ss.limit = 0xFFFFFFFF;
-	_ss.limit_high = 0xFFFFFFFF;
-
-	_ss.checked = 0;
 
 	ESP = ECX;
 	pc = EDX;

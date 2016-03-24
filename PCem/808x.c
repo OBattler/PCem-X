@@ -1068,7 +1068,7 @@ void rep(int fv)
                 break;
                 default:
 rep_default:
-                        pc=ipc;
+                        pc=ipc+1;
                         cycles-=20;
                         FETCHCLEAR();
 //                printf("Bad REP %02X\n",temp);

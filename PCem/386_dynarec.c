@@ -1091,11 +1091,10 @@ int rep386(int fv)
 
 
                 default:
-                        pc=ipc;
-                        cycles-=20;
+                        pc=ipc+1;
                 pclog("Bad REP %02X %i\n", temp, rep32 >> 8);
-                x86illegal();
-        }
+				break;
+				}
         if (rep32&0x200) ECX=c;
         else             CX=c;
         CPU_BLOCK_END();
