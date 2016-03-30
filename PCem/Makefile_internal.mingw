@@ -3,7 +3,7 @@ CPP  = i686-w64-mingw32-g++
 CC   = i686-w64-mingw32-gcc
 WINDRES = i686-w64-mingw32-windres
 initcflags = -O3 -fomit-frame-pointer -DDYNAREC
-basecflags = $(initcflags) -march=core2 -mtune=core2 -ffast-math -msse -msse2 -msse3 -mssse3 -mfpmath=sse
+basecflags = $(initcflags) -march=core2 -mtune=core2 -ffast-math -msse -msse2 -msse3 -mssse3 -mfpmath=sse -mstackrealign
 CXXFLAGS = $(basecflags)
 OBJ = 386.o32 386_dynarec.o32 386_dynarec_ops.o32 808x.o32 acer386sx.o32 ali1429.o32 amstrad.o32 cdrom-ioctl.o32 \
 	codegen.o32 codegen_ops.o32 codegen_timing_486.o32 codegen_timing_pentium.o32 codegen_x86.o32 colorbook_io.o32 compaq.o32 config.o32 cpqio.o32 cpu.o32 dac.o32 \
