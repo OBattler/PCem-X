@@ -678,7 +678,7 @@ static int opSYSCALL(uint32_t fetchdat)
 static int opSYSRET(uint32_t fetchdat)
 {
 	uint16_t sysret_cs_seg_data[4] = {0, 0, 0, 0};
-	uint16_t sysret_ss_seg__data[4] = {0, 0, 0, 0};
+	uint16_t sysret_ss_seg_data[4] = {0, 0, 0, 0};
 
 	if (!cs_msr)  return internal_illegal();
 	if (!(cr0 & 1))  return internal_illegal();
