@@ -177,11 +177,11 @@ static int opSYSENTER(uint32_t fetchdat)
 
 	CPU_BLOCK_END();
 
-	/* pclog("SYSENTER completed:\n");
+	pclog("SYSENTER completed:\n");
 	pclog("CS (%04X): base=%08X, limit=%08X, access=%02X, seg=%04X, limit_low=%08X, limit_high=%08X, checked=%i\n", CS, _cs.base, _cs.limit, _cs.access, _cs.seg, _cs.limit_low, _cs.limit_high, _cs.checked);
 	pclog("SS (%04X): base=%08X, limit=%08X, access=%02X, seg=%04X, limit_low=%08X, limit_high=%08X, checked=%i\n", SS, _ss.base, _ss.limit, _ss.access, _ss.seg, _ss.limit_low, _ss.limit_high, _ss.checked);
 	pclog("Model specific registers: cs_msr=%04X, esp_msr=%08X, eip_msr=%08X\n", cs_msr, esp_msr, eip_msr);
-	pclog("Other information: eflags=%04X flags=%04X use32=%04X stack32=%i\n", eflags, flags, use32, stack32); */
+	pclog("Other information: eflags=%04X flags=%04X use32=%04X stack32=%i\n", eflags, flags, use32, stack32);
 
 	return 0;
 }
@@ -214,11 +214,11 @@ static int opSYSEXIT(uint32_t fetchdat)
 
 	CPU_BLOCK_END();
 
-	/* pclog("SYSEXIT completed:\n");
+	pclog("SYSEXIT completed:\n");
 	pclog("CS (%04X): base=%08X, limit=%08X, access=%02X, seg=%04X, limit_low=%08X, limit_high=%08X, checked=%i\n", CS, _cs.base, _cs.limit, _cs.access, _cs.seg, _cs.limit_low, _cs.limit_high, _cs.checked);
 	pclog("SS (%04X): base=%08X, limit=%08X, access=%02X, seg=%04X, limit_low=%08X, limit_high=%08X, checked=%i\n", SS, _ss.base, _ss.limit, _ss.access, _ss.seg, _ss.limit_low, _ss.limit_high, _ss.checked);
 	pclog("Model specific registers: cs_msr=%04X, esp_msr=%08X, eip_msr=%08X\n", cs_msr, esp_msr, eip_msr);
-	pclog("Other information: eflags=%04X flags=%04X use32=%04X stack32=%i ECX=%08X EDX=%08X\n", eflags, flags, use32, stack32, ECX, EDX); */
+	pclog("Other information: eflags=%04X flags=%04X use32=%04X stack32=%i ECX=%08X EDX=%08X\n", eflags, flags, use32, stack32, ECX, EDX);
 
 	return 0;
 }
