@@ -150,6 +150,9 @@ static void make_seg_data(uint16_t *seg_data, uint32_t base, uint32_t limit, uin
 
 static int opSYSENTER(uint32_t fetchdat)
 {
+	uint16_t sysenter_cs_seg_data[4];
+	uint16_t sysenter_ss_seg_data[4];
+
 	if (!(cr0 & 1))  return internal_illegal();
 	if (!(cs_msr & 0xFFFC))  return internal_illegal();
 
@@ -161,13 +164,13 @@ static int opSYSENTER(uint32_t fetchdat)
 	flags &= ~0x0200;
 
 	CS = (cs_msr & 0xFFFC);
-	make_seg_data(temp_seg_data, 0, 0xFFFFF, 11, 1, 0, 1, 1, 1, 1);
-	do_seg_load(&_cs, temp_seg_data);
+	make_seg_data(sysenter_cs_seg_data, 0, 0xFFFFF, 11, 1, 0, 1, 1, 1, 1);
+	do_seg_load(&_cs, sysenter_cs_seg_data);
 	use32 = 0x300;
 
 	SS = ((cs_msr + 8) & 0xFFFC);
-	make_seg_data(temp_seg_data, 0, 0xFFFFF, 3, 1, 0, 1, 1, 1, 1);
-	do_seg_load(&_ss, temp_seg_data);
+	make_seg_data(sysenter_ss_seg_data, 0, 0xFFFFF, 3, 1, 0, 1, 1, 1, 1);
+	do_seg_load(&_ss, sysenter_ss_seg_data);
 	stack32 = 1;
 
 	CLOCK_CYCLES(20);
@@ -185,6 +188,9 @@ static int opSYSENTER(uint32_t fetchdat)
 
 static int opSYSEXIT(uint32_t fetchdat)
 {
+	uint16_t sysexit_cs_seg_data[4];
+	uint16_t sysexit_ss_seg_data[4];
+
 	if (!(cs_msr & 0xFFFC))  return internal_illegal();
 	if (!(cr0 & 1))  return internal_illegal();
 	if (CS & 3)  return internal_illegal();
@@ -193,13 +199,13 @@ static int opSYSEXIT(uint32_t fetchdat)
 	pc = EDX;
 
 	CS = ((cs_msr + 16) & 0xFFFC) | 3;
-	make_seg_data(temp_seg_data, 0, 0xFFFFF, 11, 1, 3, 1, 1, 1, 1);
-	do_seg_load(&_cs, temp_seg_data);
+	make_seg_data(sysexit_cs_seg_data, 0, 0xFFFFF, 11, 1, 3, 1, 1, 1, 1);
+	do_seg_load(&_cs, sysexit_cs_seg_data);
 	use32 = 0x300;
 
 	SS = CS + 8;
-	make_seg_data(temp_seg_data, 0, 0xFFFFF, 3, 1, 3, 1, 1, 1, 1);
-	do_seg_load(&_ss, temp_seg_data);
+	make_seg_data(sysexit_ss_seg_data, 0, 0xFFFFF, 3, 1, 3, 1, 1, 1, 1);
+	do_seg_load(&_ss, sysexit_ss_seg_data);
 	stack32 = 1;
 
 	flushmmucache_cr3();
@@ -580,6 +586,9 @@ static int opFXSAVESTOR_a32(uint32_t fetchdat)
 /* 0F 05 */
 static int opSYSCALL(uint32_t fetchdat)
 {
+	uint16_t syscall_cs_seg_data[4] = {0, 0, 0, 0};
+	uint16_t syscall_ss_seg_data[4] = {0, 0, 0, 0};
+
 	if (!(cr0 & 1))  return internal_illegal();
 	if (!AMD_SYSCALL_SB)  return internal_illegal();
 
@@ -618,17 +627,17 @@ static int opSYSCALL(uint32_t fetchdat)
 	}
 	cpl_override = 1;
 
-	temp_seg_data[0] = 0xFFFF;
-	temp_seg_data[1] = 0;
-	temp_seg_data[2] = 0x9B00;
-	temp_seg_data[3] = 0xC0;
+	syscall_cs_seg_data[0] = 0xFFFF;
+	syscall_cs_seg_data[1] = 0;
+	syscall_cs_seg_data[2] = 0x9B00;
+	syscall_cs_seg_data[3] = 0xC0;
 
 	cpl_override = 0;
 
 	use32 = 0x300;
 	CS = (AMD_SYSCALL_SB & ~3) | 0;
 
-	do_seg_load(&_cs, temp_seg_data);
+	do_seg_load(&_cs, syscall_cs_seg_data);
 	use32 = 0x300;
 
 	CS = (CS & 0xFFFC) | 0;
@@ -637,11 +646,11 @@ static int opSYSCALL(uint32_t fetchdat)
 	_cs.limit_high = 0xFFFFFFFF;
 
 	/* SS */
-	temp_seg_data[0] = 0xFFFF;
-	temp_seg_data[1] = 0;
-	temp_seg_data[2] = 0x9300;
-	temp_seg_data[3] = 0xC0;
-	do_seg_load(&_ss, temp_seg_data);
+	syscall_ss_seg_data[0] = 0xFFFF;
+	syscall_ss_seg_data[1] = 0;
+	syscall_ss_seg_data[2] = 0x9300;
+	syscall_ss_seg_data[3] = 0xC0;
+	do_seg_load(&_ss, syscall_ss_seg_data);
 	_ss.seg = (AMD_SYSCALL_SB + 8) & 0xFFFC;
 	stack32 = 1;
 
@@ -668,6 +677,9 @@ static int opSYSCALL(uint32_t fetchdat)
 /* 0F 07 */
 static int opSYSRET(uint32_t fetchdat)
 {
+	uint16_t sysret_cs_seg_data[4] = {0, 0, 0, 0};
+	uint16_t sysret_ss_seg__data[4] = {0, 0, 0, 0};
+
 	if (!cs_msr)  return internal_illegal();
 	if (!(cr0 & 1))  return internal_illegal();
 
@@ -699,17 +711,17 @@ static int opSYSRET(uint32_t fetchdat)
 	}
 	cpl_override = 1;
 
-	temp_seg_data[0] = 0xFFFF;
-	temp_seg_data[1] = 0;
-	temp_seg_data[2] = 0xFB00;
-	temp_seg_data[3] = 0xC0;
+	sysret_cs_seg_data[0] = 0xFFFF;
+	sysret_cs_seg_data[1] = 0;
+	sysret_cs_seg_data[2] = 0xFB00;
+	sysret_cs_seg_data[3] = 0xC0;
 
 	cpl_override = 0;
 
 	use32 = 0x300;
 	CS = (AMD_SYSRET_SB & ~3) | 3;
 
-	do_seg_load(&_cs, temp_seg_data);
+	do_seg_load(&_cs, sysret_cs_seg_data);
 	flushmmucache_cr3();
 	use32 = 0x300;
 
@@ -719,11 +731,11 @@ static int opSYSRET(uint32_t fetchdat)
 	_cs.limit_high = 0xFFFFFFFF;
 
 	/* SS */
-	temp_seg_data[0] = 0xFFFF;
-	temp_seg_data[1] = 0;
-	temp_seg_data[2] = 0xF300;
-	temp_seg_data[3] = 0xC0;
-	do_seg_load(&_ss, temp_seg_data);
+	sysret_ss_seg_data[0] = 0xFFFF;
+	sysret_ss_seg_data[1] = 0;
+	sysret_ss_seg_data[2] = 0xF300;
+	sysret_ss_seg_data[3] = 0xC0;
+	do_seg_load(&_ss, sysret_ss_seg_data);
 	_ss.seg = ((AMD_SYSRET_SB + 8) & 0xFFFC) | 3;
 	stack32 = 1;
 
