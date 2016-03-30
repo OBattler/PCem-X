@@ -153,8 +153,16 @@ static int opSYSENTER(uint32_t fetchdat)
 	uint16_t sysenter_cs_seg_data[4];
 	uint16_t sysenter_ss_seg_data[4];
 
+	pclog("SYSENTER called\n");
+
 	if (!(cr0 & 1))  return internal_illegal();
 	if (!(cs_msr & 0xFFFC))  return internal_illegal();
+
+	pclog("SYSENTER started:\n");
+	pclog("CS (%04X): base=%08X, limit=%08X, access=%02X, seg=%04X, limit_low=%08X, limit_high=%08X, checked=%i\n", CS, _cs.base, _cs.limit, _cs.access, _cs.seg, _cs.limit_low, _cs.limit_high, _cs.checked);
+	pclog("SS (%04X): base=%08X, limit=%08X, access=%02X, seg=%04X, limit_low=%08X, limit_high=%08X, checked=%i\n", SS, _ss.base, _ss.limit, _ss.access, _ss.seg, _ss.limit_low, _ss.limit_high, _ss.checked);
+	pclog("Model specific registers: cs_msr=%04X, esp_msr=%08X, eip_msr=%08X\n", cs_msr, esp_msr, eip_msr);
+	pclog("Other information: eip=%08X esp=%08X eflags=%04X flags=%04X use32=%04X stack32=%i\n", pc, ESP, eflags, flags, use32, stack32);
 
 	ESP = esp_msr;
 	pc = eip_msr;
@@ -164,12 +172,12 @@ static int opSYSENTER(uint32_t fetchdat)
 	flags &= ~0x0200;
 
 	CS = (cs_msr & 0xFFFC);
-	make_seg_data(sysenter_cs_seg_data, 0, 0xFFFFF, 11, 1, 0, 1, 1, 1, 1);
+	make_seg_data(sysenter_cs_seg_data, 0, 0xFFFFF, 11, 1, 0, 1, 1, 1, 0);
 	do_seg_load(&_cs, sysenter_cs_seg_data);
 	use32 = 0x300;
 
 	SS = ((cs_msr + 8) & 0xFFFC);
-	make_seg_data(sysenter_ss_seg_data, 0, 0xFFFFF, 3, 1, 0, 1, 1, 1, 1);
+	make_seg_data(sysenter_ss_seg_data, 0, 0xFFFFF, 3, 1, 0, 1, 1, 1, 0);
 	do_seg_load(&_ss, sysenter_ss_seg_data);
 	stack32 = 1;
 
@@ -181,7 +189,7 @@ static int opSYSENTER(uint32_t fetchdat)
 	pclog("CS (%04X): base=%08X, limit=%08X, access=%02X, seg=%04X, limit_low=%08X, limit_high=%08X, checked=%i\n", CS, _cs.base, _cs.limit, _cs.access, _cs.seg, _cs.limit_low, _cs.limit_high, _cs.checked);
 	pclog("SS (%04X): base=%08X, limit=%08X, access=%02X, seg=%04X, limit_low=%08X, limit_high=%08X, checked=%i\n", SS, _ss.base, _ss.limit, _ss.access, _ss.seg, _ss.limit_low, _ss.limit_high, _ss.checked);
 	pclog("Model specific registers: cs_msr=%04X, esp_msr=%08X, eip_msr=%08X\n", cs_msr, esp_msr, eip_msr);
-	pclog("Other information: eflags=%04X flags=%04X use32=%04X stack32=%i\n", eflags, flags, use32, stack32);
+	pclog("Other information: eip=%08X esp=%08X eflags=%04X flags=%04X use32=%04X stack32=%i\n", pc, ESP, eflags, flags, use32, stack32);
 
 	return 0;
 }
@@ -191,20 +199,28 @@ static int opSYSEXIT(uint32_t fetchdat)
 	uint16_t sysexit_cs_seg_data[4];
 	uint16_t sysexit_ss_seg_data[4];
 
+	pclog("SYSEXIT called\n");
+
 	if (!(cs_msr & 0xFFFC))  return internal_illegal();
 	if (!(cr0 & 1))  return internal_illegal();
 	if (CS & 3)  return internal_illegal();
+
+	pclog("SYSEXIT completed:\n");
+	pclog("CS (%04X): base=%08X, limit=%08X, access=%02X, seg=%04X, limit_low=%08X, limit_high=%08X, checked=%i\n", CS, _cs.base, _cs.limit, _cs.access, _cs.seg, _cs.limit_low, _cs.limit_high, _cs.checked);
+	pclog("SS (%04X): base=%08X, limit=%08X, access=%02X, seg=%04X, limit_low=%08X, limit_high=%08X, checked=%i\n", SS, _ss.base, _ss.limit, _ss.access, _ss.seg, _ss.limit_low, _ss.limit_high, _ss.checked);
+	pclog("Model specific registers: cs_msr=%04X, esp_msr=%08X, eip_msr=%08X\n", cs_msr, esp_msr, eip_msr);
+	pclog("Other information: eip=%08X esp=%08X eflags=%04X flags=%04X use32=%04X stack32=%i ECX=%08X EDX=%08X\n", pc, ESP, eflags, flags, use32, stack32, ECX, EDX);
 
 	ESP = ECX;
 	pc = EDX;
 
 	CS = ((cs_msr + 16) & 0xFFFC) | 3;
-	make_seg_data(sysexit_cs_seg_data, 0, 0xFFFFF, 11, 1, 3, 1, 1, 1, 1);
+	make_seg_data(sysexit_cs_seg_data, 0, 0xFFFFF, 11, 1, 3, 1, 1, 1, 0);
 	do_seg_load(&_cs, sysexit_cs_seg_data);
 	use32 = 0x300;
 
 	SS = CS + 8;
-	make_seg_data(sysexit_ss_seg_data, 0, 0xFFFFF, 3, 1, 3, 1, 1, 1, 1);
+	make_seg_data(sysexit_ss_seg_data, 0, 0xFFFFF, 3, 1, 3, 1, 1, 1, 0);
 	do_seg_load(&_ss, sysexit_ss_seg_data);
 	stack32 = 1;
 
@@ -218,7 +234,7 @@ static int opSYSEXIT(uint32_t fetchdat)
 	pclog("CS (%04X): base=%08X, limit=%08X, access=%02X, seg=%04X, limit_low=%08X, limit_high=%08X, checked=%i\n", CS, _cs.base, _cs.limit, _cs.access, _cs.seg, _cs.limit_low, _cs.limit_high, _cs.checked);
 	pclog("SS (%04X): base=%08X, limit=%08X, access=%02X, seg=%04X, limit_low=%08X, limit_high=%08X, checked=%i\n", SS, _ss.base, _ss.limit, _ss.access, _ss.seg, _ss.limit_low, _ss.limit_high, _ss.checked);
 	pclog("Model specific registers: cs_msr=%04X, esp_msr=%08X, eip_msr=%08X\n", cs_msr, esp_msr, eip_msr);
-	pclog("Other information: eflags=%04X flags=%04X use32=%04X stack32=%i ECX=%08X EDX=%08X\n", eflags, flags, use32, stack32, ECX, EDX);
+	pclog("Other information: eip=%08X esp=%08X eflags=%04X flags=%04X use32=%04X stack32=%i ECX=%08X EDX=%08X\n", pc, ESP, eflags, flags, use32, stack32, ECX, EDX);
 
 	return 0;
 }
