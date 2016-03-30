@@ -156,17 +156,17 @@ static int opSYSENTER(uint32_t fetchdat)
 	ESP = esp_msr;
 	pc = eip_msr;
 
-	/* Set VM, IF to 0. */
-	eflags &= ~0x0002;
+	/* Set VM, RF, and IF to 0. */
+	eflags &= ~0x0003;
 	flags &= ~0x0200;
 
 	CS = (cs_msr & 0xFFFC);
-	make_seg_data(temp_seg_data, 0, 0xFFFFF, 11, 1, 0, 1, 1, 1, 0);
+	make_seg_data(temp_seg_data, 0, 0xFFFFF, 11, 1, 0, 1, 1, 1, 1);
 	do_seg_load(&_cs, temp_seg_data);
 	use32 = 0x300;
 
 	SS = ((cs_msr + 8) & 0xFFFC);
-	make_seg_data(temp_seg_data, 0, 0xFFFFF, 3, 1, 0, 1, 1, 1, 0);
+	make_seg_data(temp_seg_data, 0, 0xFFFFF, 3, 1, 0, 1, 1, 1, 1);
 	do_seg_load(&_ss, temp_seg_data);
 	stack32 = 1;
 
@@ -193,12 +193,12 @@ static int opSYSEXIT(uint32_t fetchdat)
 	pc = EDX;
 
 	CS = ((cs_msr + 16) & 0xFFFC) | 3;
-	make_seg_data(temp_seg_data, 0, 0xFFFFF, 11, 1, 3, 1, 1, 1, 0);
+	make_seg_data(temp_seg_data, 0, 0xFFFFF, 11, 1, 3, 1, 1, 1, 1);
 	do_seg_load(&_cs, temp_seg_data);
 	use32 = 0x300;
 
 	SS = CS + 8;
-	make_seg_data(temp_seg_data, 0, 0xFFFFF, 3, 1, 3, 1, 1, 1, 0);
+	make_seg_data(temp_seg_data, 0, 0xFFFFF, 3, 1, 3, 1, 1, 1, 1);
 	do_seg_load(&_ss, temp_seg_data);
 	stack32 = 1;
 
