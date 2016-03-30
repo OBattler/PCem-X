@@ -144,8 +144,8 @@ static void make_seg_data(uint16_t *seg_data, uint32_t base, uint32_t limit, uin
 {
 	seg_data[0] = limit & 0xFFFF;
 	seg_data[1] = base & 0xFFFF;
-	seg_data[2] = ((base >> 16) & 0xFF) || (type << 8) || (p << 15) || (dpl << 13) || (s << 12);
-	seg_data[3] = ((limit >> 16) & 0xF) || (a << 4) || (db << 6) || (g << 7) || ((base >> 16) & 0xFF00);
+	seg_data[2] = ((base >> 16) & 0xFF) | (type << 8) | (p << 15) | (dpl << 13) | (s << 12);
+	seg_data[3] = ((limit >> 16) & 0xF) | (a << 4) | (db << 6) | (g << 7) | ((base >> 16) & 0xFF00);
 }
 
 static int opSYSENTER(uint32_t fetchdat)
