@@ -140,38 +140,35 @@ static int internal_illegal()
 		6	DB
 		7	G	*/
 
+static void make_seg_data(uint16_t *seg_data, uint32_t base, uint32_t limit, uint8_t type, uint8_t s, uint8_t dpl, uint8_t p, uint 8_t g, uint8_t db, uint8_t a)
+{
+	seg_data[0] = limit & 0xFFFF;
+	seg_data[1] = base & 0xFFFF;
+	seg_data[2] = ((base >> 16) & 0xFF) || (type << 8) || (p << 15) || (dpl << 13) || (s << 12);
+	seg_data[3] = ((limit >> 16) & 0xF) || (a << 4) || (db << 6) || (g << 7) || ((base >> 16) & 0xFF00);
+}
+
 static int opSYSENTER(uint32_t fetchdat)
 {
 	if (!(cr0 & 1))  return internal_illegal();
-	if (!cs_msr)  return internal_illegal();
-
-	/* Set VM, IF, RF to 0. */
-	eflags &= ~0x0003;
-	flags &= ~0x0200;
-
-	/* CS */
-	cpl_override = 1;
-
-	temp_seg_data[0] = 0xFFFF;
-	temp_seg_data[1] = 0;
-	temp_seg_data[2] = 0x9B00;
-	temp_seg_data[3] = 0xCF;
-
-	CS = (cs_msr & ~3) | 0;
-	do_seg_load(&_cs, temp_seg_data);
-	use32 = 0x300;
-
-	/* SS */
-	temp_seg_data[0] = 0xFFFF;
-	temp_seg_data[1] = 0;
-	temp_seg_data[2] = 0x9300;
-	temp_seg_data[3] = 0xCF;
-	SS = ((cs_msr + 8) & ~3) | 0;
-	do_seg_load(&_ss, temp_seg_data);
-	stack32 = 1;
+	if (!(cs_msr & 0xFFFC))  return internal_illegal();
 
 	ESP = esp_msr;
 	pc = eip_msr;
+
+	/* Set VM, IF to 0. */
+	eflags &= ~0x0002;
+	flags &= ~0x0200;
+
+	CS = (cs_msr & 0xFFFC);
+	make_seg_data(temp_seg_data, 0, 0xFFFFF, 11, 1, 0, 1, 1, 1, 0);
+	do_seg_load(&_cs, temp_seg_data);
+	use32 = 0x300;
+
+	SS = ((cs_msr + 8) & 0xFFFC);
+	make_seg_data(temp_seg_data, 0, 0xFFFFF, 3, 1, 0, 1, 1, 1, 0);
+	do_seg_load(&_ss, temp_seg_data);
+	stack32 = 1;
 
 	CLOCK_CYCLES(20);
 
@@ -188,32 +185,24 @@ static int opSYSENTER(uint32_t fetchdat)
 
 static int opSYSEXIT(uint32_t fetchdat)
 {
-	if (!cs_msr)  return internal_illegal();
+	if (!(cs_msr & 0xFFFC))  return internal_illegal();
 	if (!(cr0 & 1))  return internal_illegal();
 	if (CS & 3)  return internal_illegal();
 
-	/* CS */
-	temp_seg_data[0] = 0xFFFF;
-	temp_seg_data[1] = 0;
-	temp_seg_data[2] = 0xFB00;
-	temp_seg_data[3] = 0xCF;
+	ESP = ECX;
+	pc = EDX;
 
-	CS = ((cs_msr + 16) & ~3) | 3;
+	CS = ((cs_msr + 16) & 0xFFFC) | 3;
+	make_seg_data(temp_seg_data, 0, 0xFFFFF, 11, 1, 3, 1, 1, 1, 0);
 	do_seg_load(&_cs, temp_seg_data);
-	flushmmucache_cr3();
 	use32 = 0x300;
 
-	/* SS */
-	temp_seg_data[0] = 0xFFFF;
-	temp_seg_data[1] = 0;
-	temp_seg_data[2] = 0xF300;
-	temp_seg_data[3] = 0xCF;
-	SS = ((cs_msr + 24) & ~3) | 3;
+	SS = CS + 8;
+	make_seg_data(temp_seg_data, 0, 0xFFFFF, 3, 1, 3, 1, 1, 1, 0);
 	do_seg_load(&_ss, temp_seg_data);
 	stack32 = 1;
 
-	ESP = ECX;
-	pc = EDX;
+	flushmmucache_cr3();
 
 	CLOCK_CYCLES(20);
 
