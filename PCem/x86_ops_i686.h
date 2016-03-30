@@ -140,7 +140,7 @@ static int internal_illegal()
 		6	DB
 		7	G	*/
 
-static void make_seg_data(uint16_t *seg_data, uint32_t base, uint32_t limit, uint8_t type, uint8_t s, uint8_t dpl, uint8_t p, uint 8_t g, uint8_t db, uint8_t a)
+static void make_seg_data(uint16_t *seg_data, uint32_t base, uint32_t limit, uint8_t type, uint8_t s, uint8_t dpl, uint8_t p, uint8_t g, uint8_t db, uint8_t a)
 {
 	seg_data[0] = limit & 0xFFFF;
 	seg_data[1] = base & 0xFFFF;
